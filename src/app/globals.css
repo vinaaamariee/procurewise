@@ -1,35 +1,54 @@
 /* ============================================================
    ProcureWise — Price Comparison Dashboard Styles
-   Batanes State College: Maroon (#7B1C1C) & Gold (#F5C400)
+   Sleek & Professional Slate & Indigo Theme
    ============================================================ */
 
 @import "tailwindcss";
 
 /* ---------- CSS Variables ---------- */
 :root {
-  --maroon:         #7B1C1C;
-  --maroon-dark:    #4A0E0E;
-  --maroon-deep:    #2D0808;
-  --maroon-light:   #a02020;
-  --maroon-glass:   rgba(123, 28, 28, 0.35);
-  --gold:           #F5C400;
-  --gold-light:     #FFE066;
-  --gold-dim:       rgba(245, 196, 0, 0.15);
-  --green:          #22c55e;
-  --green-dim:      rgba(34, 197, 94, 0.15);
-  --red-dim:        rgba(239, 68, 68, 0.18);
-  --text-primary:   #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted:     rgba(255, 255, 255, 0.45);
-  --surface:        rgba(255, 255, 255, 0.06);
-  --surface-hover:  rgba(255, 255, 255, 0.1);
-  --border:         rgba(255, 255, 255, 0.1);
-  --border-gold:    rgba(245, 196, 0, 0.3);
+  /* Sleek Tech Palette */
+  --accent:           #6366f1; /* Indigo */
+  --accent-light:     #818cf8;
+  --accent-glass:     rgba(99, 102, 241, 0.15);
+  
+  --secondary:        #38bdf8; /* Sky Blue */
+  --secondary-light:  #7dd3fc;
+  --secondary-dim:    rgba(56, 189, 248, 0.12);
+  
+  --bg-deep:          #030712; /* Deep Slate (Slate-950) */
+  --bg-dark:          #0f172a; /* Slate 900 */
+  --bg-header:        rgba(15, 23, 42, 0.8);
+  
+  --green:            #10b981; /* Emerald 500 */
+  --green-dim:        rgba(16, 185, 129, 0.12);
+  --red-dim:          rgba(239, 68, 68, 0.12);
+  
+  --text-primary:     #f8fafc;
+  --text-secondary:   #94a3b8;
+  --text-muted:       #64748b;
+  
+  --surface:          rgba(15, 23, 42, 0.65);
+  --surface-hover:    rgba(30, 41, 59, 0.85);
+  --border:           rgba(255, 255, 255, 0.08);
+  --border-accent:    rgba(56, 189, 248, 0.25);
+
+  /* Map old variables for compatibility and easy transition */
+  --maroon:         var(--accent);
+  --maroon-dark:    var(--bg-dark);
+  --maroon-deep:    var(--bg-deep);
+  --maroon-light:   var(--accent-light);
+  --maroon-glass:   var(--accent-glass);
+  --gold:           var(--secondary);
+  --gold-light:     var(--secondary-light);
+  --gold-dim:       var(--secondary-dim);
+  --border-gold:    var(--border-accent);
+  
   --radius-sm:      6px;
   --radius-md:      12px;
   --radius-lg:      18px;
-  --shadow-card:    0 8px 32px rgba(0,0,0,0.4);
-  --transition:     all 0.2s ease;
+  --shadow-card:    0 8px 32px rgba(0,0,0,0.5);
+  --transition:     all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ---------- Base ---------- */
@@ -46,7 +65,7 @@ html, body {
    ============================================================ */
 .pc-page {
   min-height: 100vh;
-  background: linear-gradient(160deg, var(--maroon-deep) 0%, var(--maroon-dark) 40%, #1a0505 100%);
+  background: linear-gradient(160deg, var(--bg-deep) 0%, var(--bg-dark) 60%, #020617 100%);
   background-attachment: fixed;
   color: var(--text-primary);
 }
@@ -56,7 +75,7 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(45, 8, 8, 0.85);
+  background: var(--bg-header);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-gold);
 }
@@ -81,20 +100,20 @@ html, body {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--gold) 0%, #e6a800 100%);
+  background: linear-gradient(135deg, var(--gold) 0%, #0284c7 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
   font-size: 0.85rem;
   letter-spacing: -1px;
-  color: var(--maroon-dark);
-  box-shadow: 0 2px 12px rgba(245, 196, 0, 0.4);
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.3);
   flex-shrink: 0;
 }
 
-.pc-logo-p { color: var(--maroon-deep); }
-.pc-logo-w { color: var(--maroon-dark); }
+.pc-logo-p { color: #ffffff; }
+.pc-logo-w { color: var(--gold-light); }
 
 .pc-title {
   font-size: 1.25rem;
@@ -205,7 +224,7 @@ html, body {
   transform: translateY(-3px);
   background: var(--surface-hover);
   border-color: var(--border-gold);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(245,196,0,0.15);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--secondary-dim);
 }
 
 .summary-card-icon {
@@ -400,7 +419,7 @@ html, body {
   transition: var(--transition);
   font-family: inherit;
 }
-.filter-clear-all-btn:hover { background: rgba(245,196,0,0.25); }
+.filter-clear-all-btn:hover { background: rgba(56, 189, 248, 0.2); }
 
 /* ============================================================
    TABS
@@ -478,7 +497,7 @@ html, body {
 }
 
 .comparison-table thead tr {
-  background: rgba(245, 196, 0, 0.08);
+  background: var(--secondary-dim);
   border-bottom: 1px solid var(--border-gold);
 }
 
@@ -496,13 +515,13 @@ html, body {
   transition: var(--transition);
 }
 
-.comparison-table th:hover { background: rgba(245,196,0,0.08); }
+.comparison-table th:hover { background: var(--secondary-dim); }
 
 .col-sticky {
   position: sticky;
   left: 0;
   z-index: 10;
-  background: rgba(45, 8, 8, 0.95);
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(8px);
 }
 
@@ -607,7 +626,7 @@ html, body {
 }
 
 /* Detail row */
-.detail-row { background: rgba(245,196,0,0.04); border-bottom: 1px solid var(--border); }
+.detail-row { background: rgba(56, 189, 248, 0.04); border-bottom: 1px solid var(--border); }
 .detail-panel { padding: 0.75rem 1rem; }
 .detail-description { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
 .detail-delivery { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -747,7 +766,7 @@ html, body {
 }
 
 .pc-footer-sys {
-  color: rgba(245, 196, 0, 0.4);
+  color: rgba(56, 189, 248, 0.4);
   font-style: italic;
 }
 

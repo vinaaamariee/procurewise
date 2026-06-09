@@ -19,11 +19,11 @@ export default function PriceChart({ items, selectedSuppliers }: PriceChartProps
   const chartItems = items.slice(0, 5);
 
   const supplierColors = [
-    "#F5C400",  // Gold (BSC)
-    "#c0392b",  // Deep red
-    "#e67e22",  // Orange
-    "#8e44ad",  // Purple
-    "#2980b9",  // Blue
+    "#6366f1",  // Indigo
+    "#38bdf8",  // Sky Blue
+    "#14b8a6",  // Teal
+    "#a855f7",  // Purple
+    "#f59e0b",  // Amber
   ];
 
   return (

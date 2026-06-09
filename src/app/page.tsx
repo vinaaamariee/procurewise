@@ -26,7 +26,7 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(160deg, #2D0808 0%, #4A0E0E 40%, #1a0505 100%);
+          background: linear-gradient(160deg, #030712 0%, #0f172a 60%, #020617 100%);
           padding: 2rem;
         }
         .home-content {
@@ -37,21 +37,23 @@ export default function Home() {
           width: 72px;
           height: 72px;
           border-radius: 16px;
-          background: linear-gradient(135deg, #F5C400 0%, #e6a800 100%);
+          background: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 900;
           font-size: 1.25rem;
           letter-spacing: -1px;
-          color: #4A0E0E;
-          box-shadow: 0 4px 24px rgba(245,196,0,0.4);
+          color: #ffffff;
+          box-shadow: 0 4px 24px rgba(99, 102, 241, 0.4);
           margin: 0 auto 1.5rem;
         }
         .home-title {
           font-size: 2.5rem;
           font-weight: 900;
-          color: #F5C400;
+          background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
           letter-spacing: -1px;
           margin-bottom: 1rem;
         }
@@ -63,7 +65,7 @@ export default function Home() {
         }
         .home-inst {
           font-size: 0.78rem;
-          color: rgba(245,196,0,0.6);
+          color: #38bdf8;
           text-transform: uppercase;
           letter-spacing: 1px;
           font-weight: 700;
@@ -74,19 +76,19 @@ export default function Home() {
           display: inline-block;
           padding: 0.8rem 1.75rem;
           border-radius: 12px;
-          background: linear-gradient(135deg, #7B1C1C, #a02020);
-          border: 1px solid rgba(245,196,0,0.3);
-          color: #F5C400;
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+          border: 1px solid rgba(56, 189, 248, 0.3);
+          color: #ffffff;
           font-weight: 700;
           font-size: 0.9rem;
           text-decoration: none;
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         .home-btn-primary:hover {
-          background: linear-gradient(135deg, #a02020, #c02525);
+          background: linear-gradient(135deg, #4f46e5, #4338ca);
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
         }
       `}</style>
     </div>
