@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PROCUREWISE
+### An Intelligent Procurement Analytics and Automated Canvassing System with Best-Value Recommendation Engine
+**Capstone Project for Batanes State College**
 
-## Getting Started
+---
 
-First, run the development server:
+## 🚀 Merged Features (Master Branch)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 📊 Price Comparison Dashboard (`/price-comparison`)
+The first major feature successfully implemented and merged into the `master` branch is the **Price Comparison Dashboard**. This module allows procurement officers to canvass and compare office supply prices across local and regional suppliers to optimize public funds.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### Core Capabilities:
+* **Key Performance Indicators (KPIs)**:
+  * **Items Compared**: The count of active supplies analyzed.
+  * **Suppliers Evaluated**: Total number of registered local/regional vendors.
+  * **Avg. Savings Potential**: Average percentage of savings possible by opting for the best-value quote instead of the highest.
+  * **Total Savings Opportunity**: Real-time calculation of overall budget optimization if best-value quotes are chosen for all items.
+* **Interactive Comparison Table**:
+  * Currency formatted in Philippine Pesos (₱).
+  * Color-coded price highlights (Green = Best value/lowest price, Red = Worst value/highest price).
+  * Availability tags (In Stock, Limited, Unavailable) for inventory management.
+  * Dynamic sorting by item name, category, or specific supplier columns.
+  * Expandable detail rows displaying item descriptions and delivery lead times per supplier.
+* **Supplier Search & Filter Engine**:
+  * Real-time search query matching.
+  * Category-based filter.
+  * Multi-select supplier toggle filter.
+* **Visual Price Chart**:
+  * Pure CSS horizontal bar chart visualization comparing items across all active vendors.
+  * Automatic green highlighting for the best quote inside the chart.
+* **Sleek Dark Theme**:
+  * Premium slate-indigo and sky-blue design matching professional dashboard standards.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Technology Stack
+* **Framework**: Next.js 16.2.7 (Turbopack) & React 19
+* **Language**: TypeScript (Strict Mode)
+* **Styles**: Custom CSS variables, gradients, and glassmorphism ([globals.css](file:///c:/Users/sy/procurewise/src/app/globals.css))
+* **Database / Backend**: Prisma configuration ready
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 💻 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
