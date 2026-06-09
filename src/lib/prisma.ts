@@ -13,6 +13,10 @@ const createPrismaClient = () => {
   // Strip carriage returns (\r), whitespace, and outer quotes (common Windows CRLF issue)
   connectionString = connectionString.replace(/\r/g, "").trim().replace(/^["']|["']$/g, "").trim();
 
+  // Securely log connection details (masking the password) for debugging
+  const maskedConn = connectionString.replace(/:[^:@]+@/, ":[MASKED]@");
+  console.log(`[PRISMA DIAGNOSTICS] Connecting with URL: ${maskedConn}`);
+
   // Pass connectionString directly to pg Pool
   const pool = new Pool({
     connectionString,
