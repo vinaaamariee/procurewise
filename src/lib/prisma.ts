@@ -11,8 +11,8 @@ const createPrismaClient = () => {
     throw new Error("DATABASE_URL is not set in environment variables.");
   }
 
-  // Strip any leading/trailing quotes if present in the .env file
-  connectionString = connectionString.replace(/^["']|["']$/g, "");
+  // Strip carriage returns (\r), whitespace, and outer quotes (common Windows CRLF issue)
+  connectionString = connectionString.replace(/\r/g, "").trim().replace(/^["']|["']$/g, "").trim();
 
   const dbUrl = new URL(connectionString);
   
