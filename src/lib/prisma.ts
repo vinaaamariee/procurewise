@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { URL } from "url";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -14,16 +13,11 @@ const createPrismaClient = () => {
   // Strip carriage returns (\r), whitespace, and outer quotes (common Windows CRLF issue)
   connectionString = connectionString.replace(/\r/g, "").trim().replace(/^["']|["']$/g, "").trim();
 
-  const dbUrl = new URL(connectionString);
-  
+  // Pass connectionString directly to pg Pool
   const pool = new Pool({
-    user: dbUrl.username,
-    password: decodeURIComponent(dbUrl.password || ""),
-    host: dbUrl.hostname,
-    port: dbUrl.port ? parseInt(dbUrl.port) : 5432,
-    database: dbUrl.pathname.substring(1),
-    ssl: dbUrl.searchParams.get("sslmode") !== "disable" ? { rejectUnauthorized: false } : undefined,
-    connectionTimeoutMillis: 30000,
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 30000, // 30 seconds connection timeout
   });
 
   const adapter = new PrismaPg(pool);
