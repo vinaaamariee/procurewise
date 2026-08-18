@@ -1,262 +1,116 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { startLogin } from "@/const";
-import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
-import { Button } from "./ui/button";
+import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
+import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LogOut, Menu, ReceiptText, Search, Settings2, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashboard; roles: ProcurementRole[] }> = [
+  { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "bac", "supply_officer", "budget_officer", "admin"] },
+  { label: "Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "bac", "supply_officer", "budget_officer", "admin"] },
+  { label: "RFQs & Canvass", path: "/rfq", icon: FileSearch, roles: ["bac", "supply_officer", "admin"] },
+  { label: "Abstracts & POs", path: "/purchase-orders", icon: FileCheck2, roles: ["bac", "supply_officer", "admin"] },
+  { label: "APP / PPMP", path: "/plans", icon: BookOpenText, roles: ["budget_officer", "admin"] },
+  { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["supply_officer", "admin"] },
+  { label: "Budget Control", path: "/budgets", icon: WalletCards, roles: ["budget_officer", "admin"] },
+  { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["bac", "supply_officer", "budget_officer", "admin"] },
+  { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["bac", "supply_officer", "budget_officer", "admin"] },
+  { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
 ];
 
-const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const DEFAULT_WIDTH = 280;
-const MIN_WIDTH = 200;
-const MAX_WIDTH = 480;
+const roleLabels: Record<ProcurementRole, string> = { end_user: "End-User", bac: "BAC", supply_officer: "Supply Officer", budget_officer: "Budget Officer", admin: "Admin" };
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
-    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
-  });
-  const { loading, user } = useAuth();
-
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
-  }, [sidebarWidth]);
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { loading, user, logout } = useAuth();
+  const [location, setLocation] = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const procurementRole = user ? normalizeProcurementRole(user.role) : "end_user";
+  const roleLabel = roleLabels[procurementRole];
+  const visibleNavigation = navigation.filter((item) => item.roles.includes(procurementRole));
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <div className="min-h-screen bg-[#f8f7f3]" />;
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
-            </p>
-          </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
-          </Button>
+      <div className="grid min-h-screen place-items-center bg-[#f8f7f3] px-5">
+        <div className="w-full max-w-md border border-[#e4e1da] bg-white p-8 text-center shadow-[0_12px_36px_rgba(36,42,52,0.08)]">
+          <ProcureWiseLogo className="justify-center" />
+          <ShieldCheck className="mx-auto mt-8 h-8 w-8 text-[#7b1e1e]" />
+          <h1 className="mt-4 font-display text-2xl font-semibold text-[#202833]">Authorized access only</h1>
+          <p className="mt-2 text-sm leading-6 text-[#677281]">Sign in to access your assigned procurement workspace and workflow actions.</p>
+          <Button onClick={() => startLogin()} className="mt-7 h-10 w-full rounded-[4px] bg-[#7b1e1e] text-sm font-semibold hover:bg-[#641818]">Sign in to ProcureWise</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": `${sidebarWidth}px`,
-        } as CSSProperties
-      }
-    >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
-    </SidebarProvider>
-  );
-}
-
-type DashboardLayoutContentProps = {
-  children: React.ReactNode;
-  setSidebarWidth: (width: number) => void;
-};
-
-function DashboardLayoutContent({
-  children,
-  setSidebarWidth,
-}: DashboardLayoutContentProps) {
-  const { user, logout } = useAuth();
-  const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
-  const isCollapsed = state === "collapsed";
-  const [isResizing, setIsResizing] = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (isCollapsed) {
-      setIsResizing(false);
-    }
-  }, [isCollapsed]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-
-      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
-      const newWidth = e.clientX - sidebarLeft;
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
-        setSidebarWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing, setSidebarWidth]);
-
-  return (
-    <>
-      <div className="relative" ref={sidebarRef}>
-        <Sidebar
-          collapsible="icon"
-          className="border-r-0"
-          disableTransition={isResizing}
-        >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </SidebarHeader>
-
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarContent>
-
-          <SidebarFooter className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => {
-            if (isCollapsed) return;
-            setIsResizing(true);
-          }}
-          style={{ zIndex: 50 }}
-        />
-      </div>
-
-      <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
+    <div className="min-h-screen bg-[#f8f7f3] text-[#202833]">
+      <div className="border-b border-[#e4e1da] bg-white">
+        <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">
+          <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} className="h-9 w-9 rounded-[4px] lg:hidden" aria-label="Toggle navigation">
+            <Menu className="h-4.5 w-4.5" />
+          </Button>
+          <Link href="/dashboard" className="shrink-0"><ProcureWiseLogo /></Link>
+          <div className="mx-auto hidden max-w-md flex-1 lg:block">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#87909b]" />
+              <Input aria-label="Search procurement records" placeholder="Search PR, RFQ, PO, or supplier" className="h-9 rounded-[4px] border-[#e4e1da] bg-[#fbfaf7] pl-9 text-xs shadow-none placeholder:text-[#9aa1aa] focus-visible:ring-[#7b1e1e]" />
+            </label>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-[4px]" aria-label="Notifications">
+              <Bell className="h-4 w-4 text-[#566171]" />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#b78327]" />
+            </Button>
+            <div className="hidden items-center gap-2 border-l border-[#e4e1da] pl-3 sm:flex">
+              <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
+                <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
+              </Avatar>
+              <div className="hidden xl:block">
+                <p className="max-w-[132px] truncate text-xs font-semibold text-[#303946]">{user.name || "Procurement User"}</p>
+                <p className="mt-0.5 text-[10px] font-medium text-[#8a6a2e]">{roleLabel}</p>
               </div>
             </div>
+            <Button variant="ghost" size="icon" onClick={logout} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525]" aria-label="Sign out">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-        <main className="flex-1 p-4">{children}</main>
-      </SidebarInset>
-    </>
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-[1560px]">
+        <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[236px] lg:shrink-0 lg:border-b-0 lg:border-r lg:p-4 ${menuOpen ? "block" : "hidden"}`}>
+          <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#9198a1]">Procurement workspace</p>
+          <nav className="grid gap-0.5">
+            {visibleNavigation.map((item) => {
+              const active = location === item.path;
+              return (
+                <button key={item.path} onClick={() => { setLocation(item.path); setMenuOpen(false); }} className={`flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs font-medium transition-colors ${active ? "bg-[#f9f1e0] text-[#7b1e1e]" : "text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946]"}`}>
+                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#7b1e1e]" : "text-[#7c8795]"}`} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="mt-7 border-t border-[#ece9e2] pt-5">
+            <div className="rounded-[4px] border border-[#e7dfce] bg-[#fcfaf4] p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">Workflow controls</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-[#6a7280]">Actions appear only when your assigned role is permitted to act.</p>
+              <Badge variant="outline" className="mt-2 rounded-[3px] border-[#dec99b] bg-white px-1.5 py-0 text-[9px] font-semibold text-[#7b5c20]">ROLE-GATED</Badge>
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">{children}</main>
+      </div>
+    </div>
   );
 }

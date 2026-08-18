@@ -1,0 +1,30 @@
+# Project TODO
+
+- [x] Define five government procurement roles and server-side role-gate helpers for End-User, BAC, Supply Officer, Budget Officer, and Admin.
+- [x] Add relational data models for offices, objects of expenditure, budget allotments, suppliers, APP/PPMP entries, purchase requests, PR items, RFQs, quotations, quotation abstracts, purchase orders, and audit events.
+- [x] Implement procurement procedures for creating, submitting, reviewing, approving, and tracking Purchase Requests under role-gated workflow transitions.
+- [x] Implement RFQ and three-supplier quotation comparison procedures, including compliant lowest-bid selection support.
+- [x] Implement Purchase Order creation from an approved quotation abstract and budget-allotment validation.
+- [x] Establish a responsive flat UI design system using Philippine government terminology, with accessible colors, typography, feedback states, and reusable table/form patterns.
+- [x] Create shared ProcureWise form and table wrapper patterns and use them in the Purchase Request, RFQ, and budget workspaces.
+- [x] Apply explicit accessible state styles for inputs, tables, alerts, and status feedback across ProcureWise workspace components.
+- [x] Build the public ProcureWise landing page with clear PR-to-PO workflow explanation and sign-in entry point.
+- [x] Build the authenticated dashboard shell with role-sensitive navigation, search, notification affordance, profile menu, and visual status summary.
+- [x] Build the Purchase Request workspace with a creation form, office and object-of-expenditure selection, itemized totals, workflow timeline, and current-status views.
+- [x] Build RFQ, quotation comparison, abstract, and PO workspaces with clear supplier compliance and lowest-bid indicators.
+- [x] Build APP/PPMP planning, supplier registry, and office-level budget utilization workspaces.
+- [x] Build audit trail and analytics dashboards for cycle time, budget-versus-actual spend, and top commodities.
+- [x] Add automated tests for workflow-gate and budget-validation behavior.
+- [x] Verify desktop and mobile layouts, TypeScript validation, application tests, and primary navigation paths.
+- [x] Add an RFQ quotation comparison view with per-supplier bids, compliance flags, and a lowest-compliant-bid indicator.
+- [x] Revalidate office-level budget availability during Purchase Order generation before the commitment proceeds.
+- [x] Create and apply a reusable ProcureWise form shell across the Purchase Request, RFQ, and budget forms.
+- [x] Add a visible Purchase Request workflow-stage timeline to the request workspace.
+- [x] Replace the generic budget route with office-and-object budget utilization, committed, and available-balance views.
+- [x] Calculate live procurement cycle time and top commodities from completed transaction records.
+- [x] Add automated tests for successful and rejected office-level budget validation.
+- [x] Verify ProcureWise layouts at a mobile viewport and record responsive observations.
+- [x] Restrict cycle-time and commodity analytics to transactions that have reached an explicit completed or closed state, and state that basis in the UI.
+- [x] Add server-level Purchase Request and Purchase Order budget-validation tests covering allowed and rejected workflow paths.
+- [x] Restore the interrupted development server and confirm the ProcureWise preview responds.
+- [x] Create a completion checkpoint after all worklist items are marked complete.

@@ -3,16 +3,30 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
+import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, PurchaseOrderPage, RfqPage, SupplierRegistryPage } from "./pages/ManagementPages";
+import SetupPage from "./pages/Setup";
+import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
+  const protectedPage = (page: React.ReactNode) => <DashboardLayout>{page}</DashboardLayout>;
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/"} component={Landing} />
+      <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
+      <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
+      <Route path={"/rfq"}>{protectedPage(<RfqPage />)}</Route>
+      <Route path={"/purchase-orders"}>{protectedPage(<PurchaseOrderPage />)}</Route>
+      <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
+      <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
+      <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>
+      <Route path={"/analytics"}>{protectedPage(<AnalyticsPage />)}</Route>
+      <Route path={"/audit"}>{protectedPage(<AuditTrailPage />)}</Route>
+      <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
