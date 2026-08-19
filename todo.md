@@ -28,3 +28,11 @@
 - [x] Add server-level Purchase Request and Purchase Order budget-validation tests covering allowed and rejected workflow paths.
 - [x] Restore the interrupted development server and confirm the ProcureWise preview responds.
 - [x] Create a completion checkpoint after all worklist items are marked complete.
+- [x] Create a dedicated ProcureWise access page with distinct sign-in and first-time End-User account-creation paths.
+- [x] Wire landing-page, unauthenticated-access, and sign-out entry points to the dedicated access page.
+- [x] Preserve first-time End-User provisioning through the existing authenticated account flow and explain it clearly in the interface.
+- [x] Verify the new access page on desktop and mobile, then add coverage for its route and role-onboarding behavior.
+- [x] Verify the unauthenticated access page at a mobile viewport and confirm its sign-in/register tabs remain usable.
+- [x] Exercise first-time account provisioning directly to confirm new authenticated accounts enter ProcureWise as End-Users.
+- [x] Interactively verify the mobile sign-in and Create End-User account tabs on the unauthenticated access screen.
+- [x] Exercise the Sign in and Create End-User account tab controls directly on the mobile access page and confirm both rendered states.

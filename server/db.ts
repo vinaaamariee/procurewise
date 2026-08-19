@@ -7,6 +7,7 @@ import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procur
 
 let _db: ReturnType<typeof drizzle> | null = null;
 type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent };
+type UserUpsertOptions = { db?: ReturnType<typeof drizzle> | null };
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -20,9 +21,9 @@ export async function getDb() {
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
+export async function upsertUser(user: InsertUser, options?: UserUpsertOptions): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
-  const db = await getDb();
+  const db = options?.db ?? await getDb();
   if (!db) return;
   const values: InsertUser = { openId: user.openId, lastSignedIn: new Date() };
   const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
@@ -38,6 +39,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } else if (user.role) {
     values.role = user.role;
     updateSet.role = user.role;
+  } else {
+    // Explicitly provision new OAuth identities as End-Users while preserving any existing assigned role on later sign-ins.
+    values.role = "end_user";
   }
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }

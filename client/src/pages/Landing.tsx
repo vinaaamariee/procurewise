@@ -1,7 +1,6 @@
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { startLogin } from "@/const";
 import { ArrowRight, BadgeCheck, BarChart3, ClipboardList, FileCheck2, FileSearch, Landmark, ShieldCheck, WalletCards } from "lucide-react";
 import { Link } from "wouter";
 
@@ -27,7 +26,7 @@ export default function Landing() {
           <ProcureWiseLogo />
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="hidden text-xs font-semibold text-[#5b6572] hover:text-[#7b1e1e] sm:inline">Workspace</Link>
-            <Button onClick={() => startLogin()} className="h-9 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold hover:bg-[#641818]">Sign in</Button>
+            <Button asChild className="h-9 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold hover:bg-[#641818]"><Link href="/access">Sign in</Link></Button>
           </div>
         </div>
       </header>
@@ -42,7 +41,7 @@ export default function Landing() {
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-[#202833] sm:text-5xl lg:text-6xl">Procurement with a clear line of accountability.</h1>
               <p className="mt-6 max-w-xl text-[15px] leading-7 text-[#5f6977]">ProcureWise helps Philippine government offices manage the full PR-to-PO lifecycle with disciplined workflow gates, budget visibility, supplier comparison, and traceable decisions.</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button onClick={() => startLogin()} className="h-10 rounded-[4px] bg-[#7b1e1e] px-5 text-sm font-semibold hover:bg-[#641818]">Open procurement workspace <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                <Button asChild className="h-10 rounded-[4px] bg-[#7b1e1e] px-5 text-sm font-semibold hover:bg-[#641818]"><Link href="/access">Open procurement workspace <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                 <Link href="#workflow" className="inline-flex h-10 items-center justify-center rounded-[4px] border border-[#d6d2c9] bg-white px-5 text-sm font-semibold text-[#3d4754] hover:bg-[#fbfaf7]">Explore the workflow</Link>
               </div>
               <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-[11px] font-semibold text-[#667180]">

@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Dashboard from "./pages/Dashboard";
+import Access from "./pages/Access";
 import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, PurchaseOrderPage, RfqPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import SetupPage from "./pages/Setup";
@@ -16,6 +17,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Landing} />
+      <Route path={"/access"} component={Access} />
       <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
       <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
       <Route path={"/rfq"}>{protectedPage(<RfqPage />)}</Route>

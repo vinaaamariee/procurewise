@@ -7,6 +7,7 @@ describe("ProcureWise workflow rules", () => {
     expect(getNextPrStatus("budget_review", "budget_officer")).toBe("supply_review");
     expect(getNextPrStatus("supply_review", "bac")).toBeNull();
     expect(roleCanAct("admin", ["bac"])).toBe(true);
+    // Platform-created accounts use the legacy "user" role and enter ProcureWise as End-Users.
     expect(normalizeProcurementRole("user")).toBe("end_user");
   });
 

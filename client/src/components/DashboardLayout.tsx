@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
-import { startLogin } from "@/const";
 import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
 import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LogOut, Menu, ReceiptText, Search, Settings2, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
@@ -32,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const procurementRole = user ? normalizeProcurementRole(user.role) : "end_user";
   const roleLabel = roleLabels[procurementRole];
   const visibleNavigation = navigation.filter((item) => item.roles.includes(procurementRole));
+  const handleLogout = async () => { await logout(); setLocation("/access"); };
 
   if (loading) {
     return <div className="min-h-screen bg-[#f8f7f3]" />;
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <ShieldCheck className="mx-auto mt-8 h-8 w-8 text-[#7b1e1e]" />
           <h1 className="mt-4 font-display text-2xl font-semibold text-[#202833]">Authorized access only</h1>
           <p className="mt-2 text-sm leading-6 text-[#677281]">Sign in to access your assigned procurement workspace and workflow actions.</p>
-          <Button onClick={() => startLogin()} className="mt-7 h-10 w-full rounded-[4px] bg-[#7b1e1e] text-sm font-semibold hover:bg-[#641818]">Sign in to ProcureWise</Button>
+          <Button asChild className="mt-7 h-10 w-full rounded-[4px] bg-[#7b1e1e] text-sm font-semibold hover:bg-[#641818]"><Link href="/access">Sign in to ProcureWise</Link></Button>
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="mt-0.5 text-[10px] font-medium text-[#8a6a2e]">{roleLabel}</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={logout} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525]" aria-label="Sign out">
+            <Button variant="ghost" size="icon" onClick={() => void handleLogout()} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525]" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
