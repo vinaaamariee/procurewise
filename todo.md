@@ -69,3 +69,8 @@
 - [x] Re-verify `/setup` in the authenticated administrator preview and save the corrected authorization checkpoint.
 - [x] Defer personal-browser `/setup` verification because browser takeover is unavailable; direct administrator procedure coverage and managed-preview validation are retained.
 - [x] Save the validated `/setup` authorization-fix checkpoint.
+- [x] Review the signed-out access page and End-User PPMP, PR, and Pre-Canvass workflow routes for acceptance testing.
+- [x] Prepare End-User test-safe guidance and success criteria without creating fabricated procurement records.
+- [x] Verify the public End-User access path and document any authentication or role-routing blockers.
+- [x] Create and deliver a concrete End-User acceptance-test checklist covering access, PPMP, Purchase Request, and Pre-Canvass steps.
+- [x] Document End-User prerequisites and expected blockers without creating procurement test transactions.
