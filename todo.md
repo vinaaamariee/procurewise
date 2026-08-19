@@ -60,3 +60,12 @@
 - [x] Document and retain the interim minimal PMR close-out record: linked PO, PMR reference, logged date, responsible officer, and remarks.
 - [x] Run final type and test validation after the Abstract and Purchase Order detail updates; defer authenticated visual validation until an authorised session and real records are available.
 - [x] Validate the mapped form shells and save a checkpoint after the official-form update.
+- [x] Diagnose the `/setup` query that rejects an authenticated administrator with a procurement-role permission error.
+- [x] Correct the setup workspace role gate so administrators can load configuration details and budget utilization safely.
+- [x] Add regression coverage for administrator setup access and verify the `/setup` route in the browser.
+- [x] Save a checkpoint for the setup authorization fix.
+- [x] Reproduce administrator and non-administrator access against the actual `procurement.setup.users` server procedure.
+- [x] Harden the setup authorization path against role-hydration timing and confirm no server-side role gate rejects a confirmed administrator.
+- [x] Re-verify `/setup` in the authenticated administrator preview and save the corrected authorization checkpoint.
+- [x] Defer personal-browser `/setup` verification because browser takeover is unavailable; direct administrator procedure coverage and managed-preview validation are retained.
+- [x] Save the validated `/setup` authorization-fix checkpoint.
