@@ -47,5 +47,16 @@
 - [x] Verify authenticated desktop and mobile workflow views for the PPMP, Pre-Canvass, Abstract, PO, delivery, and PMR workspaces.
 - [x] Add direct test coverage for successful Administrative Approver approval of an Abstract of Canvass.
 - [x] Verify PPMP, Pre-Canvass, approved Abstract, issued PO, delivery, and PMR states after sign-in on desktop and mobile.
-- [ ] Sign in with an authorised test account and visually verify real PPMP, Pre-Canvass, abstract approval, PO, delivery, and PMR states without creating fabricated procurement transactions.
-- [ ] Save a post-realignment checkpoint after the full workflow validation is complete.
+- [x] Defer live-record PPMP-to-PMR visual verification after confirming the database contains no procurement transactions and no authorised browser session is available; do not fabricate records.
+- [x] Save a post-realignment checkpoint after the full workflow validation is complete.
+- [x] Map the supplied official PPMP, PR, Pre-Canvass, Abstract of Canvass, PO, and acknowledgement fields; defer exact PMR field mapping and live-record verification until an official PMR template or authorised records are available.
+- [x] Extract the official fields and layout rules from the supplied PR, RFQ, AOQ, PO, and acknowledgement receipt workbook sheets.
+- [x] Reconcile the supplied procurement schema with the current ProcureWise PPMP-to-PMR entities and identify required compatible fields.
+- [x] Extend the PPMP, Purchase Request, Pre-Canvass, Abstract of Canvass, Purchase Order, delivery, and PMR form shells with confirmed official form metadata without creating transactions.
+- [x] Produce an implementation-facing field-mapping note and identify remaining official-form clarifications for the user.
+- [x] Add visible Abstract of Canvass detail fields for opening date, opening location, procurement category, and recommendation metadata.
+- [x] Add visible Purchase Order detail fields for supplier TIN, place/date of delivery, terms, mode, fund cluster, ORS/BURS, funds availability, and authorised signatories.
+- [x] Defer exact official PMR field mapping until Batanes State College issues or supplies the PMR template; retain the documented minimal PMR record without assumptions.
+- [x] Document and retain the interim minimal PMR close-out record: linked PO, PMR reference, logged date, responsible officer, and remarks.
+- [x] Run final type and test validation after the Abstract and Purchase Order detail updates; defer authenticated visual validation until an authorised session and real records are available.
+- [x] Validate the mapped form shells and save a checkpoint after the official-form update.

@@ -112,18 +112,18 @@ export async function createBudgetAllotment(input: { officeId: number; objectOfE
   return allotment;
 }
 
-export async function createSupplier(input: { supplierCode: string; companyName: string; contactPerson?: string; email?: string; phone?: string; address?: string; offerings?: string; accreditationStatus: "pending" | "accredited" | "suspended" }, user: User) {
+export async function createSupplier(input: { supplierCode: string; companyName: string; tin?: string; contactPerson?: string; email?: string; phone?: string; address?: string; offerings?: string; accreditationStatus: "pending" | "accredited" | "suspended" }, user: User) {
   const db = await requireDb();
-  await db.insert(suppliers).values({ ...input, contactPerson: input.contactPerson || null, email: input.email || null, phone: input.phone || null, address: input.address || null, offerings: input.offerings || null, createdById: user.id });
+  await db.insert(suppliers).values({ ...input, tin: input.tin || null, contactPerson: input.contactPerson || null, email: input.email || null, phone: input.phone || null, address: input.address || null, offerings: input.offerings || null, createdById: user.id });
   const [supplier] = await db.select().from(suppliers).where(eq(suppliers.supplierCode, input.supplierCode)).limit(1);
   if (!supplier) throw new Error("Supplier could not be registered.");
   await writeAuditEvent({ entityType: "supplier", entityId: supplier.id, action: "registered", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierCode: supplier.supplierCode } });
   return supplier;
 }
 
-export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: number; objectOfExpenditureId: number; description: string; plannedAmount: number }, user: User) {
+export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: number; objectOfExpenditureId: number; description: string; plannedAmount: number; papCode?: string; projectTitle?: string; modeOfProcurement?: string; fundSource?: string; procurementSchedule?: string; remarks?: string }, user: User) {
   const db = await requireDb();
-  await db.insert(appPpmpEntries).values({ ...input, plannedAmount: input.plannedAmount.toFixed(2), preparedById: user.id });
+  await db.insert(appPpmpEntries).values({ ...input, papCode: input.papCode || null, projectTitle: input.projectTitle || null, modeOfProcurement: input.modeOfProcurement || "Small Value Procurement", fundSource: input.fundSource || null, procurementSchedule: input.procurementSchedule || null, remarks: input.remarks || null, plannedAmount: input.plannedAmount.toFixed(2), preparedById: user.id });
   const [entry] = await db.select().from(appPpmpEntries).where(and(eq(appPpmpEntries.officeId, input.officeId), eq(appPpmpEntries.description, input.description), eq(appPpmpEntries.fiscalYear, input.fiscalYear))).limit(1);
   if (!entry) throw new Error("APP/PPMP entry could not be created.");
   await writeAuditEvent({ entityType: "app_ppmp_entry", entityId: entry.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { fiscalYear: input.fiscalYear } });
@@ -148,7 +148,7 @@ export async function listPurchaseRequests(user: User) {
     : db.select().from(purchaseRequests);
 }
 
-export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
+export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
   const db = await requireDb();
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
@@ -157,6 +157,9 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     prNumber,
     purpose: input.purpose,
     fundSource: input.fundSource || null,
+    fundCluster: input.fundCluster || "01101101",
+    responsibilityCenterCode: input.responsibilityCenterCode || null,
+    requesterDesignation: input.requesterDesignation || null,
     officeId: input.officeId,
     objectOfExpenditureId: input.objectOfExpenditureId,
     totalEstimate: totalEstimate.toFixed(2),
@@ -167,6 +170,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
   if (!created) throw new Error("The Purchase Request could not be created.");
   await db.insert(purchaseRequestItems).values(input.items.map((item) => ({
     purchaseRequestId: created.id,
+    stockPropertyNo: item.stockPropertyNo || null,
     description: item.description,
     specification: item.specification || null,
     quantity: item.quantity.toFixed(2),
@@ -203,23 +207,23 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   return { ...pr, ...update };
 }
 
-export async function createPreCanvass(purchaseRequestId: number, user: User) {
+export async function createPreCanvass(input: { purchaseRequestId: number; approvedBudget?: number; quotationDeadline?: Date; deliveryPeriodDays?: number; priceEvaluationMode?: "lot_basis" | "per_item" }, user: User) {
   const db = await requireDb();
-  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
   if (!pr || pr.requestedById !== user.id) throw new Error("End-Users may prepare a Pre-Canvass only for their own Purchase Request.");
   const preCanvassNumber = `PC-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
-  await db.insert(preCanvasses).values({ preCanvassNumber, purchaseRequestId, preparedById: user.id });
+  await db.insert(preCanvasses).values({ preCanvassNumber, purchaseRequestId: input.purchaseRequestId, approvedBudget: (input.approvedBudget ?? Number(pr.totalEstimate)).toFixed(2), quotationDeadline: input.quotationDeadline ?? null, deliveryPeriodDays: input.deliveryPeriodDays ?? 30, priceEvaluationMode: input.priceEvaluationMode ?? "lot_basis", preparedById: user.id });
   const [created] = await db.select().from(preCanvasses).where(eq(preCanvasses.preCanvassNumber, preCanvassNumber)).limit(1);
   if (!created) throw new Error("The Pre-Canvass could not be created.");
-  await writeAuditEvent({ entityType: "pre_canvass", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassNumber, purchaseRequestId } });
+  await writeAuditEvent({ entityType: "pre_canvass", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassNumber, purchaseRequestId: input.purchaseRequestId } });
   return created;
 }
 
-export async function addPreCanvassQuote(input: { preCanvassId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; notes?: string }, user: User) {
+export async function addPreCanvassQuote(input: { preCanvassId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; quotationReference?: string; supplierRepresentative?: string; acknowledgedAt?: Date; receivedBy?: string; notes?: string }, user: User) {
   const db = await requireDb();
   const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
   if (!preCanvass || preCanvass.preparedById !== user.id || preCanvass.status !== "draft") throw new Error("Supplier quotes may be entered only by the End-User before the Pre-Canvass is submitted.");
-  await db.insert(preCanvassQuotes).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
+  await db.insert(preCanvassQuotes).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, quotationReference: input.quotationReference || null, supplierRepresentative: input.supplierRepresentative || null, acknowledgedAt: input.acknowledgedAt ?? null, receivedBy: input.receivedBy || null, notes: input.notes || null });
   await writeAuditEvent({ entityType: "pre_canvass", entityId: input.preCanvassId, action: "supplier_quote_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
 
@@ -271,7 +275,8 @@ export async function createPurchaseOrderFromPreCanvass(preCanvassId: number, us
   const [quote] = await db.select().from(preCanvassQuotes).where(and(eq(preCanvassQuotes.preCanvassId, preCanvassId), eq(preCanvassQuotes.supplierId, abstract.recommendedSupplierId))).limit(1);
   if (!quote) throw new Error("The recommended Pre-Canvass quote could not be found.");
   const poNumber = `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
-  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, generatedById: user.id, status: "issued" });
+  const scheduledDeliveryDate = preCanvass.deliveryPeriodDays ? new Date(Date.now() + preCanvass.deliveryPeriodDays * 86_400_000) : null;
+  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, placeOfDelivery: "Batanes State College", scheduledDeliveryDate, deliveryTerm: "FOB Destination", paymentTerm: "15 days upon complete delivery", modeOfProcurement: "Small Value Procurement", fundCluster: pr.fundCluster, fundsAvailable: pr.totalEstimate, generatedById: user.id, status: "issued" });
   await db.update(purchaseRequests).set({ status: "po_issued" }).where(eq(purchaseRequests.id, pr.id));
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.poNumber, poNumber)).limit(1);
   if (!po) throw new Error("The Purchase Order could not be issued.");
@@ -279,12 +284,12 @@ export async function createPurchaseOrderFromPreCanvass(preCanvassId: number, us
   return po;
 }
 
-export async function recordDelivery(input: { purchaseOrderId: number; receiptNumber: string; remarks?: string }, user: User, options?: ProcurementWorkflowOptions) {
+export async function recordDelivery(input: { purchaseOrderId: number; receiptNumber: string; receivedByName?: string; deliveryStatus?: "complete" | "partial"; signatureReference?: string; remarks?: string }, user: User, options?: ProcurementWorkflowOptions) {
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
   if (!po || po.status !== "issued") throw new Error("Only an issued Purchase Order may be recorded as delivered.");
-  await db.insert(deliveryReceipts).values({ purchaseOrderId: po.id, receiptNumber: input.receiptNumber, remarks: input.remarks || null, receivedById: user.id });
+  await db.insert(deliveryReceipts).values({ purchaseOrderId: po.id, receiptNumber: input.receiptNumber, receivedByName: input.receivedByName || null, deliveryStatus: input.deliveryStatus ?? "complete", signatureReference: input.signatureReference || null, remarks: input.remarks || null, receivedById: user.id });
   await db.update(purchaseOrders).set({ status: "delivered" }).where(eq(purchaseOrders.id, po.id));
   await db.update(purchaseRequests).set({ status: "delivered" }).where(eq(purchaseRequests.id, po.purchaseRequestId));
   await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "delivery_logged", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { receiptNumber: input.receiptNumber } });
