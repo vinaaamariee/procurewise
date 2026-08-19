@@ -10,19 +10,19 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
 const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashboard; roles: ProcurementRole[] }> = [
-  { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "bac", "supply_officer", "budget_officer", "admin"] },
-  { label: "Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "bac", "supply_officer", "budget_officer", "admin"] },
-  { label: "RFQs & Canvass", path: "/rfq", icon: FileSearch, roles: ["bac", "supply_officer", "admin"] },
-  { label: "Abstracts & POs", path: "/purchase-orders", icon: FileCheck2, roles: ["bac", "supply_officer", "admin"] },
-  { label: "APP / PPMP", path: "/plans", icon: BookOpenText, roles: ["budget_officer", "admin"] },
-  { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["supply_officer", "admin"] },
-  { label: "Budget Control", path: "/budgets", icon: WalletCards, roles: ["budget_officer", "admin"] },
-  { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["bac", "supply_officer", "budget_officer", "admin"] },
-  { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["bac", "supply_officer", "budget_officer", "admin"] },
+  { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
+  { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
+  { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user", "procurement_officer", "admin"] },
+  { label: "Abstracts, PO & PMR", path: "/purchase-orders", icon: FileCheck2, roles: ["procurement_officer", "administrative_approver", "admin"] },
+  { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["end_user", "admin"] },
+  { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
+  { label: "Budget Control", path: "/budgets", icon: WalletCards, roles: ["administrative_approver", "admin"] },
+  { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["procurement_officer", "administrative_approver", "admin"] },
+  { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
 ];
 
-const roleLabels: Record<ProcurementRole, string> = { end_user: "End-User", bac: "BAC", supply_officer: "Supply Officer", budget_officer: "Budget Officer", admin: "Admin" };
+const roleLabels: Record<ProcurementRole, string> = { end_user: "End-User", procurement_officer: "Procurement Officer", administrative_approver: "Administrative Approver", admin: "Admin" };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user, logout } = useAuth();

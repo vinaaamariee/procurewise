@@ -1,7 +1,7 @@
 import { Check, Circle } from "lucide-react";
 
-const stages = ["Draft", "Budget review", "Supply review", "BAC review", "Approved"] as const;
-const statusIndex: Record<string, number> = { draft: 0, budget_review: 1, supply_review: 2, bac_review: 3, approved: 4, rfq: 4, po: 4, closed: 4 };
+const stages = ["Draft package", "Procurement review", "Administrative approval", "PO issued", "Delivery & PMR"] as const;
+const statusIndex: Record<string, number> = { draft: 0, procurement_review: 1, approval_review: 2, approved: 2, po_issued: 3, delivered: 4, pmr_logged: 4, closed: 4 };
 
 export function WorkflowTimeline({ status }: { status: string }) {
   const activeIndex = statusIndex[status] ?? 0;

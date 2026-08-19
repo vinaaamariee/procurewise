@@ -1,7 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { appPpmpEntries, auditTrails, budgetAllotments, InsertUser, objectsOfExpenditure, offices, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierQuotations, suppliers, User, users } from "../drizzle/schema";
-import { normalizeProcurementRole, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, budgetAllotments, deliveryReceipts, InsertUser, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierQuotations, suppliers, User, users } from "../drizzle/schema";
+import { hasRequiredSupplierQuotations, normalizeProcurementRole, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
 
@@ -148,7 +148,7 @@ export async function listPurchaseRequests(user: User) {
     : db.select().from(purchaseRequests);
 }
 
-export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; officeId: number; objectOfExpenditureId: number; items: Array<{ description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
+export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
   const db = await requireDb();
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
@@ -161,6 +161,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     objectOfExpenditureId: input.objectOfExpenditureId,
     totalEstimate: totalEstimate.toFixed(2),
     requestedById: user.id,
+    ppmpEntryId: input.ppmpEntryId ?? null,
   });
   const [created] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.prNumber, prNumber)).limit(1);
   if (!created) throw new Error("The Purchase Request could not be created.");
@@ -183,21 +184,121 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
   if (!pr) throw new Error("Purchase Request not found.");
   const update: Partial<typeof purchaseRequests.$inferInsert> = { status: input.nextStatus };
-  if (input.nextStatus === "budget_review") {
+  if (input.nextStatus === "procurement_review") {
+    if (!pr.ppmpEntryId) throw new Error("Link the Purchase Request to a PPMP entry before forwarding the procurement package.");
+    const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, pr.id)).limit(1);
+    if (!preCanvass || preCanvass.status !== "submitted") throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
     const [allotment] = await db.select().from(budgetAllotments).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear()))).limit(1);
     if (!allotment) throw new Error("No matching budget allotment exists for this office and object of expenditure.");
     if (!validatePrBudgetSubmission({ allottedAmount: allotment.allottedAmount, committedAmount: allotment.committedAmount, purchaseRequestAmount: pr.totalEstimate }).allowed) throw new Error("The Purchase Request exceeds the available office-level budget allotment.");
     update.submittedAt = new Date();
   }
-  if (input.nextStatus === "supply_review") update.budgetReviewedById = user.id;
-  if (input.nextStatus === "bac_review") update.supplyReviewedById = user.id;
-  if (input.nextStatus === "approved") update.bacReviewedById = user.id;
+  if (input.nextStatus === "approval_review") update.procurementReviewedById = user.id;
+  if (input.nextStatus === "approved") update.administrativeApprovedById = user.id;
   await db.update(purchaseRequests).set(update).where(eq(purchaseRequests.id, pr.id));
-  if (input.nextStatus === "budget_review") {
+  if (input.nextStatus === "procurement_review") {
     await db.update(budgetAllotments).set({ committedAmount: sql`${budgetAllotments.committedAmount} + ${pr.totalEstimate}` }).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear())));
   }
   await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: `status:${input.nextStatus}`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber } });
   return { ...pr, ...update };
+}
+
+export async function createPreCanvass(purchaseRequestId: number, user: User) {
+  const db = await requireDb();
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  if (!pr || pr.requestedById !== user.id) throw new Error("End-Users may prepare a Pre-Canvass only for their own Purchase Request.");
+  const preCanvassNumber = `PC-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(preCanvasses).values({ preCanvassNumber, purchaseRequestId, preparedById: user.id });
+  const [created] = await db.select().from(preCanvasses).where(eq(preCanvasses.preCanvassNumber, preCanvassNumber)).limit(1);
+  if (!created) throw new Error("The Pre-Canvass could not be created.");
+  await writeAuditEvent({ entityType: "pre_canvass", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassNumber, purchaseRequestId } });
+  return created;
+}
+
+export async function addPreCanvassQuote(input: { preCanvassId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; notes?: string }, user: User) {
+  const db = await requireDb();
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
+  if (!preCanvass || preCanvass.preparedById !== user.id || preCanvass.status !== "draft") throw new Error("Supplier quotes may be entered only by the End-User before the Pre-Canvass is submitted.");
+  await db.insert(preCanvassQuotes).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
+  await writeAuditEvent({ entityType: "pre_canvass", entityId: input.preCanvassId, action: "supplier_quote_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
+}
+
+export async function submitPreCanvass(preCanvassId: number, user: User, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
+  if (!preCanvass || preCanvass.preparedById !== user.id || preCanvass.status !== "draft") throw new Error("This Pre-Canvass cannot be submitted by the current user.");
+  const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
+  if (!hasRequiredSupplierQuotations(quotes.length)) throw new Error("Three supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
+  await db.update(preCanvasses).set({ status: "submitted" }).where(eq(preCanvasses.id, preCanvassId));
+  await recordAudit({ entityType: "pre_canvass", entityId: preCanvassId, action: "submitted_to_procurement", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { quoteCount: quotes.length } });
+}
+
+export async function createAbstractOfCanvass(preCanvassId: number, user: User) {
+  const db = await requireDb();
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
+  if (!preCanvass || preCanvass.status !== "submitted") throw new Error("A submitted Pre-Canvass is required before an Abstract of Canvass can be generated.");
+  const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
+  if (!hasRequiredSupplierQuotations(quotes.length)) throw new Error("Three supplier quotes are required before an Abstract of Canvass can be generated.");
+  const recommendation = selectLowestCompliantQuote(quotes.map((quote) => ({ ...quote, isCompliant: quote.isCompliant === 1 })));
+  if (!recommendation) throw new Error("No compliant supplier quote is available for recommendation.");
+  const abstractNumber = `AOC-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(abstractsOfCanvass).values({ abstractNumber, preCanvassId, recommendedSupplierId: recommendation.supplierId, recommendationReason: "Lowest compliant supplier selected from the End-User's mandatory three-supplier Pre-Canvass.", preparedById: user.id });
+  await db.update(preCanvasses).set({ status: "abstracted" }).where(eq(preCanvasses.id, preCanvassId));
+  await writeAuditEvent({ entityType: "abstract_of_canvass", entityId: preCanvassId, action: "recommended", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { abstractNumber, recommendedSupplierId: recommendation.supplierId } });
+}
+
+export async function decideAbstractOfCanvass(input: { preCanvassId: number; decision: "approved" | "rejected"; remarks?: string }, user: User, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [abstract] = await db.select().from(abstractsOfCanvass).where(eq(abstractsOfCanvass.preCanvassId, input.preCanvassId)).limit(1);
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
+  if (!abstract || abstract.status !== "recommended" || !preCanvass) throw new Error("A Procurement Officer recommendation is required before an administrative decision.");
+  await db.update(abstractsOfCanvass).set({ status: input.decision, decidedById: user.id, decisionRemarks: input.remarks || null }).where(eq(abstractsOfCanvass.id, abstract.id));
+  await db.update(preCanvasses).set({ status: input.decision }).where(eq(preCanvasses.id, preCanvass.id));
+  await db.update(purchaseRequests).set({ status: input.decision, administrativeApprovedById: user.id }).where(eq(purchaseRequests.id, preCanvass.purchaseRequestId));
+  await recordAudit({ entityType: "abstract_of_canvass", entityId: abstract.id, action: input.decision, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { remarks: input.remarks || null } });
+}
+
+export async function createPurchaseOrderFromPreCanvass(preCanvassId: number, user: User, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [abstract] = await db.select().from(abstractsOfCanvass).where(eq(abstractsOfCanvass.preCanvassId, preCanvassId)).limit(1);
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
+  if (!abstract || abstract.status !== "approved" || !preCanvass) throw new Error("An approved Abstract of Canvass is required before a Purchase Order can be issued.");
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, preCanvass.purchaseRequestId)).limit(1);
+  if (!pr || pr.status !== "approved") throw new Error("The linked Purchase Request must be administratively approved before PO issue.");
+  const [quote] = await db.select().from(preCanvassQuotes).where(and(eq(preCanvassQuotes.preCanvassId, preCanvassId), eq(preCanvassQuotes.supplierId, abstract.recommendedSupplierId))).limit(1);
+  if (!quote) throw new Error("The recommended Pre-Canvass quote could not be found.");
+  const poNumber = `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, generatedById: user.id, status: "issued" });
+  await db.update(purchaseRequests).set({ status: "po_issued" }).where(eq(purchaseRequests.id, pr.id));
+  const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.poNumber, poNumber)).limit(1);
+  if (!po) throw new Error("The Purchase Order could not be issued.");
+  await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "issued", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { poNumber, preCanvassId } });
+  return po;
+}
+
+export async function recordDelivery(input: { purchaseOrderId: number; receiptNumber: string; remarks?: string }, user: User, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
+  if (!po || po.status !== "issued") throw new Error("Only an issued Purchase Order may be recorded as delivered.");
+  await db.insert(deliveryReceipts).values({ purchaseOrderId: po.id, receiptNumber: input.receiptNumber, remarks: input.remarks || null, receivedById: user.id });
+  await db.update(purchaseOrders).set({ status: "delivered" }).where(eq(purchaseOrders.id, po.id));
+  await db.update(purchaseRequests).set({ status: "delivered" }).where(eq(purchaseRequests.id, po.purchaseRequestId));
+  await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "delivery_logged", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { receiptNumber: input.receiptNumber } });
+}
+
+export async function logPmr(input: { purchaseOrderId: number; pmrNumber: string; remarks?: string }, user: User, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
+  if (!po || po.status !== "delivered") throw new Error("A delivered Purchase Order is required before PMR logging.");
+  await db.insert(pmrLogs).values({ purchaseOrderId: po.id, pmrNumber: input.pmrNumber, remarks: input.remarks || null, loggedById: user.id });
+  await db.update(purchaseOrders).set({ status: "closed" }).where(eq(purchaseOrders.id, po.id));
+  await db.update(purchaseRequests).set({ status: "pmr_logged" }).where(eq(purchaseRequests.id, po.purchaseRequestId));
+  await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "pmr_logged", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { pmrNumber: input.pmrNumber } });
 }
 
 export async function createRfqFromPurchaseRequest(purchaseRequestId: number, user: User) {
@@ -266,12 +367,19 @@ export async function getProcurementDashboard(user: User) {
   const db = await requireDb();
   const isEndUser = normalizeProcurementRole(user.role) === "end_user";
   const prRows = await listPurchaseRequests(user);
+  const preCanvassRows = isEndUser ? (prRows.length ? await db.select().from(preCanvasses).where(inArray(preCanvasses.purchaseRequestId, prRows.map((pr) => pr.id))) : []) : await db.select().from(preCanvasses);
+  const preCanvassIds = preCanvassRows.map((record) => record.id);
+  const preCanvassQuoteRows = preCanvassIds.length ? await db.select().from(preCanvassQuotes).where(inArray(preCanvassQuotes.preCanvassId, preCanvassIds)) : [];
+  const abstractOfCanvassRows = preCanvassIds.length ? await db.select().from(abstractsOfCanvass).where(inArray(abstractsOfCanvass.preCanvassId, preCanvassIds)) : [];
   const rfqRows = isEndUser ? [] : await db.select().from(rfqs);
   const quotationRows = isEndUser ? [] : await db.select().from(supplierQuotations);
   const abstractRows = isEndUser ? [] : await db.select().from(quotationAbstracts);
-  const poRows = isEndUser ? [] : await db.select().from(purchaseOrders);
+  const poRows = isEndUser ? (prRows.length ? await db.select().from(purchaseOrders).where(inArray(purchaseOrders.purchaseRequestId, prRows.map((pr) => pr.id))) : []) : await db.select().from(purchaseOrders);
+  const poIds = poRows.map((po) => po.id);
+  const deliveryRows = poIds.length ? await db.select().from(deliveryReceipts).where(inArray(deliveryReceipts.purchaseOrderId, poIds)) : [];
+  const pmrRows = poIds.length ? await db.select().from(pmrLogs).where(inArray(pmrLogs.purchaseOrderId, poIds)) : [];
   const auditRows = isEndUser ? await db.select().from(auditTrails).where(eq(auditTrails.performedById, user.id)) : await db.select().from(auditTrails);
-  const planRows = isEndUser ? [] : await db.select().from(appPpmpEntries);
+  const planRows = isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries);
   const relatedPrs = isEndUser ? prRows : await db.select().from(purchaseRequests);
   const relatedItems = isEndUser ? [] : await db.select().from(purchaseRequestItems);
   const closedPurchaseOrders = poRows.filter((po) => po.status === "closed");
@@ -285,5 +393,5 @@ export async function getProcurementDashboard(user: User) {
     return totals;
   }, {});
   const topCommodities = Object.entries(commodityTotals).sort(([, a], [, b]) => b - a).slice(0, 5).map(([description, amount]) => ({ description, amount: amount.toFixed(2) }));
-  return { purchaseRequests: prRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
+  return { purchaseRequests: prRows, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
 }

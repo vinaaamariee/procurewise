@@ -83,6 +83,9 @@ export const purchaseRequests = mysqlTable("purchase_requests", {
   totalEstimate: decimal("totalEstimate", { precision: 14, scale: 2 }).notNull(),
   status: mysqlEnum("status", PR_STATUSES).default("draft").notNull(),
   requestedById: int("requestedById").notNull(),
+  ppmpEntryId: int("ppmpEntryId"),
+  procurementReviewedById: int("procurementReviewedById"),
+  administrativeApprovedById: int("administrativeApprovedById"),
   budgetReviewedById: int("budgetReviewedById"),
   supplyReviewedById: int("supplyReviewedById"),
   bacReviewedById: int("bacReviewedById"),
@@ -104,6 +107,41 @@ export const purchaseRequestItems = mysqlTable("purchase_request_items", {
   estimatedUnitCost: decimal("estimatedUnitCost", { precision: 14, scale: 2 }).notNull(),
   totalCost: decimal("totalCost", { precision: 14, scale: 2 }).notNull(),
 }, (table) => [index("pr_item_pr_idx").on(table.purchaseRequestId)]);
+
+export const preCanvasses = mysqlTable("pre_canvasses", {
+  id: int("id").autoincrement().primaryKey(),
+  preCanvassNumber: varchar("preCanvassNumber", { length: 40 }).notNull().unique(),
+  purchaseRequestId: int("purchaseRequestId").notNull().unique(),
+  status: mysqlEnum("status", ["draft", "submitted", "reviewed", "abstracted", "approved", "rejected"]).default("draft").notNull(),
+  preparedById: int("preparedById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const preCanvassQuotes = mysqlTable("pre_canvass_quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  preCanvassId: int("preCanvassId").notNull(),
+  supplierId: int("supplierId").notNull(),
+  totalPrice: decimal("totalPrice", { precision: 14, scale: 2 }).notNull(),
+  deliveryDays: int("deliveryDays").notNull(),
+  isCompliant: int("isCompliant").default(1).notNull(),
+  notes: text("notes"),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("pre_canvass_quote_supplier_unique").on(table.preCanvassId, table.supplierId)]);
+
+export const abstractsOfCanvass = mysqlTable("abstracts_of_canvass", {
+  id: int("id").autoincrement().primaryKey(),
+  abstractNumber: varchar("abstractNumber", { length: 40 }).notNull().unique(),
+  preCanvassId: int("preCanvassId").notNull().unique(),
+  recommendedSupplierId: int("recommendedSupplierId").notNull(),
+  recommendationReason: text("recommendationReason").notNull(),
+  status: mysqlEnum("status", ["recommended", "approved", "rejected"]).default("recommended").notNull(),
+  preparedById: int("preparedById").notNull(),
+  decidedById: int("decidedById"),
+  decisionRemarks: text("decisionRemarks"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 export const rfqs = mysqlTable("rfqs", {
   id: int("id").autoincrement().primaryKey(),
@@ -142,7 +180,8 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   id: int("id").autoincrement().primaryKey(),
   poNumber: varchar("poNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: int("purchaseRequestId").notNull().unique(),
-  rfqId: int("rfqId").notNull().unique(),
+  rfqId: int("rfqId").unique(),
+  preCanvassId: int("preCanvassId").unique(),
   supplierId: int("supplierId").notNull(),
   totalAmount: decimal("totalAmount", { precision: 14, scale: 2 }).notNull(),
   status: mysqlEnum("status", ["draft", "pending_approval", "approved", "issued", "delivered", "closed"]).default("draft").notNull(),
@@ -150,6 +189,25 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   approvedById: int("approvedById"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const deliveryReceipts = mysqlTable("delivery_receipts", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseOrderId: int("purchaseOrderId").notNull().unique(),
+  receiptNumber: varchar("receiptNumber", { length: 40 }).notNull().unique(),
+  deliveredAt: timestamp("deliveredAt").defaultNow().notNull(),
+  receivedById: int("receivedById").notNull(),
+  remarks: text("remarks"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const pmrLogs = mysqlTable("pmr_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseOrderId: int("purchaseOrderId").notNull().unique(),
+  pmrNumber: varchar("pmrNumber", { length: 40 }).notNull().unique(),
+  remarks: text("remarks"),
+  loggedById: int("loggedById").notNull(),
+  loggedAt: timestamp("loggedAt").defaultNow().notNull(),
 });
 
 export const auditTrails = mysqlTable("audit_trails", {

@@ -51,7 +51,7 @@ function PlanForm({ setup, isSaving, onCancel, onCreate }: { setup?: { offices: 
 export function RfqPage() {
   const { user } = useAuth();
   const role = user ? normalizeProcurementRole(user.role) : "end_user";
-  const canSupply = role === "supply_officer" || role === "admin";
+  const canSupply = role === "procurement_officer" || role === "admin";
   const [mode, setMode] = useState<"rfq" | "quotation" | null>(null);
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
   const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
@@ -82,7 +82,7 @@ function QuotationComparison({ rfqs, quotations, supplierMap }: { rfqs: Array<{ 
 }
 
 export function PurchaseOrderPage() {
-  const { user } = useAuth(); const role = user ? normalizeProcurementRole(user.role) : "end_user"; const canBac = role === "bac" || role === "admin"; const canSupply = role === "supply_officer" || role === "admin";
+  const { user } = useAuth(); const role = user ? normalizeProcurementRole(user.role) : "end_user"; const canBac = role === "administrative_approver" || role === "admin"; const canSupply = role === "procurement_officer" || role === "admin";
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false }); const utils = trpc.useUtils(); const refresh = () => { void utils.procurement.dashboard.invalidate(); };
   const approve = trpc.procurement.rfqs.approveAbstract.useMutation({ onSuccess: () => { toast.success("Quotation abstract approved by BAC."); refresh(); }, onError: (error) => toast.error(error.message) });
   const createPo = trpc.procurement.rfqs.createPurchaseOrder.useMutation({ onSuccess: () => { toast.success("Purchase Order generated."); refresh(); }, onError: (error) => toast.error(error.message) });

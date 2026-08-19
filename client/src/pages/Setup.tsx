@@ -10,7 +10,7 @@ import { LoaderCircle, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const roleLabels = { end_user: "End-User", bac: "BAC", supply_officer: "Supply Officer", budget_officer: "Budget Officer", admin: "Admin" } as const;
+const roleLabels = { end_user: "End-User", procurement_officer: "Procurement Officer", administrative_approver: "Administrative Approver", admin: "Admin" } as const;
 
 export default function SetupPage() {
   const utils = trpc.useUtils();

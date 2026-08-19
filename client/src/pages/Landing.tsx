@@ -5,10 +5,10 @@ import { ArrowRight, BadgeCheck, BarChart3, ClipboardList, FileCheck2, FileSearc
 import { Link } from "wouter";
 
 const steps = [
-  { number: "01", title: "Purchase Request", description: "End-Users prepare purpose-led, budget-linked PRs for review." },
-  { number: "02", title: "RFQ & Canvass", description: "Supply staff document at least three supplier quotations." },
-  { number: "03", title: "BAC Review", description: "The lowest compliant quotation is abstracted for approval." },
-  { number: "04", title: "Purchase Order", description: "Approved POs are released with a complete audit trail." },
+  { number: "01", title: "PPMP, PR & Pre-Canvass", description: "End-Users submit the planned item, Purchase Request, and three supplier quotes together." },
+  { number: "02", title: "Procurement Review", description: "The Procurement Officer reviews the package and prepares the Abstract of Canvass." },
+  { number: "03", title: "Administrative Approval", description: "The recommended lowest compliant supplier is approved or rejected." },
+  { number: "04", title: "PO, Delivery & PMR", description: "The Procurement Officer issues the PO, records delivery, and logs the PMR." },
 ];
 
 const features = [

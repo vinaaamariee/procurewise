@@ -8,7 +8,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Dashboard from "./pages/Dashboard";
 import Access from "./pages/Access";
 import Landing from "./pages/Landing";
-import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, PurchaseOrderPage, RfqPage, SupplierRegistryPage } from "./pages/ManagementPages";
+import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
+import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
 
@@ -20,8 +21,8 @@ function Router() {
       <Route path={"/access"} component={Access} />
       <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
       <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
-      <Route path={"/rfq"}>{protectedPage(<RfqPage />)}</Route>
-      <Route path={"/purchase-orders"}>{protectedPage(<PurchaseOrderPage />)}</Route>
+      <Route path={"/rfq"}>{protectedPage(<PreCanvassPage />)}</Route>
+      <Route path={"/purchase-orders"}>{protectedPage(<ExecutionPage />)}</Route>
       <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
       <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>

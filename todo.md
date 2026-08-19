@@ -36,3 +36,16 @@
 - [x] Exercise first-time account provisioning directly to confirm new authenticated accounts enter ProcureWise as End-Users.
 - [x] Interactively verify the mobile sign-in and Create End-User account tabs on the unauthenticated access screen.
 - [x] Exercise the Sign in and Create End-User account tab controls directly on the mobile access page and confirm both rendered states.
+- [x] Replace the current procurement workflow map with the End-User PPMP, PR, and three-supplier Pre-Canvass submission path.
+- [x] Rename and realign workflow roles to End-User, Procurement Officer, Administrative Approver, and Admin while preserving secure administrator role assignment.
+- [x] Add Pre-Canvass quotations, Abstract of Canvass, recommendation, administrative approval/rejection, delivery, and PMR lifecycle statuses and controls.
+- [x] Adapt the dashboard, sidebar navigation, Purchase Request timeline, RFQ/quotation workspace, and Purchase Order view to the supplied handoffs.
+- [x] Add form-ready PPMP, Pre-Canvass, delivery, and PMR workspace shells without fabricating the official forms or transactional data.
+- [x] Update workflow tests for the supplied role handoffs, three supplier quotes, approver decision, PO issue, delivery, and PMR logging.
+- [x] Verify desktop and mobile workflow views and save a completion checkpoint.
+- [x] Add automated coverage for Pre-Canvass submission, administrative approval and rejection, successful PO issue, delivery logging, and PMR close-out.
+- [x] Verify authenticated desktop and mobile workflow views for the PPMP, Pre-Canvass, Abstract, PO, delivery, and PMR workspaces.
+- [x] Add direct test coverage for successful Administrative Approver approval of an Abstract of Canvass.
+- [x] Verify PPMP, Pre-Canvass, approved Abstract, issued PO, delivery, and PMR states after sign-in on desktop and mobile.
+- [ ] Sign in with an authorised test account and visually verify real PPMP, Pre-Canvass, abstract approval, PO, delivery, and PMR states without creating fabricated procurement transactions.
+- [ ] Save a post-realignment checkpoint after the full workflow validation is complete.
