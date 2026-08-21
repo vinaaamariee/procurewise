@@ -113,4 +113,26 @@
 - [x] Verify the imported supplier registry count and provide an import summary, including skipped or duplicate records.
 - [x] Deliver the post-import supplier summary and retain the verified result as an audit artifact.
 - [x] Save a checkpoint for the validated supplier registry import.
+- [x] Define managed goods-and-services tags, multi-tag supplier assignments, and role controls without inventing supplier classifications.
+- [x] Add database records and role-gated procedures for tag administration and supplier tag assignments.
+- [x] Add supplier tag management controls and visible tag selections in the supplier registry.
+- [x] Add a Pre-Canvass goods-and-services filter that narrows eligible supplier selection without overriding role or accreditation controls.
+- [x] Add automated coverage and responsive validation for supplier tagging and Pre-Canvass filters.
+- [x] Add behavioral coverage for tag-driven supplier filtering and assignment input rules.
+- [x] Record authenticated desktop and mobile verification of the supplier tag manager and Pre-Canvass goods/services filter.
+- [x] Add service-level behavioral coverage for supplier tag assignment persistence, inactive/invalid tag rejection, and duplicate tag-id handling.
+- [x] Verify supplier tagging in a live signed-in Admin session on desktop and mobile before checkpointing.
+- [x] Inspect the Pre-Canvass empty state, Purchase Request prerequisites, and goods/services filter fallback under the reported user session.
+- [x] Ensure the Pre-Canvass page visibly explains missing prerequisites and keeps all suppliers available when no tag is selected.
+- [x] Validate the corrected Pre-Canvass path in an authenticated Admin session on desktop and mobile.
+- [x] Trace and correct the non-working Create Purchase Request action in the Pre-Canvass prerequisite panel.
+- [x] Verify the repaired Purchase Request action in the authenticated user session.
+- [x] Review the supplied Appendix 60, Annex D/E/F, and Appendix 61 form references against the current workspace, PDF, and print layouts.
+- [x] Align official-form section sequence, labels, item tables, certification text, signatory blocks, and print hierarchy without inventing unavailable form content.
+- [x] Validate the revised official-form structure through regression coverage and TypeScript checks; live-record PDF rendering remains pending an authorised transaction.
+- [x] Align Purchase Request and Pre-Canvass workspaces with the official workbook’s section order and labels.
+- [x] Add official Annex F Abstract and Appendix 61 Purchase Order certification and signatory hierarchy to the workflow workspace.
+- [x] Add regression coverage for official-form workspace structure in addition to PDF and print layouts.
+- [x] Verify the aligned Purchase Request, Pre-Canvass, Abstract, and Purchase Order workspace entry points in a signed-in Admin view; full populated PDF export remains deferred until an authorised transaction exists.
+- [x] Save a checkpoint for supplier tagging, Pre-Canvass filtering, and official-form alignment.
 - [x] Save a checkpoint for the expanded officer workflow enhancements.

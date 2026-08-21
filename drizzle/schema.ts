@@ -60,6 +60,27 @@ export const suppliers = mysqlTable("suppliers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("supplier_company_idx").on(table.companyName)]);
 
+export const supplierTags = mysqlTable("supplier_tags", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull().unique(),
+  description: varchar("description", { length: 320 }),
+  isActive: int("isActive").default(1).notNull(),
+  createdById: int("createdById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("supplier_tag_active_idx").on(table.isActive)]);
+
+export const supplierTagAssignments = mysqlTable("supplier_tag_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull(),
+  supplierTagId: int("supplierTagId").notNull(),
+  assignedById: int("assignedById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("supplier_tag_assignment_unique").on(table.supplierId, table.supplierTagId),
+  index("supplier_tag_assignment_supplier_idx").on(table.supplierId),
+  index("supplier_tag_assignment_tag_idx").on(table.supplierTagId),
+]);
+
 export const appPpmpEntries = mysqlTable("app_ppmp_entries", {
   id: int("id").autoincrement().primaryKey(),
   fiscalYear: int("fiscalYear").notNull(),

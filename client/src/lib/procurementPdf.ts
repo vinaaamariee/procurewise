@@ -1,123 +1,53 @@
 import { jsPDF } from "jspdf";
 
-type Field = { label: string; value: string | number | null | undefined };
-type LineItem = { description: string; quantity: string | number; unit: string; amount: string | number; specification?: string | null };
+type LineItem = { description: string; quantity: string | number; unit: string; amount: string | number; specification?: string | null; stockPropertyNo?: string | null };
+const money = (value: string | number | null | undefined) => `₱${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+const date = (value: Date | string | null | undefined) => value ? new Date(value).toLocaleDateString("en-PH") : "";
+const value = (item: string | number | null | undefined) => String(item ?? "").trim();
 
-const money = (value: string | number | null | undefined) => `PHP ${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
-const date = (value: Date | string | null | undefined) => value ? new Date(value).toLocaleDateString("en-PH") : "—";
+export function officialFormFileName(kind: "purchase_request" | "pre_canvass" | "abstract" | "purchase_order", recordNumber: string) { return `${recordNumber}_${{ purchase_request: "Appendix60", pre_canvass: "AnnexD", abstract: "AnnexF", purchase_order: "Appendix61" }[kind]}.pdf`; }
+export function invokeOfficialPdfDownload(doc: Pick<jsPDF, "save">, fileName: string) { doc.save(fileName); }
 
-export function officialFormFileName(kind: "purchase_request" | "pre_canvass" | "abstract" | "purchase_order", recordNumber: string) {
-  const suffix = { purchase_request: "Appendix60", pre_canvass: "AnnexD", abstract: "AnnexF", purchase_order: "Appendix61" }[kind];
-  return `${recordNumber}_${suffix}.pdf`;
+function formTitle(doc: jsPDF, marker: string, title: string) {
+  doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0); doc.setFontSize(8); doc.text(marker, 196, 10, { align: "right" });
+  doc.setFontSize(12); doc.text("BATANES STATE COLLEGE", 105, 15, { align: "center" }); doc.setFontSize(14); doc.text(title, 105, 22, { align: "center" });
 }
-
-export function invokeOfficialPdfDownload(doc: Pick<jsPDF, "save">, fileName: string) {
-  doc.save(fileName);
-}
-
-function createDocument(title: string, subtitle: string) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  doc.setFillColor(123, 30, 30);
-  doc.rect(0, 0, 210, 18, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("BATANES STATE COLLEGE", 14, 8);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.text("ProcureWise · Offline record copy", 14, 13);
-  doc.setTextColor(32, 40, 51);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(title, 14, 29);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 84, 49);
-  doc.text(subtitle, 14, 35);
-  return { doc, y: 43 };
-}
-
-function fields(doc: jsPDF, y: number, entries: Field[]) {
-  let cursor = y;
-  for (let index = 0; index < entries.length; index += 2) {
-    const row = entries.slice(index, index + 2);
-    row.forEach((entry, column) => {
-      const x = column === 0 ? 14 : 108;
-      doc.setDrawColor(225, 220, 210);
-      doc.rect(x, cursor, 88, 15);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(123, 30, 30);
-      doc.text(entry.label.toUpperCase(), x + 3, cursor + 4.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(48, 57, 70);
-      const text = String(entry.value ?? "—");
-      const lines = doc.splitTextToSize(text, 81);
-      doc.text(lines.slice(0, 2), x + 3, cursor + 10);
-    });
-    cursor += 17;
-  }
-  return cursor;
-}
-
-function itemTable(doc: jsPDF, y: number, items: LineItem[]) {
-  const columns = [14, 84, 112, 135, 166];
-  const headers = ["Description / specification", "Qty.", "Unit", "Unit cost", "Amount"];
-  doc.setFillColor(249, 241, 224);
-  doc.rect(14, y, 182, 8, "F");
-  headers.forEach((header, index) => { doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(123, 30, 30); doc.text(header, columns[index] + 2, y + 5); });
-  let cursor = y + 8;
-  items.forEach((item) => {
-    const description = [item.description, item.specification].filter(Boolean).join(" — ");
-    const descriptionLines = doc.splitTextToSize(description, 66);
-    const height = Math.max(10, descriptionLines.length * 4 + 4);
-    doc.setDrawColor(230, 226, 218);
-    doc.rect(14, cursor, 182, height);
-    [84, 112, 135, 166].forEach((x) => doc.line(x, cursor, x, cursor + height));
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(48, 57, 70);
-    doc.text(descriptionLines, 16, cursor + 5);
-    doc.text(String(item.quantity), 86, cursor + 5);
-    doc.text(item.unit, 114, cursor + 5);
-    doc.text(money(Number(item.amount) / Math.max(Number(item.quantity), 1)), 137, cursor + 5);
-    doc.text(money(item.amount), 168, cursor + 5);
-    cursor += height;
-  });
-  return cursor;
-}
-
-function footer(doc: jsPDF) {
-  doc.setDrawColor(225, 220, 210); doc.line(14, 282, 196, 282);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(105, 113, 126);
-  doc.text(`Generated by ProcureWise on ${new Date().toLocaleString("en-PH")}. This offline copy reflects the recorded system data.`, 14, 287);
-}
+function line(doc: jsPDF, x: number, y: number, width: number, label: string, fieldValue?: string | number | null) { doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(label, x, y); doc.line(x + doc.getTextWidth(label) + 2, y + 1, x + width, y + 1); if (value(fieldValue)) doc.text(value(fieldValue), x + doc.getTextWidth(label) + 4, y); }
+function cell(doc: jsPDF, x: number, y: number, width: number, height: number, label: string, content?: string | number | null, align: "left" | "center" | "right" = "left") { doc.rect(x, y, width, height); doc.setFont("helvetica", "bold"); doc.setFontSize(6.4); doc.text(label, x + 2, y + 4); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); const lines = doc.splitTextToSize(value(content), width - 4); doc.text(lines.slice(0, 2), align === "right" ? x + width - 2 : align === "center" ? x + width / 2 : x + 2, y + 9, { align }); }
+function signBlock(doc: jsPDF, y: number, leftHeading: string, rightHeading: string, leftValue?: string | null, rightValue?: string | null) { doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.text(leftHeading, 20, y); doc.text(rightHeading, 116, y); doc.line(20, y + 18, 92, y + 18); doc.line(116, y + 18, 188, y + 18); doc.setFontSize(6.5); doc.text(value(leftValue) || "Signature over printed name", 56, y + 22, { align: "center" }); doc.text(value(rightValue) || "Signature over printed name", 152, y + 22, { align: "center" }); }
+function footer(doc: jsPDF) { doc.setFont("helvetica", "normal"); doc.setFontSize(5.8); doc.setTextColor(90, 90, 90); doc.text("Controlled offline copy generated from the ProcureWise recorded transaction. Blank fields have not been assumed.", 14, 291); }
+function tableHead(doc: jsPDF, y: number, columns: Array<{ label: string; x: number; width: number }>) { columns.forEach((column) => { doc.setFont("helvetica", "bold"); doc.setFontSize(6.2); doc.rect(column.x, y, column.width, 8); doc.text(column.label, column.x + column.width / 2, y + 5, { align: "center" }); }); }
 
 export function downloadPurchaseRequestPdf(input: { purchaseRequest: { prNumber: string; entityName: string; purpose: string; fundSource: string | null; fundCluster: string; responsibilityCenterCode: string | null; requesterDesignation: string | null; totalEstimate: string; createdAt: Date }; items: Array<{ description: string; specification: string | null; quantity: string; unit: string; estimatedUnitCost: string; totalCost: string }> }) {
-  const { doc, y } = createDocument("PURCHASE REQUEST", "Appendix 60 · Purchase Request");
-  let cursor = fields(doc, y, [{ label: "PR number", value: input.purchaseRequest.prNumber }, { label: "Entity", value: input.purchaseRequest.entityName }, { label: "Fund cluster", value: input.purchaseRequest.fundCluster }, { label: "Fund source", value: input.purchaseRequest.fundSource }, { label: "Responsibility center", value: input.purchaseRequest.responsibilityCenterCode }, { label: "Requested date", value: date(input.purchaseRequest.createdAt) }, { label: "Purpose", value: input.purchaseRequest.purpose }, { label: "Requester designation", value: input.purchaseRequest.requesterDesignation }]);
-  cursor += 4; cursor = itemTable(doc, cursor, input.items.map((item) => ({ description: item.description, specification: item.specification, quantity: item.quantity, unit: item.unit, amount: item.totalCost })));
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(123, 30, 30); doc.text(`TOTAL ESTIMATE: ${money(input.purchaseRequest.totalEstimate)}`, 132, Math.min(cursor + 9, 270));
-  footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("purchase_request", input.purchaseRequest.prNumber));
+  const doc = new jsPDF({ unit: "mm", format: "a4" }); formTitle(doc, "Appendix 60", "PURCHASE REQUEST");
+  line(doc, 14, 31, 88, "Entity Name:", input.purchaseRequest.entityName); line(doc, 110, 31, 86, "Fund Cluster:", input.purchaseRequest.fundCluster);
+  line(doc, 14, 38, 88, "Office/Section:"); line(doc, 110, 38, 38, "PR No.:", input.purchaseRequest.prNumber); line(doc, 153, 38, 43, "Date:", date(input.purchaseRequest.createdAt)); line(doc, 14, 45, 182, "Responsibility Center Code:", input.purchaseRequest.responsibilityCenterCode);
+  const cols = [{ label: "Stock/ Property No.", x: 14, width: 30 }, { label: "Unit", x: 44, width: 17 }, { label: "Item Description", x: 61, width: 73 }, { label: "Quantity", x: 134, width: 18 }, { label: "Unit Cost", x: 152, width: 22 }, { label: "Total Cost", x: 174, width: 22 }]; tableHead(doc, 51, cols); let y = 59;
+  input.items.forEach((item) => { const h = 10; cols.forEach((column) => doc.rect(column.x, y, column.width, h)); doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text(item.unit, 52, y + 6, { align: "center" }); doc.text(String(item.quantity), 143, y + 6, { align: "center" }); doc.text(money(item.estimatedUnitCost), 172, y + 6, { align: "right" }); doc.text(money(item.totalCost), 194, y + 6, { align: "right" }); doc.text(doc.splitTextToSize([item.description, item.specification].filter(Boolean).join(" — "), 69).slice(0, 2), 63, y + 4.5); y += h; });
+  for (let row = input.items.length; row < 8; row += 1) { cols.forEach((column) => doc.rect(column.x, y, column.width, 8)); y += 8; }
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(`TOTAL: ${money(input.purchaseRequest.totalEstimate)}`, 196, y + 6, { align: "right" }); y += 15;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text("Purpose:", 14, y); const purpose = doc.splitTextToSize(input.purchaseRequest.purpose, 176); doc.text(purpose, 14, y + 6); y += Math.max(23, purpose.length * 5 + 11); signBlock(doc, y, "Requested by:", "Approved by:", input.purchaseRequest.requesterDesignation); footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("purchase_request", input.purchaseRequest.prNumber));
 }
 
 export function downloadPreCanvassPdf(input: { preCanvass: { preCanvassNumber: string; approvedBudget: string | null; quotationDeadline: Date | null; deliveryPeriodDays: number | null; priceEvaluationMode: string | null; createdAt: Date }; quotes: Array<{ totalPrice: string; deliveryDays: number; isCompliant: number; quotationReference: string | null; supplierId: number }>; supplierNames: Map<number, string> }) {
-  const { doc, y } = createDocument("PRE-CANVASS / RFQ", "Annex D with Annex E acknowledgement references");
-  let cursor = fields(doc, y, [{ label: "Pre-Canvass number", value: input.preCanvass.preCanvassNumber }, { label: "Prepared date", value: date(input.preCanvass.createdAt) }, { label: "Approved budget ceiling", value: money(input.preCanvass.approvedBudget) }, { label: "Quotation deadline", value: date(input.preCanvass.quotationDeadline) }, { label: "Delivery period", value: input.preCanvass.deliveryPeriodDays ? `${input.preCanvass.deliveryPeriodDays} day(s)` : "—" }, { label: "Evaluation basis", value: input.preCanvass.priceEvaluationMode?.replaceAll("_", " ") }]);
-  cursor += 4; doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(48, 57, 70); doc.text("Supplier quotation summary", 14, cursor); cursor += 4;
-  cursor = itemTable(doc, cursor, input.quotes.map((quote) => ({ description: input.supplierNames.get(quote.supplierId) || `Supplier #${quote.supplierId}`, specification: `${quote.isCompliant ? "Compliant" : "Non-compliant"} · Ref: ${quote.quotationReference || "—"}`, quantity: "1", unit: `${quote.deliveryDays} days`, amount: quote.totalPrice })));
-  footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("pre_canvass", input.preCanvass.preCanvassNumber));
+  const doc = new jsPDF({ unit: "mm", format: "a4" }); formTitle(doc, "Annex D", "REQUEST FOR PRICE QUOTATION"); line(doc, 148, 31, 48, "Date:", date(input.preCanvass.createdAt));
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.4); doc.text("Please give us your best and final price offer for the item/s listed below, have this signed and submit this by you or your duly authorized representative within the stated period to the Procurement Section, Batanes State College.", 14, 38, { maxWidth: 182 });
+  const notes = [`1. The default mode of price evaluation is on a ${input.preCanvass.priceEvaluationMode === "per_item" ? "per item" : "lot"} basis.`, `2. Delivery period: ${input.preCanvass.deliveryPeriodDays ? `${input.preCanvass.deliveryPeriodDays} calendar days.` : "________________ calendar days."}`, "3. Submission of price quotation shall be in sealed envelope.", `4. THE APPROVED BUDGET FOR THIS PROCUREMENT IS ${input.preCanvass.approvedBudget ? money(input.preCanvass.approvedBudget) : "________________"}.`, "5. Applicable documentary requirements may be required before issuance of NOA or prior to payment.", "6. In case an item is not available, please write 'None'."];
+  let y = 53; doc.setFontSize(6.5); notes.forEach((note) => { doc.text(doc.splitTextToSize(note, 180), 16, y); y += 6; }); const cols = [{ label: "Item #", x: 14, width: 16 }, { label: "Qty.", x: 30, width: 16 }, { label: "Unit", x: 46, width: 18 }, { label: "PARTICULAR", x: 64, width: 68 }, { label: "Unit Price", x: 132, width: 32 }, { label: "Total", x: 164, width: 32 }]; tableHead(doc, y + 2, cols); y += 10;
+  const rows = Math.max(8, input.quotes.length); for (let index = 0; index < rows; index += 1) { const quote = input.quotes[index]; cols.forEach((column) => doc.rect(column.x, y, column.width, 9)); if (quote) { doc.setFont("helvetica", "normal"); doc.setFontSize(6.7); doc.text(String(index + 1).padStart(3, "0"), 22, y + 5.5, { align: "center" }); doc.text(doc.splitTextToSize(input.supplierNames.get(quote.supplierId) || `Supplier #${quote.supplierId}`, 64).slice(0, 2), 66, y + 4); doc.text(money(quote.totalPrice), 194, y + 5.5, { align: "right" }); } y += 9; }
+  doc.setFontSize(6.3); doc.text("Supplier signature / authorized representative: ________________________________", 14, Math.min(y + 10, 270)); doc.text(`Quotation deadline: ${date(input.preCanvass.quotationDeadline) || "________________"}`, 112, Math.min(y + 10, 270)); footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("pre_canvass", input.preCanvass.preCanvassNumber));
 }
 
 export function downloadAbstractPdf(input: { abstract: { abstractNumber: string; openingDate: Date; openingLocation: string; procurementCategory: string; recommendationReason: string; status: string; recommendedSupplierId: number }; supplierName?: string }) {
-  const { doc, y } = createDocument("ABSTRACT OF CANVASS", "Annex F · Abstract of Quotation");
-  const cursor = fields(doc, y, [{ label: "Abstract number", value: input.abstract.abstractNumber }, { label: "Status", value: input.abstract.status.toUpperCase() }, { label: "Opening date", value: date(input.abstract.openingDate) }, { label: "Opening location", value: input.abstract.openingLocation }, { label: "Procurement category", value: input.abstract.procurementCategory }, { label: "Recommended supplier", value: input.supplierName || `Supplier #${input.abstract.recommendedSupplierId}` }, { label: "Recommendation", value: input.abstract.recommendationReason }]);
-  doc.setFont("helvetica", "italic"); doc.setFontSize(9); doc.setTextColor(105, 113, 126); doc.text("The recommendation is based on the recorded compliant quotation comparison.", 14, Math.min(cursor + 10, 272));
-  footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("abstract", input.abstract.abstractNumber));
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" }); formTitle(doc, "Annex F", "ABSTRACT OF QUOTATION"); const right = 283;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.text(`( x ) Furnishing/delivery of supplies, materials or equipment`, 14, 31); doc.text(`(   ) Furnishing labor, services, etc.`, 14, 37); doc.text(`Bids opened at ${input.abstract.openingLocation || "Basco, Batanes"}`, right, 31, { align: "right" }); doc.text(date(input.abstract.openingDate) || "___________", right, 37, { align: "right" }); doc.text("To be furnished at the BATANES STATE COLLEGE", 14, 46); doc.setFont("helvetica", "bold"); doc.text("NAME OF ARTICLES OR SERVICES TO BE FURNISHED, RENDERED OR FACILITIES TO BE RENTED", 14, 55);
+  const cols = [{ label: "ARTICLE / SERVICE", x: 14, width: 75 }, { label: "RECOMMENDED SUPPLIER", x: 89, width: 70 }, { label: "CATEGORY", x: 159, width: 45 }, { label: "OPENING / STATUS", x: 204, width: 32 }, { label: "RECOMMENDATION", x: 236, width: 47 }]; tableHead(doc, 60, cols); cols.forEach((column) => doc.rect(column.x, 68, column.width, 85)); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text("Recorded quotation comparison", 16, 75); doc.text(input.supplierName || `Supplier #${input.abstract.recommendedSupplierId}`, 91, 75); doc.text(input.abstract.procurementCategory, 161, 75); doc.text(`${date(input.abstract.openingDate)}\n${input.abstract.status.toUpperCase()}`, 206, 75); doc.text(doc.splitTextToSize(input.abstract.recommendationReason, 43), 238, 75);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text("CERTIFICATION / RECOMMENDATION", 14, 166); doc.setFont("helvetica", "normal"); doc.setFontSize(7.3); doc.text("The comparative quotation record and lowest compliant supplier recommendation above are based solely on the recorded Pre-Canvass quotations.", 14, 173, { maxWidth: 260 }); signBlock(doc, 196, "Prepared by Procurement / BAC:", "Recommended / approved by:"); footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("abstract", input.abstract.abstractNumber));
 }
 
 export function downloadPurchaseOrderPdf(input: { purchaseOrder: { poNumber: string; totalAmount: string; status: string; placeOfDelivery: string | null; scheduledDeliveryDate: Date | null; deliveryTerm: string | null; paymentTerm: string | null; modeOfProcurement: string | null; fundCluster: string | null; orsBursNumber: string | null; fundsAvailable: string | null; authorizedOfficialName: string | null; authorizedOfficialDesignation: string | null; chiefAccountantName: string | null }; supplierName?: string; supplierTin?: string | null }) {
-  const { doc, y } = createDocument("PURCHASE ORDER", "Appendix 61 · Purchase Order");
-  const cursor = fields(doc, y, [{ label: "PO number", value: input.purchaseOrder.poNumber }, { label: "Status", value: input.purchaseOrder.status.toUpperCase() }, { label: "Supplier", value: input.supplierName || "—" }, { label: "Supplier TIN", value: input.supplierTin }, { label: "Total amount", value: money(input.purchaseOrder.totalAmount) }, { label: "Fund cluster", value: input.purchaseOrder.fundCluster }, { label: "Place of delivery", value: input.purchaseOrder.placeOfDelivery }, { label: "Scheduled delivery", value: date(input.purchaseOrder.scheduledDeliveryDate) }, { label: "Delivery term", value: input.purchaseOrder.deliveryTerm }, { label: "Payment term", value: input.purchaseOrder.paymentTerm }, { label: "Mode of procurement", value: input.purchaseOrder.modeOfProcurement }, { label: "ORS/BURS", value: input.purchaseOrder.orsBursNumber }, { label: "Funds available", value: money(input.purchaseOrder.fundsAvailable) }, { label: "Authorised official", value: [input.purchaseOrder.authorizedOfficialName, input.purchaseOrder.authorizedOfficialDesignation].filter(Boolean).join(", ") }, { label: "Chief Accountant", value: input.purchaseOrder.chiefAccountantName }]);
-  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(105, 113, 126); doc.text("This downloadable copy is for offline reference and must be reconciled with the authorised procurement record.", 14, Math.min(cursor + 10, 272));
-  footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("purchase_order", input.purchaseOrder.poNumber));
+  const doc = new jsPDF({ unit: "mm", format: "a4" }); formTitle(doc, "Appendix 61", "PURCHASE ORDER"); line(doc, 14, 31, 182, "Entity Name:", "Batanes State College"); line(doc, 14, 38, 88, "Supplier:", input.supplierName); line(doc, 110, 38, 86, "P.O. No.:", input.purchaseOrder.poNumber); line(doc, 14, 45, 88, "Address:"); line(doc, 110, 45, 86, "Date:", date(input.purchaseOrder.scheduledDeliveryDate)); line(doc, 14, 52, 88, "TIN:", input.supplierTin); line(doc, 110, 52, 86, "Mode of Procurement:", input.purchaseOrder.modeOfProcurement);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text("Gentlemen: Please furnish this Office the following articles subject to the terms and conditions contained herein:", 14, 61); line(doc, 14, 69, 88, "Place of Delivery:", input.purchaseOrder.placeOfDelivery); line(doc, 110, 69, 86, "Delivery Term:", input.purchaseOrder.deliveryTerm || "FOB Destination"); line(doc, 14, 76, 88, "Date of Delivery:", date(input.purchaseOrder.scheduledDeliveryDate)); line(doc, 110, 76, 86, "Payment Term:", input.purchaseOrder.paymentTerm || "15 days upon complete delivery");
+  const cols = [{ label: "Stock/ Property No.", x: 14, width: 30 }, { label: "Unit", x: 44, width: 17 }, { label: "Description", x: 61, width: 73 }, { label: "Quantity", x: 134, width: 18 }, { label: "Unit Cost", x: 152, width: 22 }, { label: "Amount", x: 174, width: 22 }]; tableHead(doc, 82, cols); let y = 90; for (let row = 0; row < 8; row += 1) { cols.forEach((column) => doc.rect(column.x, y, column.width, 8)); y += 8; } doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(`Total ${money(input.purchaseOrder.totalAmount)}`, 194, y + 6, { align: "right" }); doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text("(Total Amount in Words) _____________________________________________________________", 14, y + 13); doc.text("In case of failure to make the full delivery within the time specified above, a penalty of one-tenth (1/10) of one percent for every day of delay shall be imposed on the undelivered item/s.", 14, y + 22, { maxWidth: 182 }); signBlock(doc, y + 40, "Conforme:", "Very truly yours,", undefined, [input.purchaseOrder.authorizedOfficialName, input.purchaseOrder.authorizedOfficialDesignation].filter(Boolean).join(", "));
+  const bottom = y + 70; line(doc, 14, bottom, 88, "Fund Cluster:", input.purchaseOrder.fundCluster); line(doc, 110, bottom, 86, "ORS/BURS No.:", input.purchaseOrder.orsBursNumber); line(doc, 14, bottom + 7, 88, "Funds Available:", input.purchaseOrder.fundsAvailable ? money(input.purchaseOrder.fundsAvailable) : ""); line(doc, 110, bottom + 7, 86, "Amount:", input.purchaseOrder.totalAmount ? money(input.purchaseOrder.totalAmount) : ""); doc.line(14, bottom + 24, 102, bottom + 24); doc.setFontSize(6.5); doc.text(input.purchaseOrder.chiefAccountantName || "Signature over Printed Name of Chief Accountant / Head of Accounting Division / Unit", 58, bottom + 28, { align: "center" }); footer(doc); invokeOfficialPdfDownload(doc, officialFormFileName("purchase_order", input.purchaseOrder.poNumber));
 }

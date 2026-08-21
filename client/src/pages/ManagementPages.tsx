@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { RecordTable, RecordTableHeader } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FormShell } from "@/components/FormShell";
+import { SupplierTagManager } from "@/components/SupplierTagManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ export function SupplierRegistryPage() {
   const createSupplier = trpc.procurement.setup.createSupplier.useMutation({ onSuccess: () => { toast.success("Supplier registered."); setCreating(false); void utils.procurement.setup.details.invalidate(); }, onError: (error) => toast.error(error.message) });
   return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Vendor registry" title="Accredited suppliers" description="Maintain supplier contact information, accreditation status, and declared product or service offerings." action={{ label: "Register supplier", onClick: () => setCreating(!creating) }} />
     {creating && <SupplierForm isSaving={createSupplier.isPending} onCancel={() => setCreating(false)} onCreate={(input) => createSupplier.mutate(input)} />}
+    {setup.data?.suppliers.length ? <SupplierTagManager suppliers={setup.data.suppliers} /> : null}
     <div className="mt-7">{setup.isLoading ? <LoadingPanel label="Loading supplier registry" /> : setup.data?.suppliers.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Supplier</th><th className="px-4 py-3 font-semibold">Contact</th><th className="px-4 py-3 font-semibold">Offerings</th><th className="px-4 py-3 font-semibold">Accreditation</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{setup.data.suppliers.map((supplier) => <tr key={supplier.id}><td className="px-4 py-3"><p className="font-semibold text-[#3e4855]">{supplier.companyName}</p><p className="mt-0.5 text-[11px] text-[#7a8490]">{supplier.supplierCode}</p></td><td className="px-4 py-3 text-[#65717e]"><p>{supplier.contactPerson || "—"}</p><p className="mt-0.5 text-[11px]">{supplier.email || supplier.phone || "No contact details"}</p></td><td className="max-w-xs px-4 py-3 text-[#65717e]">{supplier.offerings || "—"}</td><td className="px-4 py-3"><StatusBadge tone={supplier.accreditationStatus === "accredited" ? "approved" : supplier.accreditationStatus === "suspended" ? "returned" : "pending"}>{supplier.accreditationStatus.toUpperCase()}</StatusBadge></td></tr>)}</tbody></RecordTable> : <EmptyWorkspace eyebrow="Vendor registry" title="No supplier records have been registered." description="Register an accredited supplier before selecting them for canvassing or quotation comparison." />}</div>
   </div>;
 }

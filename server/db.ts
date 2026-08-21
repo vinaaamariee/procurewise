@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -200,6 +200,48 @@ export async function createSupplier(input: { supplierCode: string; companyName:
   if (!supplier) throw new Error("Supplier could not be registered.");
   await writeAuditEvent({ entityType: "supplier", entityId: supplier.id, action: "registered", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierCode: supplier.supplierCode } });
   return supplier;
+}
+
+export function validateSupplierTagInput(name: string) {
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  if (trimmed.length < 2 || trimmed.length > 120) return null;
+  return trimmed;
+}
+
+export async function getSupplierTagData() {
+  const db = await requireDb();
+  const [tags, assignments] = await Promise.all([
+    db.select().from(supplierTags).orderBy(supplierTags.name),
+    db.select().from(supplierTagAssignments),
+  ]);
+  return { tags, assignments };
+}
+
+export async function createSupplierTag(input: { name: string; description?: string }, user: User) {
+  const db = await requireDb();
+  const name = validateSupplierTagInput(input.name);
+  if (!name) throw new Error("Tag names must contain 2 to 120 characters.");
+  await db.insert(supplierTags).values({ name, description: input.description?.trim() || null, createdById: user.id });
+  const [tag] = await db.select().from(supplierTags).where(eq(supplierTags.name, name)).limit(1);
+  if (!tag) throw new Error("Supplier tag could not be created.");
+  await writeAuditEvent({ entityType: "supplier_tag", entityId: tag.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { name } });
+  return tag;
+}
+
+export async function setSupplierTags(input: { supplierId: number; tagIds: number[] }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const uniqueTagIds = Array.from(new Set(input.tagIds));
+  const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+  if (!supplier) throw new Error("Supplier not found.");
+  if (uniqueTagIds.length) {
+    const tagRows = await db.select().from(supplierTags).where(and(inArray(supplierTags.id, uniqueTagIds), eq(supplierTags.isActive, 1)));
+    if (tagRows.length !== uniqueTagIds.length) throw new Error("Every selected supplier tag must be active and valid.");
+  }
+  await db.delete(supplierTagAssignments).where(eq(supplierTagAssignments.supplierId, input.supplierId));
+  if (uniqueTagIds.length) await db.insert(supplierTagAssignments).values(uniqueTagIds.map((supplierTagId) => ({ supplierId: input.supplierId, supplierTagId, assignedById: user.id })));
+  await recordAudit({ entityType: "supplier", entityId: supplier.id, action: "tags_updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { tagIds: uniqueTagIds } });
+  return { supplierId: supplier.id, tagIds: uniqueTagIds };
 }
 
 export function validateSupplierEvaluationScores(scores: number[]) {
