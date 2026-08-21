@@ -41,7 +41,7 @@ describe("ProcureWise common-use procurement catalog", () => {
         const call = selectCall++;
         return { from: () => ({ where: () => call === 0 ? Promise.resolve(favoriteRows) : call === 1 ? { orderBy: async () => catalogRows } : Promise.resolve([{ id: 901 }]) }) };
       },
-      insert: () => ({ values: () => ({ onDuplicateKeyUpdate: async () => undefined }) }),
+      insert: () => ({ values: () => ({ onConflictDoNothing: async () => undefined }) }),
       delete: () => ({ where: async () => undefined }),
     } as any;
     await expect(listProcurementCatalogFavorites(actor, { db })).resolves.toEqual(catalogRows);

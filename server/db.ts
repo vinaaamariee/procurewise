@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
@@ -8,6 +9,7 @@ import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procur
 import { storagePut } from "./storage";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: Pool | null = null;
 type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent };
 type UserUpsertOptions = { db?: ReturnType<typeof drizzle> | null };
 type OperationalServiceOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent; putDocument?: typeof storagePut; notifyUser?: typeof createWorkflowNotification; notifyRoleGroup?: typeof notifyRoles };
@@ -61,9 +63,12 @@ export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPri
 }
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const password = process.env.SUPABASE_DB_PASSWORD;
+  if (!_db && password) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      _pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+      _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -94,7 +99,7 @@ export async function upsertUser(user: InsertUser, options?: UserUpsertOptions):
     // Explicitly provision new OAuth identities as End-Users while preserving any existing assigned role on later sign-ins.
     values.role = "end_user";
   }
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -255,7 +260,7 @@ export async function setProcurementCatalogFavorite(input: { catalogItemId: numb
   const db = options?.db ?? await requireDb();
   await assertActiveCatalogItemIds([input.catalogItemId], db);
   if (input.isFavorite) {
-    await db.insert(procurementCatalogFavorites).values({ userId: user.id, catalogItemId: input.catalogItemId }).onDuplicateKeyUpdate({ set: { catalogItemId: input.catalogItemId } });
+    await db.insert(procurementCatalogFavorites).values({ userId: user.id, catalogItemId: input.catalogItemId }).onConflictDoNothing();
   } else {
     await db.delete(procurementCatalogFavorites).where(and(eq(procurementCatalogFavorites.userId, user.id), eq(procurementCatalogFavorites.catalogItemId, input.catalogItemId)));
   }

@@ -162,3 +162,12 @@
 - [x] Publish the supplied Batanes State College seal as a managed static asset and integrate it into the institutional ProcureWise brand mark.
 - [x] Validate the supplied seal placement on desktop and mobile and add branding regression coverage.
 - [x] Save a checkpoint for the institutional seal integration.
+- [x] Assess the MySQL-to-Supabase PostgreSQL migration scope, existing records, and required user-owned Supabase access details.
+- [x] Design the PostgreSQL schema conversion and data-transfer plan without changing the operational database.
+- [x] Configure Supabase connectivity and migrate ProcureWise only after explicit connection authorization and a verified backup.
+- [x] Validate core procurement workflows against Supabase and retain a rollback path to the current database.
+- [x] Save a checkpoint for the Supabase migration work.
+- [x] Convert the active Drizzle MySQL schema, database driver, and migration configuration to PostgreSQL-compatible Supabase equivalents while retaining a rollback snapshot.
+- [x] Securely configure the Supabase PostgreSQL connection string and required environment variables.
+- [x] Apply reviewed Drizzle PostgreSQL migrations to the user-specified Supabase project and verify the resulting schema.
+- [x] Run application workflow regression and connection validation against Supabase before declaring the cutover ready.

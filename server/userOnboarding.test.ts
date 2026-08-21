@@ -9,7 +9,7 @@ describe("ProcureWise first-time account onboarding", () => {
       insert: () => ({
         values: (values: Record<string, unknown>) => {
           insertedValues = values;
-          return { onDuplicateKeyUpdate: async ({ set }: { set: Record<string, unknown> }) => { updateSet = set; } };
+          return { onConflictDoUpdate: async ({ set }: { set: Record<string, unknown> }) => { updateSet = set; } };
         },
       }),
     };
