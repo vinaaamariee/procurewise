@@ -128,6 +128,15 @@ export const appPpmpEntries = mysqlTable("app_ppmp_entries", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("app_ppmp_office_year_idx").on(table.officeId, table.fiscalYear)]);
 
+export const testRecordArchives = mysqlTable("test_record_archives", {
+  id: int("id").autoincrement().primaryKey(),
+  ppmpEntryId: int("ppmpEntryId").notNull().unique(),
+  archivedById: int("archivedById").notNull(),
+  archiveReason: text("archiveReason").notNull(),
+  archivedAt: timestamp("archivedAt").defaultNow().notNull(),
+  cleanedAt: timestamp("cleanedAt"),
+}, (table) => [index("test_record_archive_status_idx").on(table.cleanedAt, table.archivedAt)]);
+
 export const purchaseRequests = mysqlTable("purchase_requests", {
   id: int("id").autoincrement().primaryKey(),
   prNumber: varchar("prNumber", { length: 40 }).notNull().unique(),

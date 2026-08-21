@@ -16,6 +16,7 @@ import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
+import TestRecordManagementPage from "./pages/TestRecordManagement";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
 
 function Router() {
@@ -45,6 +46,7 @@ function Router() {
       <Route path={"/analytics"}>{protectedPage(<AnalyticsPage />)}</Route>
       <Route path={"/audit"}>{protectedPage(<AuditTrailPage />)}</Route>
       <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
+      <Route path={"/test-records"}>{protectedPage(<TestRecordManagementPage />)}</Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

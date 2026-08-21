@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -15,6 +15,7 @@ type DocumentEntityType = "app_ppmp_entry" | "purchase_request" | "pre_canvass" 
 type WorkflowNotificationKind = "action_required" | "status_change" | "correction" | "document";
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const TEST_ONLY_PREFIX = "TEST ONLY —";
 const PERMITTED_DOCUMENT_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
@@ -29,6 +30,16 @@ export function validateProcurementDocumentUpload(mimeType: string, byteLength: 
   if (!PERMITTED_DOCUMENT_TYPES.has(mimeType)) return "Only PDF, JPG, PNG, DOC, DOCX, XLS, and XLSX procurement documents may be attached.";
   if (!byteLength || byteLength > MAX_DOCUMENT_BYTES) return "Document uploads must be between 1 byte and 10 MB.";
   return null;
+}
+
+export function isEligibleTestOnlyPackage(input: { description?: string | null; fundSource?: string | null; remarks?: string | null; officeCode?: string | null; objectCode?: string | null }) {
+  return Boolean(
+    input.description?.startsWith(TEST_ONLY_PREFIX)
+    && input.fundSource?.startsWith(TEST_ONLY_PREFIX)
+    && input.remarks?.includes("non-operational test record")
+    && input.officeCode?.startsWith("TEST-")
+    && input.objectCode?.startsWith("TEST-")
+  );
 }
 
 export function describePreCanvassHandoff(hasOpenCorrections: boolean) {
@@ -575,9 +586,11 @@ export async function resubmitPurchaseOrder(purchaseOrderId: number, user: User,
 
 export async function listPurchaseRequests(user: User) {
   const db = await requireDb();
-  return normalizeProcurementRole(user.role) === "end_user"
+  const records = normalizeProcurementRole(user.role) === "end_user"
     ? db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id))
     : db.select().from(purchaseRequests);
+  const archivedPpmpEntryIds = new Set((await db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt))).map((archive) => archive.ppmpEntryId));
+  return (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
 }
 
 export async function getPurchaseRequestDetail(purchaseRequestId: number, user: User) {
@@ -883,10 +896,110 @@ export async function getPublicPurchaseRequestTracking(trackingToken: string) {
   return { purchaseRequest, preCanvass: preCanvass ? { status: preCanvass.status, updatedAt: preCanvass.updatedAt } : null, purchaseOrder: purchaseOrder ? { poNumber: purchaseOrder.poNumber, status: purchaseOrder.status, updatedAt: purchaseOrder.updatedAt } : null, events };
 }
 
+async function getEligibleTestOnlyPackage(ppmpEntryId: number, db: ReturnType<typeof drizzle>) {
+  const [record] = await db.select({ ppmp: appPpmpEntries, officeCode: offices.code, objectCode: objectsOfExpenditure.code }).from(appPpmpEntries)
+    .innerJoin(offices, eq(offices.id, appPpmpEntries.officeId))
+    .innerJoin(objectsOfExpenditure, eq(objectsOfExpenditure.id, appPpmpEntries.objectOfExpenditureId))
+    .where(eq(appPpmpEntries.id, ppmpEntryId)).limit(1);
+  if (!record || !isEligibleTestOnlyPackage({ description: record.ppmp.description, fundSource: record.ppmp.fundSource, remarks: record.ppmp.remarks, officeCode: record.officeCode, objectCode: record.objectCode })) {
+    throw new Error("Only clearly labelled non-operational test packages with dedicated TEST reference records may be managed here.");
+  }
+  return record;
+}
+
+export async function listAdminTestRecordPackages() {
+  const db = await requireDb();
+  const rows = await db.select({ ppmp: appPpmpEntries, officeCode: offices.code, officeName: offices.name, objectCode: objectsOfExpenditure.code, objectName: objectsOfExpenditure.name, archive: testRecordArchives })
+    .from(appPpmpEntries)
+    .innerJoin(offices, eq(offices.id, appPpmpEntries.officeId))
+    .innerJoin(objectsOfExpenditure, eq(objectsOfExpenditure.id, appPpmpEntries.objectOfExpenditureId))
+    .leftJoin(testRecordArchives, eq(testRecordArchives.ppmpEntryId, appPpmpEntries.id))
+    .where(like(appPpmpEntries.description, `${TEST_ONLY_PREFIX}%`))
+    .orderBy(desc(appPpmpEntries.createdAt));
+  const purchaseRequestsByPpmp = await db.select().from(purchaseRequests);
+  return rows.filter((row) => isEligibleTestOnlyPackage({ description: row.ppmp.description, fundSource: row.ppmp.fundSource, remarks: row.ppmp.remarks, officeCode: row.officeCode, objectCode: row.objectCode })).map((row) => ({
+    ...row,
+    purchaseRequests: purchaseRequestsByPpmp.filter((purchaseRequest) => purchaseRequest.ppmpEntryId === row.ppmp.id).map((purchaseRequest) => ({ id: purchaseRequest.id, prNumber: purchaseRequest.prNumber, status: purchaseRequest.status, totalEstimate: purchaseRequest.totalEstimate })),
+  }));
+}
+
+export async function archiveTestRecordPackage(input: { ppmpEntryId: number; reason: string }, user: User) {
+  const db = await requireDb();
+  const record = await getEligibleTestOnlyPackage(input.ppmpEntryId, db);
+  const [existing] = await db.select().from(testRecordArchives).where(eq(testRecordArchives.ppmpEntryId, record.ppmp.id)).limit(1);
+  if (existing) return existing;
+  await db.insert(testRecordArchives).values({ ppmpEntryId: record.ppmp.id, archivedById: user.id, archiveReason: input.reason.trim() });
+  const [archive] = await db.select().from(testRecordArchives).where(eq(testRecordArchives.ppmpEntryId, record.ppmp.id)).limit(1);
+  if (!archive) throw new Error("The test-record archive entry could not be saved.");
+  await writeAuditEvent({ entityType: "test_record_package", entityId: record.ppmp.id, action: "archived", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { reason: archive.archiveReason } });
+  return archive;
+}
+
+export async function cleanupArchivedTestRecordPackage(ppmpEntryId: number, user: User) {
+  const db = await requireDb();
+  const [archive] = await db.select().from(testRecordArchives).where(eq(testRecordArchives.ppmpEntryId, ppmpEntryId)).limit(1);
+  if (!archive) throw new Error("Archive the eligible test package before running cleanup.");
+  if (archive.cleanedAt) return { ppmpEntryId, alreadyCleaned: true };
+  await getEligibleTestOnlyPackage(ppmpEntryId, db);
+  const testPurchaseRequests = await db.select().from(purchaseRequests).where(eq(purchaseRequests.ppmpEntryId, ppmpEntryId));
+  const prIds = testPurchaseRequests.map((record) => record.id);
+  const testPreCanvasses = prIds.length ? await db.select().from(preCanvasses).where(inArray(preCanvasses.purchaseRequestId, prIds)) : [];
+  const preCanvassIds = testPreCanvasses.map((record) => record.id);
+  const testPurchaseOrders = prIds.length ? await db.select().from(purchaseOrders).where(inArray(purchaseOrders.purchaseRequestId, prIds)) : [];
+  const purchaseOrderIds = testPurchaseOrders.map((record) => record.id);
+  const testRfqs = prIds.length ? await db.select().from(rfqs).where(inArray(rfqs.purchaseRequestId, prIds)) : [];
+  const rfqIds = testRfqs.map((record) => record.id);
+  const testAbstracts = preCanvassIds.length ? await db.select().from(abstractsOfCanvass).where(inArray(abstractsOfCanvass.preCanvassId, preCanvassIds)) : [];
+  const abstractIds = testAbstracts.map((record) => record.id);
+
+  for (const purchaseRequest of testPurchaseRequests.filter((record) => record.status === "procurement_review")) {
+    await db.update(budgetAllotments).set({ committedAmount: sql`GREATEST(${budgetAllotments.committedAmount} - ${purchaseRequest.totalEstimate}, 0)` }).where(and(eq(budgetAllotments.officeId, purchaseRequest.officeId), eq(budgetAllotments.objectOfExpenditureId, purchaseRequest.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear())));
+  }
+  if (rfqIds.length) {
+    await db.delete(quotationAbstracts).where(inArray(quotationAbstracts.rfqId, rfqIds));
+    await db.delete(supplierQuotations).where(inArray(supplierQuotations.rfqId, rfqIds));
+  }
+  if (purchaseOrderIds.length) {
+    await db.delete(deliveryReceipts).where(inArray(deliveryReceipts.purchaseOrderId, purchaseOrderIds));
+    await db.delete(pmrLogs).where(inArray(pmrLogs.purchaseOrderId, purchaseOrderIds));
+    await db.delete(historicalPrices).where(inArray(historicalPrices.purchaseOrderId, purchaseOrderIds));
+    await db.delete(purchaseOrders).where(inArray(purchaseOrders.id, purchaseOrderIds));
+  }
+  if (preCanvassIds.length) {
+    await db.delete(mcdmRecommendations).where(inArray(mcdmRecommendations.preCanvassId, preCanvassIds));
+    await db.delete(preCanvassQuotes).where(inArray(preCanvassQuotes.preCanvassId, preCanvassIds));
+    await db.delete(abstractsOfCanvass).where(inArray(abstractsOfCanvass.preCanvassId, preCanvassIds));
+    await db.delete(preCanvasses).where(inArray(preCanvasses.id, preCanvassIds));
+  }
+  if (prIds.length) {
+    await db.delete(lettersOfNotice).where(inArray(lettersOfNotice.purchaseRequestId, prIds));
+    await db.delete(bacTransmittals).where(inArray(bacTransmittals.purchaseRequestId, prIds));
+    await db.delete(purchaseRequestItems).where(inArray(purchaseRequestItems.purchaseRequestId, prIds));
+    await db.delete(rfqs).where(inArray(rfqs.id, rfqIds));
+    await db.delete(purchaseRequests).where(inArray(purchaseRequests.id, prIds));
+  }
+  const documentConditions = [and(eq(procurementDocuments.entityType, "app_ppmp_entry"), eq(procurementDocuments.entityId, ppmpEntryId)), ...prIds.map((id) => and(eq(procurementDocuments.entityType, "purchase_request"), eq(procurementDocuments.entityId, id))), ...preCanvassIds.map((id) => and(eq(procurementDocuments.entityType, "pre_canvass"), eq(procurementDocuments.entityId, id))), ...abstractIds.map((id) => and(eq(procurementDocuments.entityType, "abstract_of_canvass"), eq(procurementDocuments.entityId, id))), ...purchaseOrderIds.map((id) => and(eq(procurementDocuments.entityType, "purchase_order"), eq(procurementDocuments.entityId, id)))];
+  if (documentConditions.length) await db.delete(procurementDocuments).where(or(...documentConditions));
+  const notificationConditions = [and(eq(workflowNotifications.entityType, "app_ppmp_entry"), eq(workflowNotifications.entityId, ppmpEntryId)), ...prIds.map((id) => and(eq(workflowNotifications.entityType, "purchase_request"), eq(workflowNotifications.entityId, id))), ...preCanvassIds.map((id) => and(eq(workflowNotifications.entityType, "pre_canvass"), eq(workflowNotifications.entityId, id))), ...abstractIds.map((id) => and(eq(workflowNotifications.entityType, "abstract_of_canvass"), eq(workflowNotifications.entityId, id))), ...purchaseOrderIds.map((id) => and(eq(workflowNotifications.entityType, "purchase_order"), eq(workflowNotifications.entityId, id)))];
+  if (notificationConditions.length) await db.delete(workflowNotifications).where(or(...notificationConditions));
+  const correctionConditions = [
+    ...preCanvassIds.map((id) => and(eq(workflowCorrections.entityType, "pre_canvass"), eq(workflowCorrections.entityId, id))),
+    ...abstractIds.map((id) => and(eq(workflowCorrections.entityType, "abstract_of_canvass"), eq(workflowCorrections.entityId, id))),
+    ...purchaseOrderIds.map((id) => and(eq(workflowCorrections.entityType, "purchase_order"), eq(workflowCorrections.entityId, id))),
+  ];
+  if (correctionConditions.length) await db.delete(workflowCorrections).where(or(...correctionConditions));
+  await db.delete(appPpmpEntries).where(eq(appPpmpEntries.id, ppmpEntryId));
+  await db.update(testRecordArchives).set({ cleanedAt: new Date() }).where(eq(testRecordArchives.id, archive.id));
+  await writeAuditEvent({ entityType: "test_record_package", entityId: ppmpEntryId, action: "cleaned", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prCount: prIds.length, preCanvassCount: preCanvassIds.length, abstractCount: abstractIds.length, purchaseOrderCount: purchaseOrderIds.length } });
+  return { ppmpEntryId, purchaseRequestCount: prIds.length, preCanvassCount: preCanvassIds.length, abstractCount: abstractIds.length, purchaseOrderCount: purchaseOrderIds.length };
+}
+
 export async function getProcurementDashboard(user: User) {
   const db = await requireDb();
   const isEndUser = normalizeProcurementRole(user.role) === "end_user";
-  const prRows = await listPurchaseRequests(user);
+  const activeArchives = await db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt));
+  const archivedPpmpEntryIds = new Set(activeArchives.map((archive) => archive.ppmpEntryId));
+  const prRows = (await listPurchaseRequests(user)).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
   const preCanvassRows = isEndUser ? (prRows.length ? await db.select().from(preCanvasses).where(inArray(preCanvasses.purchaseRequestId, prRows.map((pr) => pr.id))) : []) : await db.select().from(preCanvasses);
   const preCanvassIds = preCanvassRows.map((record) => record.id);
   const preCanvassQuoteRows = preCanvassIds.length ? await db.select().from(preCanvassQuotes).where(inArray(preCanvassQuotes.preCanvassId, preCanvassIds)) : [];
@@ -899,12 +1012,12 @@ export async function getProcurementDashboard(user: User) {
   const deliveryRows = poIds.length ? await db.select().from(deliveryReceipts).where(inArray(deliveryReceipts.purchaseOrderId, poIds)) : [];
   const pmrRows = poIds.length ? await db.select().from(pmrLogs).where(inArray(pmrLogs.purchaseOrderId, poIds)) : [];
   const auditRows = isEndUser ? await db.select().from(auditTrails).where(eq(auditTrails.performedById, user.id)) : await db.select().from(auditTrails);
-  const planRows = isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries);
+  const planRows = (isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries)).filter((record) => !archivedPpmpEntryIds.has(record.id));
   const [documents, corrections, notifications] = await Promise.all([listProcurementDocuments(user), listWorkflowCorrections(user), listWorkflowNotifications(user)]);
-  const relatedPrs = isEndUser ? prRows : await db.select().from(purchaseRequests);
+  const relatedPrs = prRows;
   const relatedItems = isEndUser
     ? (prRows.length ? await db.select().from(purchaseRequestItems).where(inArray(purchaseRequestItems.purchaseRequestId, prRows.map((pr) => pr.id))) : [])
-    : await db.select().from(purchaseRequestItems);
+    : (prRows.length ? await db.select().from(purchaseRequestItems).where(inArray(purchaseRequestItems.purchaseRequestId, prRows.map((pr) => pr.id))) : []);
   const closedPurchaseOrders = poRows.filter((po) => po.status === "closed");
   const cycleTimes = closedPurchaseOrders.map((po) => {
     const pr = relatedPrs.find((record) => record.id === po.purchaseRequestId);

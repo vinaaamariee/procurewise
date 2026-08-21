@@ -154,3 +154,8 @@
 - [x] Repair the missing non-destructive Abstract detail columns that block generation of the authorized test Abstract.
 - [x] Create a clearly labelled non-operational PPMP-to-Abstract test package, verify its workflow evidence, and document its test-only status.
 - [x] Save a checkpoint for catalog discovery enhancements and authorized test-flow validation.
+- [x] Define and enforce Admin-only eligibility safeguards for archiving or cleaning up clearly labelled non-operational test procurement records.
+- [x] Add auditable test-record archive and cleanup procedures that cannot affect operational procurement records.
+- [x] Build an Admin test-record management interface with record review, archive, and cleanup controls.
+- [x] Add regression coverage and responsive validation for Admin test-record controls.
+- [x] Save a checkpoint for the Admin archive and cleanup workflow.

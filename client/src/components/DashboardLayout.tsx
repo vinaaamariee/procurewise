@@ -7,7 +7,7 @@ import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
+import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -28,6 +28,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Procurement Forecast", path: "/officer/forecast", icon: LineChart, roles: ["procurement_officer", "admin"] },
   { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
+  { label: "Test records", path: "/test-records", icon: Archive, roles: ["admin"] },
 ];
 
 const roleLabels: Record<ProcurementRole, string> = { end_user: "End-User", procurement_officer: "Procurement Officer", administrative_approver: "Administrative Approver", admin: "Admin" };
