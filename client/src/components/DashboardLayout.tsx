@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LogOut, Menu, ReceiptText, Search, Settings2, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
+import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LogOut, Menu, Paperclip, ReceiptText, Search, Settings2, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -13,6 +13,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user", "procurement_officer", "admin"] },
+  { label: "Documents", path: "/documents", icon: Paperclip, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Abstracts, PO & PMR", path: "/purchase-orders", icon: FileCheck2, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["end_user", "admin"] },
   { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
@@ -66,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </label>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-[4px]" aria-label="Notifications">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/notifications")} className="relative h-9 w-9 rounded-[4px]" aria-label="Notifications">
               <Bell className="h-4 w-4 text-[#566171]" />
               <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#b78327]" />
             </Button>

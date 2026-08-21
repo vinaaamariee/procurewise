@@ -78,7 +78,7 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
     const quote = { supplierId: 4, totalPrice: "950.00" };
     const po = { id: 21, poNumber: "PO-2026-00001", purchaseRequestId: 9, status: "issued" };
     const poForPmr = { ...po, status: "delivered" };
-    const fake = fakeDatabase([[abstract], [preCanvass], [pr], [quote], [po], [po], [poForPmr]]);
+    const fake = fakeDatabase([[abstract], [preCanvass], [pr], [quote], [], [po], [po], [poForPmr]]);
     await createPurchaseOrderFromPreCanvass(14, user, { db: fake.db as never, recordAudit: silentAudit });
     await recordDelivery({ purchaseOrderId: 21, receiptNumber: "DR-2026-01" }, user, { db: fake.db as never, recordAudit: silentAudit });
     await logPmr({ purchaseOrderId: 21, pmrNumber: "PMR-2026-01" }, user, { db: fake.db as never, recordAudit: silentAudit });

@@ -7,6 +7,8 @@ import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Dashboard from "./pages/Dashboard";
 import Access from "./pages/Access";
+import DocumentsPage from "./pages/Documents";
+import NotificationsPage from "./pages/Notifications";
 import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
@@ -23,6 +25,8 @@ function Router() {
       <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
       <Route path={"/rfq"}>{protectedPage(<PreCanvassPage />)}</Route>
       <Route path={"/purchase-orders"}>{protectedPage(<ExecutionPage />)}</Route>
+      <Route path={"/documents"}>{protectedPage(<DocumentsPage />)}</Route>
+      <Route path={"/notifications"}>{protectedPage(<NotificationsPage />)}</Route>
       <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
       <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>

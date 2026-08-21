@@ -74,3 +74,10 @@
 - [x] Verify the public End-User access path and document any authentication or role-routing blockers.
 - [x] Create and deliver a concrete End-User acceptance-test checklist covering access, PPMP, Purchase Request, and Pre-Canvass steps.
 - [x] Document End-User prerequisites and expected blockers without creating procurement test transactions.
+- [x] Define secure attachment, notification, correction-comment, and guided-setup data models with role controls.
+- [x] Add S3-backed document attachment uploads and linked-record document registers without storing file bytes in the database.
+- [x] Add an administrator setup-readiness checklist for offices, expenditure objects, suppliers, budget allotments, and workflow signatories.
+- [x] Add a Pre-Canvass return-for-correction workflow with mandatory Procurement Officer comments and resubmission tracking.
+- [x] Add an in-app notification inbox for Pre-Canvass handoffs and key Abstract/PO status changes.
+- [x] Add automated coverage and responsive validation for attachments, corrections, setup readiness, and workflow notifications.
+- [x] Save a checkpoint for the operational-readiness enhancements.

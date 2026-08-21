@@ -1,13 +1,40 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, budgetAllotments, deliveryReceipts, InsertUser, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierQuotations, suppliers, User, users } from "../drizzle/schema";
-import { hasRequiredSupplierQuotations, normalizeProcurementRole, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, budgetAllotments, deliveryReceipts, InsertUser, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierQuotations, suppliers, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
+import { storagePut } from "./storage";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent };
 type UserUpsertOptions = { db?: ReturnType<typeof drizzle> | null };
+type OperationalServiceOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent; putDocument?: typeof storagePut; notifyUser?: typeof createWorkflowNotification; notifyRoleGroup?: typeof notifyRoles };
+type DocumentEntityType = "purchase_request" | "pre_canvass" | "pre_canvass_quote" | "abstract_of_canvass" | "purchase_order" | "delivery_receipt" | "pmr_log";
+type WorkflowNotificationKind = "action_required" | "status_change" | "correction" | "document";
+
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const PERMITTED_DOCUMENT_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/msword",
+  "application/vnd.ms-excel",
+]);
+
+export function validateProcurementDocumentUpload(mimeType: string, byteLength: number) {
+  if (!PERMITTED_DOCUMENT_TYPES.has(mimeType)) return "Only PDF, JPG, PNG, DOC, DOCX, XLS, and XLSX procurement documents may be attached.";
+  if (!byteLength || byteLength > MAX_DOCUMENT_BYTES) return "Document uploads must be between 1 byte and 10 MB.";
+  return null;
+}
+
+export function describePreCanvassHandoff(hasOpenCorrections: boolean) {
+  return hasOpenCorrections
+    ? { title: "Pre-Canvass resubmitted", body: "An End-User has resubmitted a returned Pre-Canvass package for review." }
+    : { title: "Pre-Canvass awaiting review", body: "An End-User has forwarded a complete three-supplier Pre-Canvass package for review." };
+}
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -66,12 +93,49 @@ async function writeAuditEvent(input: { entityType: string; entityId: number; ac
 
 export async function getWorkspaceSetup() {
   const db = await requireDb();
-  const [officeRows, objectRows, supplierRows] = await Promise.all([
+  const [officeRows, objectRows, supplierRows, allotmentRows, settingsRows] = await Promise.all([
     db.select().from(offices).where(eq(offices.isActive, 1)),
     db.select().from(objectsOfExpenditure).where(eq(objectsOfExpenditure.isActive, 1)),
     db.select().from(suppliers).where(eq(suppliers.isActive, 1)),
+    db.select().from(budgetAllotments).where(eq(budgetAllotments.fiscalYear, new Date().getFullYear())),
+    db.select().from(procurementSettings).limit(1),
   ]);
-  return { offices: officeRows, objectsOfExpenditure: objectRows, suppliers: supplierRows };
+  const settings = settingsRows[0] ?? null;
+  const signatoriesReady = Boolean(settings?.authorizedOfficialName && settings?.authorizedOfficialDesignation && settings?.chiefAccountantName);
+  return {
+    offices: officeRows,
+    objectsOfExpenditure: objectRows,
+    suppliers: supplierRows,
+    settings,
+    readiness: [
+      { key: "offices", label: "Requesting office", complete: officeRows.length > 0, detail: officeRows.length ? `${officeRows.length} active office record(s)` : "Add at least one requesting office." },
+      { key: "objects", label: "Object of expenditure", complete: objectRows.length > 0, detail: objectRows.length ? `${objectRows.length} active expenditure object(s)` : "Add at least one expenditure object." },
+      { key: "suppliers", label: "Supplier registry", complete: supplierRows.length >= 3, detail: supplierRows.length >= 3 ? `${supplierRows.length} active suppliers available for canvass.` : "Register at least three active suppliers for Pre-Canvass." },
+      { key: "budget", label: `FY ${new Date().getFullYear()} budget allotment`, complete: allotmentRows.length > 0, detail: allotmentRows.length ? `${allotmentRows.length} current-year allotment record(s)` : "Record at least one current-year budget allotment." },
+      { key: "signatories", label: "PO signatories", complete: signatoriesReady, detail: signatoriesReady ? "Authorised official and accounting signatory are recorded." : "Record the authorised official, designation, and Chief Accountant." },
+    ],
+  };
+}
+
+export async function updateProcurementSettings(input: { entityName: string; authorizedOfficialName?: string; authorizedOfficialDesignation?: string; chiefAccountantName?: string }, user: User) {
+  const db = await requireDb();
+  const values = {
+    entityName: input.entityName.trim() || "Batanes State College",
+    authorizedOfficialName: input.authorizedOfficialName?.trim() || null,
+    authorizedOfficialDesignation: input.authorizedOfficialDesignation?.trim() || null,
+    chiefAccountantName: input.chiefAccountantName?.trim() || null,
+    updatedById: user.id,
+  };
+  const [existing] = await db.select().from(procurementSettings).limit(1);
+  if (existing) {
+    await db.update(procurementSettings).set(values).where(eq(procurementSettings.id, existing.id));
+  } else {
+    await db.insert(procurementSettings).values(values);
+  }
+  const [settings] = await db.select().from(procurementSettings).limit(1);
+  if (!settings) throw new Error("Procurement settings could not be saved.");
+  await writeAuditEvent({ entityType: "procurement_settings", entityId: settings.id, action: "updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
+  return settings;
 }
 
 export async function getBudgetUtilization() {
@@ -139,6 +203,139 @@ export async function updateUserProcurementRole(userId: number, role: Procuremen
   const db = await requireDb();
   await db.update(users).set({ role }).where(eq(users.id, userId));
   await writeAuditEvent({ entityType: "user_profile", entityId: userId, action: "role_updated", performedById: actor.id, performedByRole: normalizeProcurementRole(actor.role), details: { assignedRole: role } });
+}
+
+async function getDocumentEntityRequesterId(entityType: DocumentEntityType, entityId: number, db: ReturnType<typeof drizzle>) {
+  let purchaseRequestId: number | null = null;
+  if (entityType === "purchase_request") purchaseRequestId = entityId;
+  if (entityType === "pre_canvass") {
+    const [record] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, entityId)).limit(1);
+    purchaseRequestId = record?.purchaseRequestId ?? null;
+  }
+  if (entityType === "pre_canvass_quote") {
+    const [quote] = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.id, entityId)).limit(1);
+    if (quote) {
+      const [record] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, quote.preCanvassId)).limit(1);
+      purchaseRequestId = record?.purchaseRequestId ?? null;
+    }
+  }
+  if (entityType === "abstract_of_canvass") {
+    const [abstract] = await db.select().from(abstractsOfCanvass).where(eq(abstractsOfCanvass.id, entityId)).limit(1);
+    if (abstract) {
+      const [record] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, abstract.preCanvassId)).limit(1);
+      purchaseRequestId = record?.purchaseRequestId ?? null;
+    }
+  }
+  if (["purchase_order", "delivery_receipt", "pmr_log"].includes(entityType)) {
+    let purchaseOrderId: number | null = entityType === "purchase_order" ? entityId : null;
+    if (entityType === "delivery_receipt") {
+      const [receipt] = await db.select().from(deliveryReceipts).where(eq(deliveryReceipts.id, entityId)).limit(1);
+      purchaseOrderId = receipt?.purchaseOrderId ?? null;
+    }
+    if (entityType === "pmr_log") {
+      const [pmr] = await db.select().from(pmrLogs).where(eq(pmrLogs.id, entityId)).limit(1);
+      purchaseOrderId = pmr?.purchaseOrderId ?? null;
+    }
+    if (purchaseOrderId) {
+      const [order] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, purchaseOrderId)).limit(1);
+      purchaseRequestId = order?.purchaseRequestId ?? null;
+    }
+  }
+  if (!purchaseRequestId) return null;
+  const [request] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  return request?.requestedById ?? null;
+}
+
+async function assertDocumentAccess(entityType: DocumentEntityType, entityId: number, user: User, db: ReturnType<typeof drizzle>) {
+  const requesterId = await getDocumentEntityRequesterId(entityType, entityId, db);
+  if (!requesterId) throw new Error("The procurement record selected for this document could not be found.");
+  if (normalizeProcurementRole(user.role) === "end_user" && requesterId !== user.id) throw new Error("End-Users may upload documents only to their own procurement records.");
+  return requesterId;
+}
+
+export async function createWorkflowNotification(input: { recipientUserId: number; kind: WorkflowNotificationKind; title: string; body: string; entityType: string; entityId: number }) {
+  const db = await requireDb();
+  await db.insert(workflowNotifications).values(input);
+}
+
+export async function notifyRoles(roles: ProcurementRole[], input: Omit<Parameters<typeof createWorkflowNotification>[0], "recipientUserId">) {
+  const db = await requireDb();
+  const people = await db.select().from(users);
+  const recipientIds = Array.from(new Set(people.filter((person) => roleCanAct(normalizeProcurementRole(person.role), roles)).map((person) => person.id)));
+  await Promise.all(recipientIds.map((recipientUserId) => createWorkflowNotification({ ...input, recipientUserId })));
+}
+
+export async function createProcurementDocument(input: { entityType: DocumentEntityType; entityId: number; documentType: string; originalFileName: string; mimeType: string; dataBase64: string }, user: User, options?: OperationalServiceOptions) {
+  const data = Buffer.from(input.dataBase64, "base64");
+  const validationError = validateProcurementDocumentUpload(input.mimeType, data.length);
+  if (validationError) throw new Error(validationError);
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const putDocument = options?.putDocument ?? storagePut;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const requesterId = await assertDocumentAccess(input.entityType, input.entityId, user, db);
+  const safeName = input.originalFileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180) || "procurement-document";
+  const { key, url } = await putDocument(`procurewise/${input.entityType}/${input.entityId}/${Date.now()}_${safeName}`, data, input.mimeType);
+  await db.insert(procurementDocuments).values({ entityType: input.entityType, entityId: input.entityId, documentType: input.documentType.trim() || "Supporting document", originalFileName: safeName, mimeType: input.mimeType, storageKey: key, storageUrl: url, fileSize: data.length, uploadedById: user.id });
+  const [document] = await db.select().from(procurementDocuments).where(eq(procurementDocuments.storageKey, key)).limit(1);
+  if (!document) throw new Error("The document record could not be saved.");
+  await recordAudit({ entityType: input.entityType, entityId: input.entityId, action: "document_attached", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { documentType: document.documentType, fileName: safeName } });
+  if (requesterId !== user.id) await notifyUser({ recipientUserId: requesterId, kind: "document", title: "A procurement document was attached", body: `${document.documentType}: ${safeName}`, entityType: input.entityType, entityId: input.entityId });
+  return document;
+}
+
+export async function listProcurementDocuments(user: User) {
+  const db = await requireDb();
+  const documents = await db.select().from(procurementDocuments);
+  if (normalizeProcurementRole(user.role) !== "end_user") return documents;
+  const visible = await Promise.all(documents.map(async (document) => ({ document, requesterId: await getDocumentEntityRequesterId(document.entityType as DocumentEntityType, document.entityId, db) })));
+  return visible.filter(({ requesterId }) => requesterId === user.id).map(({ document }) => document);
+}
+
+export async function listWorkflowCorrections(user: User) {
+  const db = await requireDb();
+  return normalizeProcurementRole(user.role) === "end_user"
+    ? db.select().from(workflowCorrections).where(eq(workflowCorrections.assignedToId, user.id))
+    : db.select().from(workflowCorrections);
+}
+
+export async function listWorkflowNotifications(user: User) {
+  const db = await requireDb();
+  return db.select().from(workflowNotifications).where(eq(workflowNotifications.recipientUserId, user.id));
+}
+
+export async function markWorkflowNotificationRead(notificationId: number, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const [notification] = await db.select().from(workflowNotifications).where(eq(workflowNotifications.id, notificationId)).limit(1);
+  if (!notification || notification.recipientUserId !== user.id) throw new Error("Notification not found.");
+  if (!notification.readAt) await db.update(workflowNotifications).set({ readAt: new Date() }).where(eq(workflowNotifications.id, notificationId));
+}
+
+export async function requestPreCanvassCorrection(input: { preCanvassId: number; reason: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
+  if (!preCanvass || preCanvass.status !== "submitted") throw new Error("Only a submitted Pre-Canvass package can be returned for correction.");
+  const [purchaseRequest] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, preCanvass.purchaseRequestId)).limit(1);
+  if (!purchaseRequest) throw new Error("The linked Purchase Request could not be found.");
+  await db.update(preCanvasses).set({ status: "draft" }).where(eq(preCanvasses.id, preCanvass.id));
+  if (purchaseRequest.status === "procurement_review") await db.update(purchaseRequests).set({ status: "draft" }).where(eq(purchaseRequests.id, purchaseRequest.id));
+  await db.insert(workflowCorrections).values({ entityType: "pre_canvass", entityId: preCanvass.id, requestedById: user.id, assignedToId: purchaseRequest.requestedById, reason: input.reason.trim() });
+  const [correction] = await db.select().from(workflowCorrections).where(and(eq(workflowCorrections.entityType, "pre_canvass"), eq(workflowCorrections.entityId, preCanvass.id), eq(workflowCorrections.assignedToId, purchaseRequest.requestedById), eq(workflowCorrections.status, "open"))).limit(1);
+  await recordAudit({ entityType: "pre_canvass", entityId: preCanvass.id, action: "returned_for_correction", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { reason: input.reason.trim() } });
+  await notifyUser({ recipientUserId: purchaseRequest.requestedById, kind: "correction", title: "Pre-Canvass returned for correction", body: input.reason.trim(), entityType: "pre_canvass", entityId: preCanvass.id });
+  return correction;
+}
+
+export async function recordPreCanvassResubmission(preCanvassId: number, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
+  const openCorrections = await db.select().from(workflowCorrections).where(and(eq(workflowCorrections.entityType, "pre_canvass"), eq(workflowCorrections.entityId, preCanvassId), eq(workflowCorrections.assignedToId, user.id), eq(workflowCorrections.status, "open")));
+  if (openCorrections.length) {
+    await db.update(workflowCorrections).set({ status: "resubmitted", resolvedAt: new Date() }).where(and(eq(workflowCorrections.entityType, "pre_canvass"), eq(workflowCorrections.entityId, preCanvassId), eq(workflowCorrections.assignedToId, user.id), eq(workflowCorrections.status, "open")));
+  }
+  await notifyRoleGroup(["procurement_officer"], { kind: "action_required", ...describePreCanvassHandoff(openCorrections.length > 0), entityType: "pre_canvass", entityId: preCanvassId });
 }
 
 export async function listPurchaseRequests(user: User) {
@@ -274,9 +471,10 @@ export async function createPurchaseOrderFromPreCanvass(preCanvassId: number, us
   if (!pr || pr.status !== "approved") throw new Error("The linked Purchase Request must be administratively approved before PO issue.");
   const [quote] = await db.select().from(preCanvassQuotes).where(and(eq(preCanvassQuotes.preCanvassId, preCanvassId), eq(preCanvassQuotes.supplierId, abstract.recommendedSupplierId))).limit(1);
   if (!quote) throw new Error("The recommended Pre-Canvass quote could not be found.");
+  const [settings] = await db.select().from(procurementSettings).where(sql`1 = 1`).limit(1);
   const poNumber = `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   const scheduledDeliveryDate = preCanvass.deliveryPeriodDays ? new Date(Date.now() + preCanvass.deliveryPeriodDays * 86_400_000) : null;
-  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, placeOfDelivery: "Batanes State College", scheduledDeliveryDate, deliveryTerm: "FOB Destination", paymentTerm: "15 days upon complete delivery", modeOfProcurement: "Small Value Procurement", fundCluster: pr.fundCluster, fundsAvailable: pr.totalEstimate, generatedById: user.id, status: "issued" });
+  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, placeOfDelivery: settings?.entityName || "Batanes State College", scheduledDeliveryDate, deliveryTerm: "FOB Destination", paymentTerm: "15 days upon complete delivery", modeOfProcurement: "Small Value Procurement", fundCluster: pr.fundCluster, fundsAvailable: pr.totalEstimate, authorizedOfficialName: settings?.authorizedOfficialName || null, authorizedOfficialDesignation: settings?.authorizedOfficialDesignation || null, chiefAccountantName: settings?.chiefAccountantName || null, generatedById: user.id, status: "issued" });
   await db.update(purchaseRequests).set({ status: "po_issued" }).where(eq(purchaseRequests.id, pr.id));
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.poNumber, poNumber)).limit(1);
   if (!po) throw new Error("The Purchase Order could not be issued.");
@@ -385,6 +583,7 @@ export async function getProcurementDashboard(user: User) {
   const pmrRows = poIds.length ? await db.select().from(pmrLogs).where(inArray(pmrLogs.purchaseOrderId, poIds)) : [];
   const auditRows = isEndUser ? await db.select().from(auditTrails).where(eq(auditTrails.performedById, user.id)) : await db.select().from(auditTrails);
   const planRows = isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries);
+  const [documents, corrections, notifications] = await Promise.all([listProcurementDocuments(user), listWorkflowCorrections(user), listWorkflowNotifications(user)]);
   const relatedPrs = isEndUser ? prRows : await db.select().from(purchaseRequests);
   const relatedItems = isEndUser ? [] : await db.select().from(purchaseRequestItems);
   const closedPurchaseOrders = poRows.filter((po) => po.status === "closed");
@@ -398,5 +597,5 @@ export async function getProcurementDashboard(user: User) {
     return totals;
   }, {});
   const topCommodities = Object.entries(commodityTotals).sort(([, a], [, b]) => b - a).slice(0, 5).map(([description, amount]) => ({ description, amount: amount.toFixed(2) }));
-  return { purchaseRequests: prRows, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
+  return { purchaseRequests: prRows, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, documents, corrections, notifications, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
 }

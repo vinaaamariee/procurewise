@@ -247,6 +247,54 @@ export const pmrLogs = mysqlTable("pmr_logs", {
   loggedAt: timestamp("loggedAt").defaultNow().notNull(),
 });
 
+export const procurementSettings = mysqlTable("procurement_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  entityName: varchar("entityName", { length: 180 }).default("Batanes State College").notNull(),
+  authorizedOfficialName: varchar("authorizedOfficialName", { length: 180 }),
+  authorizedOfficialDesignation: varchar("authorizedOfficialDesignation", { length: 160 }),
+  chiefAccountantName: varchar("chiefAccountantName", { length: 180 }),
+  updatedById: int("updatedById"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const procurementDocuments = mysqlTable("procurement_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: mysqlEnum("entityType", ["purchase_request", "pre_canvass", "pre_canvass_quote", "abstract_of_canvass", "purchase_order", "delivery_receipt", "pmr_log"]).notNull(),
+  entityId: int("entityId").notNull(),
+  documentType: varchar("documentType", { length: 80 }).notNull(),
+  originalFileName: varchar("originalFileName", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 120 }).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull().unique(),
+  storageUrl: varchar("storageUrl", { length: 512 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  uploadedById: int("uploadedById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("document_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("document_uploader_created_idx").on(table.uploadedById, table.createdAt)]);
+
+export const workflowCorrections = mysqlTable("workflow_corrections", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: mysqlEnum("entityType", ["purchase_request", "pre_canvass", "abstract_of_canvass"]).notNull(),
+  entityId: int("entityId").notNull(),
+  requestedById: int("requestedById").notNull(),
+  assignedToId: int("assignedToId").notNull(),
+  reason: text("reason").notNull(),
+  status: mysqlEnum("status", ["open", "resubmitted", "resolved"]).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt"),
+}, (table) => [index("correction_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("correction_assignee_status_idx").on(table.assignedToId, table.status)]);
+
+export const workflowNotifications = mysqlTable("workflow_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  recipientUserId: int("recipientUserId").notNull(),
+  kind: mysqlEnum("kind", ["action_required", "status_change", "correction", "document"]).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  entityType: varchar("entityType", { length: 64 }).notNull(),
+  entityId: int("entityId").notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("notification_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt)]);
+
 export const auditTrails = mysqlTable("audit_trails", {
   id: int("id").autoincrement().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),

@@ -36,6 +36,13 @@
       "when": 1787104272585,
       "tag": "0004_broad_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787294325361,
+      "tag": "0005_clear_vanisher",
+      "breakpoints": true
     }
   ]
 }
