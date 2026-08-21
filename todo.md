@@ -107,4 +107,10 @@
 - [x] Add direct PDF-export function tests that assert document-save invocation and official output names.
 - [x] Add service-path tests confirming Supplier Evaluation create and update reject invalid score sets before database persistence.
 - [x] Defer live-record PDF download and populated mobile workspace validation until an authorized, non-fabricated procurement record exists; no test transaction was created.
+- [x] Validate the supplied supplier names, owner/contact names, and TIN entries for import readiness without altering source data.
+- [x] Compare the supplied supplier list against the current ProcureWise supplier registry and create a transparent duplicate-handling plan.
+- [x] Import validated suppliers with generated internal supplier codes, supplied TINs, supplied contact names, blank unprovided fields, and pending accreditation status.
+- [x] Verify the imported supplier registry count and provide an import summary, including skipped or duplicate records.
+- [x] Deliver the post-import supplier summary and retain the verified result as an audit artifact.
+- [x] Save a checkpoint for the validated supplier registry import.
 - [x] Save a checkpoint for the expanded officer workflow enhancements.
