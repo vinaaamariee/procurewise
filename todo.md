@@ -171,3 +171,9 @@
 - [x] Securely configure the Supabase PostgreSQL connection string and required environment variables.
 - [x] Apply reviewed Drizzle PostgreSQL migrations to the user-specified Supabase project and verify the resulting schema.
 - [x] Run application workflow regression and connection validation against Supabase before declaring the cutover ready.
+- [x] Configure secure Supabase Realtime publication and frontend subscription support for Pre-Canvass and Abstract updates.
+- [x] Add permission-aware automatic refresh feedback to Pre-Canvass and Abstract workspaces without requiring a manual page reload.
+- [x] Add PPMP and Abstract package CSV exports with correctly scoped record data.
+- [x] Add PPMP and Abstract package PDF export controls that follow the existing official-form design rules.
+- [x] Add regression coverage and responsive validation for realtime updates and export controls.
+- [ ] Save a checkpoint for Supabase Realtime and PPMP/Abstract export enhancements.
