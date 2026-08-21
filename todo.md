@@ -106,5 +106,5 @@
 - [x] Capture mobile validation for Supplier Evaluations, Transmittals, Settings, and print routes.
 - [x] Add direct PDF-export function tests that assert document-save invocation and official output names.
 - [x] Add service-path tests confirming Supplier Evaluation create and update reject invalid score sets before database persistence.
-- [ ] Defer live-record PDF download and populated mobile workspace validation until an authorized, non-fabricated procurement record exists.
+- [x] Defer live-record PDF download and populated mobile workspace validation until an authorized, non-fabricated procurement record exists; no test transaction was created.
 - [x] Save a checkpoint for the expanded officer workflow enhancements.
