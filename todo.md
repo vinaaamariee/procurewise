@@ -159,3 +159,6 @@
 - [x] Build an Admin test-record management interface with record review, archive, and cleanup controls.
 - [x] Add regression coverage and responsive validation for Admin test-record controls.
 - [x] Save a checkpoint for the Admin archive and cleanup workflow.
+- [x] Publish the supplied Batanes State College seal as a managed static asset and integrate it into the institutional ProcureWise brand mark.
+- [x] Validate the supplied seal placement on desktop and mobile and add branding regression coverage.
+- [x] Save a checkpoint for the institutional seal integration.
