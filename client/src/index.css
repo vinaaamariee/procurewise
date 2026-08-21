@@ -133,4 +133,7 @@
   .font-display { font-family: "Source Serif 4", Georgia, serif; }
   .flat-panel { @apply border border-[#e4e1da] bg-white shadow-[0_1px_0_rgba(33,43,54,0.03)]; }
   .flat-grid { background-image: linear-gradient(to right, rgba(123, 30, 30, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(123, 30, 30, 0.04) 1px, transparent 1px); background-size: 22px 22px; }
+  label[for="ppmp-catalog-search"] { font-size: 0; }
+  label[for="ppmp-catalog-search"]::after { content: "Common-use procurement catalog (optional)"; font-size: 0.6875rem; font-weight: 600; }
+  label[for="ppmp-catalog-search"] span { display: none; }
 }

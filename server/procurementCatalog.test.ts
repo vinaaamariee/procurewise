@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createPurchaseRequest, getCatalogCodeFamily, listProcurementCatalogFavorites, listProcurementCatalogItems, setProcurementCatalogFavorite } from "./db";
 
-describe("ProcureWise PhilGEPS procurement catalog", () => {
+describe("ProcureWise common-use procurement catalog", () => {
   it("retains exactly the validated user-supplied catalog records without product images", () => {
     const items = JSON.parse(readFileSync(new URL("../imports/philgeps_catalog_items.json", import.meta.url), "utf8"));
     expect(items).toHaveLength(242);
@@ -68,15 +68,16 @@ describe("ProcureWise PhilGEPS procurement catalog", () => {
     const router = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const purchaseRequests = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");
     const plans = readFileSync(new URL("../client/src/pages/ManagementPages.tsx", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
     const workflow = readFileSync(new URL("../client/src/pages/WorkflowPages.tsx", import.meta.url), "utf8");
     expect(router).toContain("catalog: router");
     expect(router).toContain("codeFamilies");
     expect(router).toContain("setFavorite");
     expect(router).toContain("catalogItemId: z.number().int().positive().optional()");
-    expect(purchaseRequests).toContain("Find a PhilGEPS common-use item");
+    expect(purchaseRequests).toContain("Find a common-use catalog item");
     expect(purchaseRequests).toContain("Source code family");
     expect(purchaseRequests).toContain("Favorites (");
-    expect(plans).toContain("PhilGEPS common-use catalog");
+    expect(styles).toContain("Common-use procurement catalog (optional)");
     expect(plans).toContain("All source code families");
     expect(workflow).toContain("Linked End-User item schedule");
   });

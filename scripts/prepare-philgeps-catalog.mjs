@@ -19,11 +19,11 @@ for (const rawLine of lines) {
   const unit = units.has(finalColumn) ? finalColumn : null;
   const description = (unit ? columns.slice(0, -1) : columns).join(" ").replace(/\s+/g, " ").trim();
   if (!description) throw new Error(`Missing product description for ${productCode}`);
-  items.push({ productCode, description, unit, referencePrice: Number(price.replaceAll(",", "")), remarks: remarks.trim() || null, imageUrl: null, source: "PhilGEPS common-use supplies and equipment", sourceAsOfDate: "2026-08-17" });
+  items.push({ productCode, description, unit, referencePrice: Number(price.replaceAll(",", "")), remarks: remarks.trim() || null, imageUrl: null, source: "Common-use supplies and equipment catalog", sourceAsOfDate: "2026-08-17" });
 }
 
 const duplicates = items.filter((item, index) => items.findIndex((candidate) => candidate.productCode === item.productCode) !== index);
-if (items.length !== 242) throw new Error(`Expected 242 PhilGEPS items, parsed ${items.length}.`);
+if (items.length !== 242) throw new Error(`Expected 242 common-use catalog items, parsed ${items.length}.`);
 if (duplicates.length) throw new Error(`Duplicate catalog codes detected: ${duplicates.map((item) => item.productCode).join(", ")}`);
 
 writeFileSync(outputJson, `${JSON.stringify(items, null, 2)}\n`);
@@ -31,5 +31,5 @@ const sql = `INSERT INTO procurement_catalog_items (source, productCode, descrip
 writeFileSync(outputSql, sql);
 const withUnits = items.filter((item) => item.unit).length;
 const withRemarks = items.filter((item) => item.remarks).length;
-writeFileSync(outputReport, `# PhilGEPS Catalog Import Preflight\n\n| Measure | Result |\n|---|---:|\n| Source title | List of Common-Use Supplies and Equipment |\n| Source as-of date | 2026-08-17 |\n| Declared source item count | 242 |\n| Parsed item count | ${items.length} |\n| Product-code duplicates | ${duplicates.length} |\n| Items with a supplied UOM | ${withUnits} |\n| Items with supplied remarks | ${withRemarks} |\n| Catalog images supplied | 0 |\n\nThe supplied PDF is a tabular common-use supplies and equipment list. It provides product code, product description, UOM where shown, reference price, and remarks. It does not include product images, so no images are assigned.\n`);
-console.log(`Prepared ${items.length} PhilGEPS catalog items.`);
+writeFileSync(outputReport, `# Common-Use Catalog Import Preflight\n\n| Measure | Result |\n|---|---:|\n| Source title | List of Common-Use Supplies and Equipment |\n| Source as-of date | 2026-08-17 |\n| Declared source item count | 242 |\n| Parsed item count | ${items.length} |\n| Product-code duplicates | ${duplicates.length} |\n| Items with a supplied UOM | ${withUnits} |\n| Items with supplied remarks | ${withRemarks} |\n| Catalog images supplied | 0 |\n\nThe supplied PDF is a tabular common-use supplies and equipment list. It provides product code, product description, UOM where shown, reference price, and remarks. It does not include product images, so no images are assigned.\n`);
+console.log(`Prepared ${items.length} common-use catalog items.`);

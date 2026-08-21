@@ -1,0 +1,1 @@
+ALTER TABLE `procurement_catalog_items` MODIFY COLUMN `source` varchar(80) NOT NULL DEFAULT 'Common-use supplies and equipment catalog';

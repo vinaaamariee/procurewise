@@ -149,5 +149,6 @@
 - [x] Add a role-gated PPMP supporting-document upload control that stores the file securely and links it to the saved PPMP entry.
 - [x] Add regression coverage for PPMP attachment access, file validation, and form wiring.
 - [x] Ensure PPMP selection controls expose non-empty meaningful options and allow typed manual entry where an existing option does not apply.
+- [x] Replace visible PhilGEPS wording across user-facing ProcureWise pages and tests with neutral procurement-catalog wording while retaining underlying source metadata.
 - [ ] Inspect authorized real procurement records and perform a non-fabricated PPMP-to-Abstract validation flow when eligible records are available.
 - [ ] Save a checkpoint for catalog discovery enhancements and real-record workflow validation.

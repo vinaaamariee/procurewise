@@ -1,4 +1,4 @@
-# PhilGEPS Catalog Import Preflight
+# Common-Use Catalog Import Preflight
 
 | Measure | Result |
 |---|---:|

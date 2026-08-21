@@ -83,7 +83,7 @@ export const supplierTagAssignments = mysqlTable("supplier_tag_assignments", {
 
 export const procurementCatalogItems = mysqlTable("procurement_catalog_items", {
   id: int("id").autoincrement().primaryKey(),
-  source: varchar("source", { length: 80 }).default("PhilGEPS common-use supplies and equipment").notNull(),
+  source: varchar("source", { length: 80 }).default("Common-use supplies and equipment catalog").notNull(),
   productCode: varchar("productCode", { length: 80 }).notNull().unique(),
   description: text("description").notNull(),
   unit: varchar("unit", { length: 40 }),
