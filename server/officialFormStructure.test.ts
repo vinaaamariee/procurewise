@@ -26,4 +26,11 @@ describe("official procurement form structure", () => {
     const workflow = readFileSync(new URL("../client/src/pages/WorkflowPages.tsx", import.meta.url), "utf8");
     ["Bids opened at location and date", "Prepared by Procurement / BAC", "Recommended / approved by", "Conforme", "Very truly yours", "ORS/BURS No.", "Signature over Printed Name of Chief Accountant"].forEach((label) => expect(workflow).toContain(label));
   });
+
+  it("retains the required Abstract opening-date field in both schema and migration history", () => {
+    const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const migration = readFileSync(new URL("../drizzle/0003_bright_hemingway.sql", import.meta.url), "utf8");
+    expect(schema).toContain('openingDate: timestamp("openingDate").defaultNow().notNull()');
+    expect(migration).toContain("ADD `openingDate` timestamp DEFAULT (now()) NOT NULL");
+  });
 });

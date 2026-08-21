@@ -150,5 +150,7 @@
 - [x] Add regression coverage for PPMP attachment access, file validation, and form wiring.
 - [x] Ensure PPMP selection controls expose non-empty meaningful options and allow typed manual entry where an existing option does not apply.
 - [x] Replace visible PhilGEPS wording across user-facing ProcureWise pages and tests with neutral procurement-catalog wording while retaining underlying source metadata.
-- [ ] Inspect authorized real procurement records and perform a non-fabricated PPMP-to-Abstract validation flow when eligible records are available.
-- [ ] Save a checkpoint for catalog discovery enhancements and real-record workflow validation.
+- [x] Confirm that no authorized operational procurement records exist and obtain explicit permission before creating any non-operational test package.
+- [x] Repair the missing non-destructive Abstract detail columns that block generation of the authorized test Abstract.
+- [x] Create a clearly labelled non-operational PPMP-to-Abstract test package, verify its workflow evidence, and document its test-only status.
+- [x] Save a checkpoint for catalog discovery enhancements and authorized test-flow validation.
