@@ -81,11 +81,27 @@ export const supplierTagAssignments = mysqlTable("supplier_tag_assignments", {
   index("supplier_tag_assignment_tag_idx").on(table.supplierTagId),
 ]);
 
+export const procurementCatalogItems = mysqlTable("procurement_catalog_items", {
+  id: int("id").autoincrement().primaryKey(),
+  source: varchar("source", { length: 80 }).default("PhilGEPS common-use supplies and equipment").notNull(),
+  productCode: varchar("productCode", { length: 80 }).notNull().unique(),
+  description: text("description").notNull(),
+  unit: varchar("unit", { length: 40 }),
+  referencePrice: decimal("referencePrice", { precision: 14, scale: 2 }).notNull(),
+  remarks: text("remarks"),
+  imageUrl: varchar("imageUrl", { length: 500 }),
+  sourceAsOfDate: varchar("sourceAsOfDate", { length: 40 }).default("2026-08-17").notNull(),
+  isActive: int("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("procurement_catalog_active_idx").on(table.isActive)]);
+
 export const appPpmpEntries = mysqlTable("app_ppmp_entries", {
   id: int("id").autoincrement().primaryKey(),
   fiscalYear: int("fiscalYear").notNull(),
   officeId: int("officeId").notNull(),
   objectOfExpenditureId: int("objectOfExpenditureId").notNull(),
+  catalogItemId: int("catalogItemId"),
   description: text("description").notNull(),
   papCode: varchar("papCode", { length: 80 }),
   projectTitle: varchar("projectTitle", { length: 220 }),
@@ -133,6 +149,7 @@ export const purchaseRequests = mysqlTable("purchase_requests", {
 export const purchaseRequestItems = mysqlTable("purchase_request_items", {
   id: int("id").autoincrement().primaryKey(),
   purchaseRequestId: int("purchaseRequestId").notNull(),
+  catalogItemId: int("catalogItemId"),
   description: text("description").notNull(),
   stockPropertyNo: varchar("stockPropertyNo", { length: 80 }),
   specification: text("specification"),
@@ -140,7 +157,7 @@ export const purchaseRequestItems = mysqlTable("purchase_request_items", {
   unit: varchar("unit", { length: 40 }).notNull(),
   estimatedUnitCost: decimal("estimatedUnitCost", { precision: 14, scale: 2 }).notNull(),
   totalCost: decimal("totalCost", { precision: 14, scale: 2 }).notNull(),
-}, (table) => [index("pr_item_pr_idx").on(table.purchaseRequestId)]);
+}, (table) => [index("pr_item_pr_idx").on(table.purchaseRequestId), index("pr_item_catalog_idx").on(table.catalogItemId)]);
 
 export const preCanvasses = mysqlTable("pre_canvasses", {
   id: int("id").autoincrement().primaryKey(),

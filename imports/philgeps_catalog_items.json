@@ -1,0 +1,2422 @@
+[
+  {
+    "productCode": "13111203-AC-F01",
+    "description": "ACETATE",
+    "unit": "ROLL",
+    "referencePrice": 1262.5,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131812-AF-A01",
+    "description": "AIR FRESHENER",
+    "unit": "Can",
+    "referencePrice": 128.09,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "12191601-AL-E03",
+    "description": "ALCOHOL, Ethyl, 1 Gallon",
+    "unit": "Gallon",
+    "referencePrice": 405.81,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "12191601-AL-E04",
+    "description": "ALCOHOL, Ethyl, 500ml",
+    "unit": "bottle",
+    "referencePrice": 58.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "39111801-BA-F02",
+    "description": "BALLAST, 36 watts, pre-heat, normal power factor",
+    "unit": null,
+    "referencePrice": 74.78,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "26111702-BT-A01",
+    "description": "BATTERY, dry cell, AAA",
+    "unit": "Pack",
+    "referencePrice": 18.61,
+    "remarks": "To be sold in blister packs of 2pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "26111702-BT-A02",
+    "description": "BATTERY, dry Cell, size AA",
+    "unit": "Pack",
+    "referencePrice": 20.8,
+    "remarks": "To be sold in blister packs of 2pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44101602-PB-M01",
+    "description": "BINDING AND PUNCHING MACHINE, 50mm binding capacit",
+    "unit": "Unit",
+    "referencePrice": 13287.89,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122037-RB-P10",
+    "description": "BINDING RING/COMB, plastic, 32mm",
+    "unit": "Bundle",
+    "referencePrice": 222.49,
+    "remarks": "To be sold in bundles of 10pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121612-BL-H01",
+    "description": "BLADE, for general purpose cutter/utility knife",
+    "unit": "Tube",
+    "referencePrice": 15.26,
+    "remarks": "To be sold in tubes of 10pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131604-BR-T01",
+    "description": "BROOM (Walis Ting-Ting)",
+    "unit": "Piece",
+    "referencePrice": 26.39,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131604-BR-S01",
+    "description": "BROOM, Walis Tambo",
+    "unit": "Piece",
+    "referencePrice": 207,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44101807-CA-C01",
+    "description": "CALCULATOR, Compact",
+    "unit": "Unit",
+    "referencePrice": 193.71,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "13111201-CF-P02",
+    "description": "CARBON FILM, Legal Size",
+    "unit": "Box",
+    "referencePrice": 349.48,
+    "remarks": "To be sold in boxes of 100 sheets",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111525-CA-A01",
+    "description": "CARTOLINA, assorted colors",
+    "unit": "Pack",
+    "referencePrice": 201.92,
+    "remarks": "To be sold in packs of 20pcs assorted colors",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121710-CH-W01",
+    "description": "CHALK, White Enamel",
+    "unit": "Box",
+    "referencePrice": 33.46,
+    "remarks": "To be sold in boxes of 100pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131829-TB-C01",
+    "description": "CLEANER, toilet and urinal Bottle",
+    "unit": null,
+    "referencePrice": 42.22,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131805-CL-P01",
+    "description": "CLEANSER, Scouring Powder",
+    "unit": "Can",
+    "referencePrice": 42.22,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121413-CB-P01",
+    "description": "CLEARBOOK, A4",
+    "unit": "Piece",
+    "referencePrice": 35.52,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121413-CB-P02",
+    "description": "CLEARBOOK, Legal size",
+    "unit": "Piece",
+    "referencePrice": 36.97,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122105-BF-C01",
+    "description": "CLIP, Backfold, 19mm",
+    "unit": "Box",
+    "referencePrice": 10.28,
+    "remarks": "To be sold in boxes of 12pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122105-BF-C02",
+    "description": "CLIP, Backfold, 25mm",
+    "unit": "Box",
+    "referencePrice": 18.14,
+    "remarks": "To be sold in boxes of 12pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122105-BF-C03",
+    "description": "CLIP, Backfold, 32mm",
+    "unit": "Box",
+    "referencePrice": 25.98,
+    "remarks": "To be sold in boxes of 12pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122105-BF-C04",
+    "description": "CLIP, Backfold, 50mm",
+    "unit": "Box",
+    "referencePrice": 62.66,
+    "remarks": "To be sold in boxes of 12pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "7510-PH-009-006",
+    "description": "COLUMNAR PAD, 14 cols.",
+    "unit": null,
+    "referencePrice": 49.32,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "7510-PH-009-007",
+    "description": "COLUMNAR PAD, 16 cols.",
+    "unit": null,
+    "referencePrice": 51.69,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111506-CF-L11",
+    "description": "COMPUTER CONTINUOUS FORM, 1 ply, 280mm x 241mm",
+    "unit": "Box",
+    "referencePrice": 1006.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111506-CF-L12",
+    "description": "COMPUTER CONTINUOUS FORM, 1 ply, 280mm x 378mm",
+    "unit": "Box",
+    "referencePrice": 1716.18,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43211708-MO-O02",
+    "description": "COMPUTER MOUSE, Wireless",
+    "unit": "Unit",
+    "referencePrice": 128.13,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121801-CT-R02",
+    "description": "CORRECTION TAPE",
+    "unit": "Piece",
+    "referencePrice": 11.95,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121612-CU-H01",
+    "description": "CUTTER/UTILITY KNIFE, Heavy Duty",
+    "unit": "Piece",
+    "referencePrice": 29.12,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44111515-DF-B01",
+    "description": "DATA FILE BOX",
+    "unit": "Piece",
+    "referencePrice": 147.5,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-DF-F01",
+    "description": "DATA FOLDER",
+    "unit": "Piece",
+    "referencePrice": 81.01,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103202-DS-M01",
+    "description": "DATER STAMP",
+    "unit": "Piece",
+    "referencePrice": 410.58,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43211507-DSK001",
+    "description": "DESKTOP FOR BASIC USERS",
+    "unit": "Unit",
+    "referencePrice": 25165.5,
+    "remarks": "Per order basis",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43211507-DSK002",
+    "description": "DESKTOP FOR MID-RANGE USERS",
+    "unit": "Unit",
+    "referencePrice": 43026.26,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131811-DE-B02",
+    "description": "DETERGENT BAR, 140g",
+    "unit": "PIECE",
+    "referencePrice": 9.48,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131811-DE-P03",
+    "description": "DETERGENT POWDER, all-purpose",
+    "unit": "POUCH",
+    "referencePrice": 54.89,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "52161535-DV-R01",
+    "description": "DIGITAL VOICE RECORDER",
+    "unit": "Unit",
+    "referencePrice": 7449.24,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131803-DS-A01",
+    "description": "DISINFECTANT SPRAY",
+    "unit": "Can",
+    "referencePrice": 289.79,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "45121517-DO-C02",
+    "description": "DOCUMENT CAMERA, 8 MP",
+    "unit": "Unit",
+    "referencePrice": 23977.95,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103109-BR-D05",
+    "description": "DRUM CART, BROTHER DR-3455, Black",
+    "unit": "Cart",
+    "referencePrice": 7051.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131601-DU-P01",
+    "description": "DUST PAN",
+    "unit": "Piece",
+    "referencePrice": 48.74,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122003-ED-B02",
+    "description": "EDP, BINDER, TOP binding, for 292mm x 383mm (-3mm)",
+    "unit": null,
+    "referencePrice": 53.53,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "40101604-EF-C01",
+    "description": "ELECTRIC FAN, Ceiling Mount, Orbit Type",
+    "unit": "Unit",
+    "referencePrice": 1220.1,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "40101604-EF-G01",
+    "description": "ELECTRIC FAN, Industrial, Ground Type",
+    "unit": "Unit",
+    "referencePrice": 1196.11,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "40101604-EF-S01",
+    "description": "ELECTRIC FAN, Stand Type",
+    "unit": "Unit",
+    "referencePrice": 1320.24,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "40101604-EF-W01",
+    "description": "ELECTRIC FAN, Wall Mount",
+    "unit": "Unit",
+    "referencePrice": 831.91,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-D01",
+    "description": "ENVELOPE, Documentary, A4",
+    "unit": "Box",
+    "referencePrice": 878.29,
+    "remarks": "To be sold in boxes of 500pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-D02",
+    "description": "ENVELOPE, Documentary, Legal",
+    "unit": "BOX",
+    "referencePrice": 1050.67,
+    "remarks": "To be sold in boxes of 500pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-X01",
+    "description": "ENVELOPE, Expanding, Kraft",
+    "unit": "Box",
+    "referencePrice": 906.35,
+    "remarks": "To be sold in boxes of 100pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-X02",
+    "description": "ENVELOPE, expanding, plastic",
+    "unit": "Piece",
+    "referencePrice": 30.95,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-M02",
+    "description": "ENVELOPE, Mailing",
+    "unit": "Box",
+    "referencePrice": 467.42,
+    "remarks": "To be sold in boxes of 500pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121504-EN-W02",
+    "description": "ENVELOPE, Mailing with Window",
+    "unit": "Box",
+    "referencePrice": 531.81,
+    "remarks": "To be sold in boxes of 500pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121506-EN-M01",
+    "description": "ENVELOPE, Mailing, White",
+    "unit": null,
+    "referencePrice": 457.07,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44111912-ER-B01",
+    "description": "ERASER, Felt",
+    "unit": "PIECE",
+    "referencePrice": 13.93,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121534-ER-P01",
+    "description": "ERASER, Plastic/Rubber",
+    "unit": "Piece",
+    "referencePrice": 8.21,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43201827-HD-X02",
+    "description": "EXTERNAL HARD DRIVE",
+    "unit": "Unit",
+    "referencePrice": 3060.18,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122118-FA-P01",
+    "description": "FASTENER, metal",
+    "unit": "Box",
+    "referencePrice": 96.06,
+    "remarks": "To be sold in boxes of 50 sets",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44111515-FO-X01",
+    "description": "FILE ORGANIZER",
+    "unit": "Piece",
+    "referencePrice": 121.07,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122018-FT-D01",
+    "description": "FILE TAB DIVIDER, A4",
+    "unit": "SET",
+    "referencePrice": 11.29,
+    "remarks": "To be sold in sets of 5 colors",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122018-FT-D02",
+    "description": "FILE TAB DIVIDER, legal",
+    "unit": "Set",
+    "referencePrice": 14.44,
+    "remarks": "To be sold in sets of 5 colors",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "46191601-FE-M01",
+    "description": "FIRE EXTINGUISHER, dry chemical",
+    "unit": "Unit",
+    "referencePrice": 1161.16,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43202010-FD-U04",
+    "description": "FLASH DRIVE, 64GB capacity",
+    "unit": null,
+    "referencePrice": 155.04,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131802-FW-P02",
+    "description": "FLOOR WAX, paste type, red",
+    "unit": "Can",
+    "referencePrice": 314.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-T01",
+    "description": "FOLDER WITH TAB, A4",
+    "unit": null,
+    "referencePrice": 393.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-T02",
+    "description": "FOLDER WITH TAB, LEGAL",
+    "unit": null,
+    "referencePrice": 396.91,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-F01",
+    "description": "FOLDER, Fancy, A4",
+    "unit": "Bundle",
+    "referencePrice": 274.46,
+    "remarks": "To be sold in bundles of 50pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-L01",
+    "description": "FOLDER, L-type, A4",
+    "unit": "Pack",
+    "referencePrice": 183.54,
+    "remarks": "To be sold in packs of 50pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-L02",
+    "description": "FOLDER, L-type, Legal",
+    "unit": "Pack",
+    "referencePrice": 247.25,
+    "remarks": "To be sold in packs of 50pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122011-FO-F02",
+    "description": "FOLDER, Morocco with Slide, Legal",
+    "unit": "Bundle",
+    "referencePrice": 306.12,
+    "remarks": "To be sold in bundles of 50pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122027-FO-P01",
+    "description": "FOLDER, Pressboard",
+    "unit": "Box",
+    "referencePrice": 1979.25,
+    "remarks": "To be sold in boxes of 100pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131830-FC-A01",
+    "description": "FURNITURE CLEANER",
+    "unit": "Can",
+    "referencePrice": 168.96,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201610-GL-J01",
+    "description": "GLUE, All Purpose Jar",
+    "unit": null,
+    "referencePrice": 45.92,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201610-GL-J02",
+    "description": "Glue, All-Purpose",
+    "unit": "BOTTL",
+    "referencePrice": 62.14,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "53131626-HS-S01",
+    "description": "HAND SANITIZER, 500mL Bottle",
+    "unit": null,
+    "referencePrice": 84.45,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "73101612-HS-L01",
+    "description": "HAND SOAP, Liquid, 500ml Bottle",
+    "unit": null,
+    "referencePrice": 62.21,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "55101524-RA-H01",
+    "description": "HANDBOOK (RA 9184), 8th edition",
+    "unit": "Book",
+    "referencePrice": 37.77,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122008-IT-T01",
+    "description": "INDEX TAB",
+    "unit": "Box",
+    "referencePrice": 79.07,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-CA-C02",
+    "description": "Ink Cartridge, Canon CL-811, Colored",
+    "unit": "Cart",
+    "referencePrice": 1195.99,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-CA-B02",
+    "description": "Ink Cartridge, Canon PG-810, Black",
+    "unit": "Cart",
+    "referencePrice": 905.7,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-EP-B17",
+    "description": "INK CARTRIDGE, EPSON C13T664100 (T6641), BLACK",
+    "unit": "Cart",
+    "referencePrice": 235.38,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-EP-C17",
+    "description": "INK CARTRIDGE, EPSON C13T664200 (T6642), CYAN",
+    "unit": "Cart",
+    "referencePrice": 245.83,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-EP-M17",
+    "description": "INK CARTRIDGE, EPSON C13T664300 (T6643), MAGENTA",
+    "unit": "Cart",
+    "referencePrice": 245.83,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-EP-Y17",
+    "description": "INK CARTRIDGE, EPSON C13T664400 (T6644), YELLOW",
+    "unit": "Cart",
+    "referencePrice": 245.83,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B40",
+    "description": "INK CARTRIDGE, HP C2P04AA (HP62), BLACK",
+    "unit": "Cart",
+    "referencePrice": 865.59,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T40",
+    "description": "INK CARTRIDGE, HP C2P06AA (HP62), TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 1064.04,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B17",
+    "description": "INK CARTRIDGE, HP CC640WA (HP60), BLACK",
+    "unit": "Cart",
+    "referencePrice": 894.09,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T17",
+    "description": "INK CARTRIDGE, HP CC643WA (HP60), TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 1062.99,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T35",
+    "description": "INK CARTRIDGE, HP CD888AA (HP703), TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 425.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B20",
+    "description": "INK CARTRIDGE, HP CH561WA (HP61), BLACK",
+    "unit": "Cart",
+    "referencePrice": 878.26,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T20",
+    "description": "INK CARTRIDGE, HP CH562WA (HP61), TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 1081.99,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-B43",
+    "description": "INK CARTRIDGE, HP CN045AA (HP950XL), BLACK",
+    "unit": "Cart",
+    "referencePrice": 2000.36,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-C43",
+    "description": "INK CARTRIDGE, HP CN046AA (HP951XL) CYAN",
+    "unit": "Cart",
+    "referencePrice": 1540.12,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-M43",
+    "description": "INK CARTRIDGE, HP CN047AA (HP951XL) MAGENTA",
+    "unit": "Cart",
+    "referencePrice": 1540.12,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-Y43",
+    "description": "INK CARTRIDGE, HP CN048AA (HP951XL) YELLOW",
+    "unit": "Cart",
+    "referencePrice": 1540.12,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B36",
+    "description": "INK CARTRIDGE, HP CN692AA (HP704) BLACK",
+    "unit": "Cart",
+    "referencePrice": 425.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T36",
+    "description": "INK CARTRIDGE, HP CN693AA (HP704) TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 425.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B33",
+    "description": "INK CARTRIDGE, HP CZ107AA (HP678) BLACK",
+    "unit": "Cart",
+    "referencePrice": 410.63,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T33",
+    "description": "INK CARTRIDGE, HP CZ108AA (HP678) TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 410.63,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-T43",
+    "description": "INK CARTRIDGE, HP F6V26AA (HP680) TRI-COLOR",
+    "unit": "Cart",
+    "referencePrice": 430.68,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B43",
+    "description": "INK CARTRIDGE, HP F6V27AA (HP680) BLACK",
+    "unit": "Cart",
+    "referencePrice": 430.68,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-C50",
+    "description": "INK CARTRIDGE, HP L0S51AA (HP955) CYAN ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 997.54,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-M50",
+    "description": "INK CARTRIDGE, HP L0S54AA (HP955) MAGENTA ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 997.54,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-Y50",
+    "description": "INK CARTRIDGE, HP L0S57AA (HP955) YELLOW ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 997.54,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B50",
+    "description": "INK CARTRIDGE, HP L0S60AA (HP955) BLACK ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 1314.22,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-C48",
+    "description": "INK CARTRIDGE, HP L0S63AA (HP955XL) CYAN ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 1359.61,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-M48",
+    "description": "INK CARTRIDGE, HP L0S66AA (HP955XL) MAGENTA",
+    "unit": "Cart",
+    "referencePrice": 1359.61,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-Y48",
+    "description": "INK CARTRIDGE, HP L0S69AA (HP955XL) YELLOW",
+    "unit": "Cart",
+    "referencePrice": 1359.61,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HX-B48",
+    "description": "INK CARTRIDGE, HP L0S72AA (HP955XL) BLACK ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 1845.19,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-C51",
+    "description": "INK CARTRIDGE, HP T6L89AA (HP905) CYAN ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 475.02,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-M51",
+    "description": "INK CARTRIDGE, HP T6L93AA (HP905) MAGENTA ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 475.02,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-Y51",
+    "description": "INK CARTRIDGE, HP T6L97AA (HP905) YELLOW ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 475.02,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103105-HP-B51",
+    "description": "INK CARTRIDGE, HP T6M01AA (HP905) BLACK ORIGINAL",
+    "unit": "Cart",
+    "referencePrice": 786.42,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "10191509-IN-A01",
+    "description": "INSECTICIDE",
+    "unit": "Can",
+    "referencePrice": 261.4,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43211503-LAP002",
+    "description": "LAPTOP, LIGHTWEIGHT",
+    "unit": "unit",
+    "referencePrice": 47502,
+    "remarks": "Per order basis",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43211503-LAP001",
+    "description": "LAPTOP, MID-RANGE",
+    "unit": "unit",
+    "referencePrice": 43015.7,
+    "remarks": "Per order basis",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "39101628-LB-L01",
+    "description": "LIGHT EMITTING DIODE (LED), Light Bulb, 7 watts",
+    "unit": "Piece",
+    "referencePrice": 89.73,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "39101628-LT-L01",
+    "description": "LIGHT EMITTING DIODE (LED), Linear Tube, 18 watts",
+    "unit": "Piece",
+    "referencePrice": 208.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "7510-PH-027-002",
+    "description": "MAGAZINE FILE, medium",
+    "unit": null,
+    "referencePrice": 41.08,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121716-MA-F01",
+    "description": "MARKER, fluorescent",
+    "unit": "Set",
+    "referencePrice": 31.57,
+    "remarks": "To be sold in sets of 3 colors",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MP-B01",
+    "description": "MARKER, Permanent, Black",
+    "unit": "Piece",
+    "referencePrice": 15.84,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MP-B02",
+    "description": "MARKER, Permanent, Blue",
+    "unit": "Piece",
+    "referencePrice": 15.3,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MP-B03",
+    "description": "MARKER, Permanent, Red",
+    "unit": "Piece",
+    "referencePrice": 15.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MW-B01",
+    "description": "MARKER, Whiteboard, Black",
+    "unit": "Piece",
+    "referencePrice": 22.17,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MW-B02",
+    "description": "MARKER, Whiteboard, Blue",
+    "unit": "Piece",
+    "referencePrice": 22.17,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121708-MW-B03",
+    "description": "MARKER, Whiteboard, Red",
+    "unit": "Piece",
+    "referencePrice": 16.88,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "56101504-CM-B01",
+    "description": "MONOBLOC CHAIR, Beige",
+    "unit": "Piece",
+    "referencePrice": 353.63,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "56101504-CM-W01",
+    "description": "MONOBLOC CHAIR, White",
+    "unit": "Piece",
+    "referencePrice": 353.6,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47121804-MP-B01",
+    "description": "MOP BUCKET, heavy duty, hard plastic",
+    "unit": "Unit",
+    "referencePrice": 2322.32,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "45111609-MM-P01",
+    "description": "MULTIMEDIA PROJECTOR, 4000 min",
+    "unit": "Unit",
+    "referencePrice": 16836.82,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111514-NP-S04",
+    "description": "NOTEPAD, Stick on, 76mm x 100mm",
+    "unit": "PAD",
+    "referencePrice": 27.71,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111514-NP-S02",
+    "description": "NOTEPAD, Stick-on, 50mm x 76mm",
+    "unit": "PAD",
+    "referencePrice": 15.62,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111514-NP-S03",
+    "description": "NOTEPAD, Stick-on, 76mm x 76mm",
+    "unit": "PAD",
+    "referencePrice": 21.95,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111531-PP-R01",
+    "description": "PAD PAPER, ruled",
+    "unit": "PAD",
+    "referencePrice": 34.11,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122104-PC-G01",
+    "description": "PAPER CLIP, vinyl/plastic coated, 33mm",
+    "unit": "Box",
+    "referencePrice": 7.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122104-PC-J02",
+    "description": "PAPER CLIP, Vinyl/Plastic Coated, Jumbo, 50mm",
+    "unit": "Box",
+    "referencePrice": 17.98,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44101603-PS-M02",
+    "description": "PAPER SHREDDER",
+    "unit": "Units",
+    "referencePrice": 16349.13,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44101601-PT-M02",
+    "description": "PAPER TRIMMER/CUTTING MACHINE",
+    "unit": null,
+    "referencePrice": 9043.6,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111507-PP-C02",
+    "description": "PAPER, Multi-Purpose, 70gsm (min.), Legal",
+    "unit": "Ream",
+    "referencePrice": 161.3,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111507-PP-C01",
+    "description": "PAPER, Multi-Purpose, A4",
+    "unit": "REAM",
+    "referencePrice": 139.8,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111507-PP-M01",
+    "description": "PAPER, MULTICOPY, A4",
+    "unit": "REAM",
+    "referencePrice": 204.67,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111507-PP-M02",
+    "description": "PAPER, MULTICOPY, Legal",
+    "unit": "REAM",
+    "referencePrice": 211.97,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111503-PA-P01",
+    "description": "PAPER, parchment",
+    "unit": "Box",
+    "referencePrice": 145.75,
+    "remarks": "To be sold in boxes of 100 sheets",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121619-PS-M01",
+    "description": "PENCIL SHARPENER",
+    "unit": "piece",
+    "referencePrice": 259.72,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121706-PE-L01",
+    "description": "PENCIL, Lead/Graphite with Eraser",
+    "unit": "Box",
+    "referencePrice": 50.46,
+    "remarks": "To be sold in boxes of 12pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "55121905-PH-F01",
+    "description": "PHILIPPINE NATIONAL FLAG",
+    "unit": "Piece",
+    "referencePrice": 289.11,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43212102-PR-D02",
+    "description": "PRINTER, impact, dot matrix, 24 pins, 136 columns",
+    "unit": "Unit",
+    "referencePrice": 38672.49,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "43212105-PR-L01",
+    "description": "PRINTER, Laser, Monochrome",
+    "unit": "Unit",
+    "referencePrice": 5701.56,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44101602-PU-P01",
+    "description": "PUNCHER, Paper, Heavy Duty",
+    "unit": "Piece",
+    "referencePrice": 151.66,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131501-RG-C01",
+    "description": "RAGS",
+    "unit": "Bundle",
+    "referencePrice": 78.11,
+    "remarks": "To be sold in bundles of 32 pieces per kilo",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111531-RE-B01",
+    "description": "RECORD BOOK, 300 pages",
+    "unit": "BOOK",
+    "referencePrice": 89.7,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111531-RE-B02",
+    "description": "RECORD BOOK, 500 pages",
+    "unit": "BOOK",
+    "referencePrice": 121.35,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103112-EP-R05",
+    "description": "RIBBON CART, EPSON C13S015516 (#8750), Black",
+    "unit": "Cart",
+    "referencePrice": 78.59,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103112-EP-R13",
+    "description": "RIBBON CART, EPSON C13S015632, Black",
+    "unit": "Cart",
+    "referencePrice": 79.11,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103112-EP-R07",
+    "description": "RIBBON CARTRIDGE, EPSON C13S015531 (S015086)",
+    "unit": "Cart",
+    "referencePrice": 830.76,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44122101-RU-B01",
+    "description": "RUBBER BAND",
+    "unit": "Box",
+    "referencePrice": 137.04,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "41111604-RU-P02",
+    "description": "RULER, plastic, 450mm",
+    "unit": "Piece",
+    "referencePrice": 20.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121618-SS-S01",
+    "description": "SCISSORS, Symmetrical / Asymmetrical",
+    "unit": "Pair",
+    "referencePrice": 32.24,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47131602-SC-N01",
+    "description": "SCOURING PAD",
+    "unit": "Pack",
+    "referencePrice": 114.76,
+    "remarks": "To be sold in packs of 5 pads",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G01",
+    "description": "SIGN PEN, Extra Fine Tip, Black",
+    "unit": "Piece",
+    "referencePrice": 37.6,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G02",
+    "description": "SIGN PEN, Extra Fine Tip, Blue",
+    "unit": "Piece",
+    "referencePrice": 38.33,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G03",
+    "description": "SIGN PEN, Extra fine tip, Red",
+    "unit": "Piece",
+    "referencePrice": 38.62,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G04",
+    "description": "SIGN PEN, Fine Tip, Black",
+    "unit": null,
+    "referencePrice": 24.3,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G05",
+    "description": "SIGN PEN, Fine Tip, Blue",
+    "unit": null,
+    "referencePrice": 25.86,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G06",
+    "description": "SIGN PEN, Fine Tip, Red",
+    "unit": null,
+    "referencePrice": 28.44,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G07",
+    "description": "SIGN PEN, Medium Tip, Black",
+    "unit": null,
+    "referencePrice": 62.08,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G08",
+    "description": "SIGN PEN, Medium Tip, Blue",
+    "unit": null,
+    "referencePrice": 60.53,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121524-SP-G09",
+    "description": "SIGN PEN, Medium Tip, Red",
+    "unit": null,
+    "referencePrice": 63.62,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121905-SP-F01",
+    "description": "STAMP PAD, felt",
+    "unit": "Piece",
+    "referencePrice": 31.98,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "12171703-SI-P01",
+    "description": "STAMP PAD, Ink Bottle",
+    "unit": null,
+    "referencePrice": 38.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121613-SR-P02",
+    "description": "STAPLE REMOVER, plier type",
+    "unit": null,
+    "referencePrice": 32.09,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31151804-SW-H01",
+    "description": "STAPLE WIRE, Heavy Duty (Binder Type), 23/13",
+    "unit": "Box",
+    "referencePrice": 20.71,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31151804-SW-S01",
+    "description": "STAPLE WIRE, standard",
+    "unit": "Box",
+    "referencePrice": 22.86,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121615-ST-B01",
+    "description": "STAPLER, Heavy Duty (Binder)",
+    "unit": "Unit",
+    "referencePrice": 558.47,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121615-ST-S01",
+    "description": "STAPLER, Standard Type",
+    "unit": "Piece",
+    "referencePrice": 90.3,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111514-NB-S02",
+    "description": "STENO NOTEBOOK",
+    "unit": null,
+    "referencePrice": 16.61,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44121605-TD-T01",
+    "description": "TAPE DISPENSER, Table Top",
+    "unit": "Unit",
+    "referencePrice": 80.48,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201502-TA-E01",
+    "description": "TAPE, electrical",
+    "unit": "Roll",
+    "referencePrice": 19.74,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201503-TA-M01",
+    "description": "TAPE, Masking, 24mm",
+    "unit": "Roll",
+    "referencePrice": 52.92,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201503-TA-M02",
+    "description": "TAPE, Masking, 48mm",
+    "unit": "Roll",
+    "referencePrice": 132.2,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201517-TA-P01",
+    "description": "TAPE, Packaging, 48mm",
+    "unit": "Roll",
+    "referencePrice": 29.56,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201512-TA-T01",
+    "description": "TAPE, Transparent, 24mm",
+    "unit": "Roll",
+    "referencePrice": 17.95,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31201512-TA-T02",
+    "description": "TAPE, Transparent, 48mm",
+    "unit": "Roll",
+    "referencePrice": 28.02,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111818-TH-P02",
+    "description": "THERMAL PAPER, 216mm",
+    "unit": "Roll",
+    "referencePrice": 55.64,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111704-TT-P04",
+    "description": "TISSUE, Interfolded Paper Towel",
+    "unit": "Pack",
+    "referencePrice": 34.31,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "14111704-TT-P02",
+    "description": "TOILET TISSUE PAPER, 2 ply",
+    "unit": "Pack",
+    "referencePrice": 100.88,
+    "remarks": "To be sold in packs of 12 rolls",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-B04",
+    "description": "TONER CART, BROTHER TN-2130, Black",
+    "unit": "Cart",
+    "referencePrice": 1921.19,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-B09",
+    "description": "TONER CART, BROTHER TN-3320, Black",
+    "unit": "Cart",
+    "referencePrice": 3620.71,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-B11",
+    "description": "TONER CART, BROTHER TN-3350, Black",
+    "unit": "Cart",
+    "referencePrice": 5077.44,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-B15",
+    "description": "TONER CART, BROTHER TN-3478, Black",
+    "unit": "Cart",
+    "referencePrice": 5659.07,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B26",
+    "description": "TONER CART, HP CE400A, Black",
+    "unit": "Cart",
+    "referencePrice": 6887.79,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C26",
+    "description": "TONER CART, HP CE401A, Cyan",
+    "unit": "Cart",
+    "referencePrice": 10255.15,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y26",
+    "description": "TONER CART, HP CE402A, Yellow",
+    "unit": "Cart",
+    "referencePrice": 10128.48,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M26",
+    "description": "TONER CART, HP CE403A, Magenta",
+    "unit": "Cart",
+    "referencePrice": 10255.15,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B48",
+    "description": "TONER CART, HP Q7553A, Black",
+    "unit": "Cart",
+    "referencePrice": 4750.2,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-SA-B03",
+    "description": "TONER CART, SAMSUNG ML-D2850B, Black",
+    "unit": "Cart",
+    "referencePrice": 5066.88,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-SA-B08",
+    "description": "TONER CART, SAMSUNG MLT-D104S, Black",
+    "unit": "Cart",
+    "referencePrice": 2491.22,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-SA-B14",
+    "description": "TONER CART, SAMSUNG MLT-D108S, Black",
+    "unit": "Cart",
+    "referencePrice": 3338.86,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-SA-B10",
+    "description": "TONER CART, SAMSUNG SCX-D6555A, Black",
+    "unit": "Cart",
+    "referencePrice": 4127.4,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-B16",
+    "description": "Toner Cartridge, Brother TN-456 Black, High Yield",
+    "unit": "Cart",
+    "referencePrice": 4633.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-C03",
+    "description": "Toner Cartridge, Brother TN-456 Cyan, High Yield",
+    "unit": "Cart",
+    "referencePrice": 7832.55,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-M03",
+    "description": "Toner Cartridge, Brother TN-456 Magenta, High",
+    "unit": "Cart",
+    "referencePrice": 7832.55,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-BR-Y03",
+    "description": "Toner Cartridge, Brother TN-456 Yellow, High Yield",
+    "unit": "Cart",
+    "referencePrice": 7832.55,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-CA-B00",
+    "description": "Toner Cartridge, Canon CRG-324 II",
+    "unit": "Cart",
+    "referencePrice": 14145.04,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B12",
+    "description": "TONER CARTRIDGE, HP CB435A, Black",
+    "unit": "Cart",
+    "referencePrice": 3490.87,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B18",
+    "description": "TONER CARTRIDGE, HP CE255A, Black",
+    "unit": "Cart",
+    "referencePrice": 7820.94,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B21",
+    "description": "TONER CARTRIDGE, HP CE278A, Black",
+    "unit": "Cart",
+    "referencePrice": 4215.01,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B22",
+    "description": "TONER CARTRIDGE, HP CE285A (HP85A), Black",
+    "unit": "Cart",
+    "referencePrice": 3652.38,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B23",
+    "description": "TONER CARTRIDGE, HP CE310A, Black",
+    "unit": "Cart",
+    "referencePrice": 2647.44,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C23",
+    "description": "TONER CARTRIDGE, HP CE311A, Cyan",
+    "unit": "Cart",
+    "referencePrice": 2940.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y23",
+    "description": "TONER CARTRIDGE, HP CE312A, Yellow",
+    "unit": "Cart",
+    "referencePrice": 2940.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M23",
+    "description": "TONER CARTRIDGE, HP CE313A, Magenta",
+    "unit": "Cart",
+    "referencePrice": 2940.9,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B28",
+    "description": "TONER CARTRIDGE, HP CE505A, Black",
+    "unit": "Cart",
+    "referencePrice": 4563.36,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B52",
+    "description": "TONER CARTRIDGE, HP CF217A (HP17A), Black,",
+    "unit": "Cart",
+    "referencePrice": 3242.8,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B53",
+    "description": "TONER CARTRIDGE, HP CF226A (HP26A), Black,",
+    "unit": "Cart",
+    "referencePrice": 5910.3,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B56",
+    "description": "TONER CARTRIDGE, HP CF281A (HP81A), Black,",
+    "unit": "Cart",
+    "referencePrice": 8787.87,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B57",
+    "description": "TONER CARTRIDGE, HP CF283A (HP83A), LaserJet,",
+    "unit": "Cart",
+    "referencePrice": 3418.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HX-B51",
+    "description": "Toner Cartridge, HP CF283XC (HP83X) Blk Contract L",
+    "unit": "Cart",
+    "referencePrice": 3852.94,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B58",
+    "description": "TONER CARTRIDGE, HP CF287A (HP87), Black",
+    "unit": "Cart",
+    "referencePrice": 11072.19,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HX-B52",
+    "description": "Toner Cartridge, HP CF325XC (HP25X) Black LaserJet",
+    "unit": "Cart",
+    "referencePrice": 13933.92,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B60",
+    "description": "TONER CARTRIDGE, HP CF350A, Black LJ",
+    "unit": "Cart",
+    "referencePrice": 2899.73,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C60",
+    "description": "TONER CARTRIDGE, HP CF351A, Cyan LJ",
+    "unit": "Cart",
+    "referencePrice": 2987.35,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y60",
+    "description": "TONER CARTRIDGE, HP CF352A, Yellow LJ",
+    "unit": "Cart",
+    "referencePrice": 2987.35,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M60",
+    "description": "TONER CARTRIDGE, HP CF353A, Magenta LJ",
+    "unit": "Cart",
+    "referencePrice": 2987.35,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B61",
+    "description": "TONER CARTRIDGE, HP CF360A (HP508A), Black",
+    "unit": "Cart",
+    "referencePrice": 7920.17,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C61",
+    "description": "TONER CARTRIDGE, HP CF361A (HP508A), Cyan",
+    "unit": "Cart",
+    "referencePrice": 9930.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y61",
+    "description": "TONER CARTRIDGE, HP CF362A (HP508A), Yellow",
+    "unit": "Cart",
+    "referencePrice": 9930.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M61",
+    "description": "TONER CARTRIDGE, HP CF363A (HP508A), Magenta",
+    "unit": "Cart",
+    "referencePrice": 9930.03,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B62",
+    "description": "TONER CARTRIDGE, HP CF400A (HP201A), Black",
+    "unit": "Cart",
+    "referencePrice": 3490.87,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C62",
+    "description": "TONER CARTRIDGE, HP CF401A (HP201A), Cyan",
+    "unit": "Cart",
+    "referencePrice": 4124.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y62",
+    "description": "TONER CARTRIDGE, HP CF402A (HP201A), Yellow",
+    "unit": "Cart",
+    "referencePrice": 4124.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M62",
+    "description": "TONER CARTRIDGE, HP CF403A (HP201A), Magenta",
+    "unit": "Cart",
+    "referencePrice": 4124.23,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B63",
+    "description": "TONER CARTRIDGE, HP CF410A (HP410A), black",
+    "unit": "Cart",
+    "referencePrice": 4393.41,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-C63",
+    "description": "TONER CARTRIDGE, HP CF411A (HP410A), Cyan",
+    "unit": "Cart",
+    "referencePrice": 5675.96,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-Y63",
+    "description": "TONER CARTRIDGE, HP CF412A (HP410A), Yellow",
+    "unit": "Cart",
+    "referencePrice": 5675.96,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-M63",
+    "description": "TONER CARTRIDGE, HP CF413A (HP410A), Magenta",
+    "unit": "Cart",
+    "referencePrice": 5675.96,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "44103103-HP-B34",
+    "description": "TONER CARTRIDGE, HP Q2612A, Black",
+    "unit": "Cart",
+    "referencePrice": 4218.18,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47121701-TB-P04",
+    "description": "TRASHBAG, XXL size",
+    "unit": "Pack",
+    "referencePrice": 131.95,
+    "remarks": "To be sold in packs of 10pcs",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "31151507-TW-P01",
+    "description": "TWINE, plastic",
+    "unit": "Roll",
+    "referencePrice": 77.65,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "47121702-WB-P01",
+    "description": "WASTEBASKET",
+    "unit": "Piece",
+    "referencePrice": 73.76,
+    "remarks": null,
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  },
+  {
+    "productCode": "60121124-WR-P01",
+    "description": "WRAPPING PAPER, kraft",
+    "unit": "Pack",
+    "referencePrice": 329.41,
+    "remarks": "To be sold in packs of 50 sheets",
+    "imageUrl": null,
+    "source": "PhilGEPS common-use supplies and equipment",
+    "sourceAsOfDate": "2026-08-17"
+  }
+]

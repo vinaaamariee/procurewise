@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -202,6 +202,32 @@ export async function createSupplier(input: { supplierCode: string; companyName:
   return supplier;
 }
 
+export async function listProcurementCatalogItems(input?: { search?: string; page?: number; limit?: number }, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  const search = input?.search?.trim().slice(0, 120) ?? "";
+  const page = Math.max(1, input?.page ?? 1);
+  const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
+  const condition = search
+    ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${search}%`), like(procurementCatalogItems.productCode, `%${search}%`)))
+    : eq(procurementCatalogItems.isActive, 1);
+  const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
+  const start = (page - 1) * limit;
+  return { items: records.slice(start, start + limit), total: records.length, page, limit };
+}
+
+export async function getProcurementCatalogItem(catalogItemId: number) {
+  const db = await requireDb();
+  const [item] = await db.select().from(procurementCatalogItems).where(and(eq(procurementCatalogItems.id, catalogItemId), eq(procurementCatalogItems.isActive, 1))).limit(1);
+  return item ?? null;
+}
+
+async function assertActiveCatalogItemIds(catalogItemIds: Array<number | undefined>, db: ReturnType<typeof drizzle>) {
+  const ids = Array.from(new Set(catalogItemIds.filter((catalogItemId): catalogItemId is number => typeof catalogItemId === "number")));
+  if (!ids.length) return;
+  const rows = await db.select({ id: procurementCatalogItems.id }).from(procurementCatalogItems).where(and(inArray(procurementCatalogItems.id, ids), eq(procurementCatalogItems.isActive, 1)));
+  if (rows.length !== ids.length) throw new Error("Every selected catalog item must be active and valid.");
+}
+
 export function validateSupplierTagInput(name: string) {
   const trimmed = name.trim().replace(/\s+/g, " ");
   if (trimmed.length < 2 || trimmed.length > 120) return null;
@@ -305,9 +331,10 @@ export async function acknowledgeBacTransmittal(input: { transmittalId: number; 
 
 export async function listBacTransmittals() { const db = await requireDb(); return db.select().from(bacTransmittals).orderBy(desc(bacTransmittals.createdAt)); }
 
-export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: number; objectOfExpenditureId: number; description: string; plannedAmount: number; papCode?: string; projectTitle?: string; modeOfProcurement?: string; fundSource?: string; procurementSchedule?: string; remarks?: string }, user: User) {
+export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: number; objectOfExpenditureId: number; catalogItemId?: number; description: string; plannedAmount: number; papCode?: string; projectTitle?: string; modeOfProcurement?: string; fundSource?: string; procurementSchedule?: string; remarks?: string }, user: User) {
   const db = await requireDb();
-  await db.insert(appPpmpEntries).values({ ...input, papCode: input.papCode || null, projectTitle: input.projectTitle || null, modeOfProcurement: input.modeOfProcurement || "Small Value Procurement", fundSource: input.fundSource || null, procurementSchedule: input.procurementSchedule || null, remarks: input.remarks || null, plannedAmount: input.plannedAmount.toFixed(2), preparedById: user.id });
+  await assertActiveCatalogItemIds([input.catalogItemId], db);
+  await db.insert(appPpmpEntries).values({ ...input, catalogItemId: input.catalogItemId ?? null, papCode: input.papCode || null, projectTitle: input.projectTitle || null, modeOfProcurement: input.modeOfProcurement || "Small Value Procurement", fundSource: input.fundSource || null, procurementSchedule: input.procurementSchedule || null, remarks: input.remarks || null, plannedAmount: input.plannedAmount.toFixed(2), preparedById: user.id });
   const [entry] = await db.select().from(appPpmpEntries).where(and(eq(appPpmpEntries.officeId, input.officeId), eq(appPpmpEntries.description, input.description), eq(appPpmpEntries.fiscalYear, input.fiscalYear))).limit(1);
   if (!entry) throw new Error("APP/PPMP entry could not be created.");
   await writeAuditEvent({ entityType: "app_ppmp_entry", entityId: entry.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { fiscalYear: input.fiscalYear } });
@@ -522,10 +549,12 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
   return { purchaseRequest, items };
 }
 
-export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
-  const db = await requireDb();
+export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
+  await assertActiveCatalogItemIds(input.items.map((item) => item.catalogItemId), db);
   const prNumber = `PR-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   const trackingToken = randomUUID().replaceAll("-", "");
   await db.insert(purchaseRequests).values({
@@ -546,6 +575,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
   if (!created) throw new Error("The Purchase Request could not be created.");
   await db.insert(purchaseRequestItems).values(input.items.map((item) => ({
     purchaseRequestId: created.id,
+    catalogItemId: item.catalogItemId ?? null,
     stockPropertyNo: item.stockPropertyNo || null,
     description: item.description,
     specification: item.specification || null,
@@ -554,7 +584,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     estimatedUnitCost: item.estimatedUnitCost.toFixed(2),
     totalCost: (item.quantity * item.estimatedUnitCost).toFixed(2),
   })));
-  await writeAuditEvent({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber } });
+  await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber } });
   return created;
 }
 
@@ -832,7 +862,9 @@ export async function getProcurementDashboard(user: User) {
   const planRows = isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries);
   const [documents, corrections, notifications] = await Promise.all([listProcurementDocuments(user), listWorkflowCorrections(user), listWorkflowNotifications(user)]);
   const relatedPrs = isEndUser ? prRows : await db.select().from(purchaseRequests);
-  const relatedItems = isEndUser ? [] : await db.select().from(purchaseRequestItems);
+  const relatedItems = isEndUser
+    ? (prRows.length ? await db.select().from(purchaseRequestItems).where(inArray(purchaseRequestItems.purchaseRequestId, prRows.map((pr) => pr.id))) : [])
+    : await db.select().from(purchaseRequestItems);
   const closedPurchaseOrders = poRows.filter((po) => po.status === "closed");
   const cycleTimes = closedPurchaseOrders.map((po) => {
     const pr = relatedPrs.find((record) => record.id === po.purchaseRequestId);
@@ -844,5 +876,5 @@ export async function getProcurementDashboard(user: User) {
     return totals;
   }, {});
   const topCommodities = Object.entries(commodityTotals).sort(([, a], [, b]) => b - a).slice(0, 5).map(([description, amount]) => ({ description, amount: amount.toFixed(2) }));
-  return { purchaseRequests: prRows, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, documents, corrections, notifications, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
+  return { purchaseRequests: prRows, purchaseRequestItems: relatedItems, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, documents, corrections, notifications, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
 }

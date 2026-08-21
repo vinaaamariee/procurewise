@@ -135,4 +135,11 @@
 - [x] Add regression coverage for official-form workspace structure in addition to PDF and print layouts.
 - [x] Verify the aligned Purchase Request, Pre-Canvass, Abstract, and Purchase Order workspace entry points in a signed-in Admin view; full populated PDF export remains deferred until an authorised transaction exists.
 - [x] Save a checkpoint for supplier tagging, Pre-Canvass filtering, and official-form alignment.
+- [x] Extract and validate only the actual item names, specifications, units, categories, prices, and available images from the supplied PhilGEPS catalog.
+- [x] Add a managed procurement item catalog with optional image references and role-controlled administration.
+- [x] Import the validated PhilGEPS catalog items without fabricating unavailable item attributes or images.
+- [x] Let End-Users select catalog items into PPMP and Purchase Request item lines while preserving editable transaction-specific quantities and costs.
+- [x] Surface selected catalog-item details in the Abstract of Quotation comparison for the linked End-User request.
+- [x] Add import, selection, and workflow regression coverage and responsive validation.
+- [x] Save a checkpoint for the PhilGEPS item catalog and End-User workflow integration.
 - [x] Save a checkpoint for the expanded officer workflow enhancements.
