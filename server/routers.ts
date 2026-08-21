@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierTag, decideAbstractOfCanvass, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listBacTransmittals, listLettersOfNotice, listProcurementCatalogItems, listPurchaseRequests, listSupplierEvaluations, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordPreCanvassResubmission, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, resubmitAbstract, resubmitPurchaseOrder, setSupplierTags, submitPreCanvass, updateProcurementSettings, updateSupplierEvaluation, updateUserProcurementRole } from "./db";
+import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierTag, decideAbstractOfCanvass, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listBacTransmittals, listLettersOfNotice, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listPurchaseRequests, listSupplierEvaluations, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordPreCanvassResubmission, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, resubmitAbstract, resubmitPurchaseOrder, setProcurementCatalogFavorite, setSupplierTags, submitPreCanvass, updateProcurementSettings, updateSupplierEvaluation, updateUserProcurementRole } from "./db";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole } from "../shared/procurementRules";
 
 function assertRole(role: ProcurementRole, permittedRoles: ProcurementRole[]) {
@@ -40,8 +40,11 @@ export const appRouter = router({
       setForSupplier: protectedProcedure.input(z.object({ supplierId: z.number().int().positive(), tagIds: z.array(z.number().int().positive()).max(30) })).mutation(({ ctx, input }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "admin"]); return setSupplierTags(input, ctx.user); }),
     }),
     catalog: router({
-      list: protectedProcedure.input(z.object({ search: z.string().max(120).optional(), page: z.number().int().positive().optional(), limit: z.number().int().positive().max(100).optional() }).optional()).query(({ input }) => listProcurementCatalogItems(input)),
+      list: protectedProcedure.input(z.object({ search: z.string().max(120).optional(), codeFamily: z.string().regex(/^\d{2}$/).optional(), page: z.number().int().positive().optional(), limit: z.number().int().positive().max(100).optional() }).optional()).query(({ input }) => listProcurementCatalogItems(input)),
       get: protectedProcedure.input(z.object({ catalogItemId: z.number().int().positive() })).query(({ input }) => getProcurementCatalogItem(input.catalogItemId)),
+      codeFamilies: protectedProcedure.query(() => listProcurementCatalogCodeFamilies()),
+      favorites: protectedProcedure.query(({ ctx }) => listProcurementCatalogFavorites(ctx.user)),
+      setFavorite: protectedProcedure.input(z.object({ catalogItemId: z.number().int().positive(), isFavorite: z.boolean() })).mutation(({ ctx, input }) => setProcurementCatalogFavorite(input, ctx.user)),
     }),
     purchaseRequests: router({
       list: protectedProcedure.query(({ ctx }) => listPurchaseRequests(ctx.user)),
@@ -132,7 +135,7 @@ export const appRouter = router({
       }),
     }),
     documents: router({
-      attach: protectedProcedure.input(z.object({ entityType: z.enum(["purchase_request", "pre_canvass", "pre_canvass_quote", "abstract_of_canvass", "purchase_order", "delivery_receipt", "pmr_log"]), entityId: z.number().int().positive(), documentType: z.string().min(2).max(80), originalFileName: z.string().min(1).max(255), mimeType: z.string().min(3).max(120), dataBase64: z.string().min(4).max(14_000_000) })).mutation(({ ctx, input }) => createProcurementDocument(input, ctx.user)),
+      attach: protectedProcedure.input(z.object({ entityType: z.enum(["app_ppmp_entry", "purchase_request", "pre_canvass", "pre_canvass_quote", "abstract_of_canvass", "purchase_order", "delivery_receipt", "pmr_log"]), entityId: z.number().int().positive(), documentType: z.string().min(2).max(80), originalFileName: z.string().min(1).max(255), mimeType: z.string().min(3).max(120), dataBase64: z.string().min(4).max(14_000_000) })).mutation(({ ctx, input }) => createProcurementDocument(input, ctx.user)),
     }),
     notifications: router({
       list: protectedProcedure.query(({ ctx }) => listWorkflowNotifications(ctx.user)),

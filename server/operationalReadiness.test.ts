@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createProcurementDocument, describePreCanvassHandoff, markWorkflowNotificationRead, recordPreCanvassResubmission, requestPreCanvassCorrection, validateProcurementDocumentUpload } from "./db";
 
@@ -39,6 +40,29 @@ describe("ProcureWise operational-readiness safeguards", () => {
     expect(fake.inserts[0]).toEqual(expect.objectContaining({ entityType: "purchase_request", entityId: 9, storageKey: "key-31", storageUrl: "/manus-storage/key-31", uploadedById: 1 }));
     expect(audits).toHaveLength(1);
     expect(notifications).toEqual([expect.objectContaining({ recipientUserId: 2, kind: "document" })]);
+  });
+
+  it("allows an End-User to attach an approved supporting file only to their own PPMP entry", async () => {
+    const endUser = { ...admin, id: 2, role: "end_user" as const };
+    const document = { id: 41, documentType: "PPMP supporting document", originalFileName: "approved-ppmp.pdf", storageKey: "key-41", storageUrl: "/manus-storage/key-41" };
+    const fake = fakeDatabase([[{ id: 18, preparedById: 2 }], [document]]);
+    await expect(createProcurementDocument({ entityType: "app_ppmp_entry", entityId: 18, documentType: "PPMP supporting document", originalFileName: "approved ppmp.pdf", mimeType: "application/pdf", dataBase64: Buffer.from("procurewise").toString("base64") }, endUser, {
+      db: fake.db as never,
+      putDocument: async () => ({ key: "key-41", url: "/manus-storage/key-41" }),
+      recordAudit: async () => undefined,
+      notifyUser: async () => undefined,
+    })).resolves.toEqual(document);
+    expect(fake.inserts[0]).toEqual(expect.objectContaining({ entityType: "app_ppmp_entry", entityId: 18, storageKey: "key-41", uploadedById: 2 }));
+  });
+
+  it("wires PPMP supporting-file upload, managed-reference empty states, and a manual procurement-mode field", () => {
+    const plans = readFileSync(new URL("../client/src/pages/ManagementPages.tsx", import.meta.url), "utf8");
+    expect(plans).toContain("Supporting document");
+    expect(plans).toContain('entityType: "app_ppmp_entry"');
+    expect(plans).toContain("No managed offices available");
+    expect(plans).toContain("No expenditure objects available");
+    expect(plans).toContain("Other — enter manually");
+    expect(plans).toContain("Enter the applicable mode of procurement");
   });
 
   it("returns a submitted Pre-Canvass with mandatory comments and creates an End-User correction alert", async () => {

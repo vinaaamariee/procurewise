@@ -96,6 +96,17 @@ export const procurementCatalogItems = mysqlTable("procurement_catalog_items", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("procurement_catalog_active_idx").on(table.isActive)]);
 
+export const procurementCatalogFavorites = mysqlTable("procurement_catalog_favorites", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  catalogItemId: int("catalogItemId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("procurement_catalog_favorite_user_item_unique").on(table.userId, table.catalogItemId),
+  index("procurement_catalog_favorite_user_idx").on(table.userId),
+  index("procurement_catalog_favorite_item_idx").on(table.catalogItemId),
+]);
+
 export const appPpmpEntries = mysqlTable("app_ppmp_entries", {
   id: int("id").autoincrement().primaryKey(),
   fiscalYear: int("fiscalYear").notNull(),
@@ -302,7 +313,7 @@ export const procurementSettings = mysqlTable("procurement_settings", {
 
 export const procurementDocuments = mysqlTable("procurement_documents", {
   id: int("id").autoincrement().primaryKey(),
-  entityType: mysqlEnum("entityType", ["purchase_request", "pre_canvass", "pre_canvass_quote", "abstract_of_canvass", "purchase_order", "delivery_receipt", "pmr_log"]).notNull(),
+  entityType: mysqlEnum("entityType", ["app_ppmp_entry", "purchase_request", "pre_canvass", "pre_canvass_quote", "abstract_of_canvass", "purchase_order", "delivery_receipt", "pmr_log"]).notNull(),
   entityId: int("entityId").notNull(),
   documentType: varchar("documentType", { length: 80 }).notNull(),
   originalFileName: varchar("originalFileName", { length: 255 }).notNull(),

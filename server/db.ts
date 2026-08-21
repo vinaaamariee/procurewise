@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -11,7 +11,7 @@ let _db: ReturnType<typeof drizzle> | null = null;
 type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent };
 type UserUpsertOptions = { db?: ReturnType<typeof drizzle> | null };
 type OperationalServiceOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent; putDocument?: typeof storagePut; notifyUser?: typeof createWorkflowNotification; notifyRoleGroup?: typeof notifyRoles };
-type DocumentEntityType = "purchase_request" | "pre_canvass" | "pre_canvass_quote" | "abstract_of_canvass" | "purchase_order" | "delivery_receipt" | "pmr_log";
+type DocumentEntityType = "app_ppmp_entry" | "purchase_request" | "pre_canvass" | "pre_canvass_quote" | "abstract_of_canvass" | "purchase_order" | "delivery_receipt" | "pmr_log";
 type WorkflowNotificationKind = "action_required" | "status_change" | "correction" | "document";
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -202,17 +202,53 @@ export async function createSupplier(input: { supplierCode: string; companyName:
   return supplier;
 }
 
-export async function listProcurementCatalogItems(input?: { search?: string; page?: number; limit?: number }, options?: { db?: ReturnType<typeof drizzle> }) {
+export function getCatalogCodeFamily(productCode: string) {
+  return productCode.match(/^\d{2}/)?.[0] ?? "Other";
+}
+
+export async function listProcurementCatalogItems(input?: { search?: string; codeFamily?: string; page?: number; limit?: number }, options?: { db?: ReturnType<typeof drizzle> }) {
   const db = options?.db ?? await requireDb();
   const search = input?.search?.trim().slice(0, 120) ?? "";
+  const codeFamily = input?.codeFamily?.trim() || "";
   const page = Math.max(1, input?.page ?? 1);
   const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
   const condition = search
     ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${search}%`), like(procurementCatalogItems.productCode, `%${search}%`)))
     : eq(procurementCatalogItems.isActive, 1);
   const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
+  const categorizedRecords = codeFamily ? records.filter((record) => getCatalogCodeFamily(record.productCode) === codeFamily) : records;
   const start = (page - 1) * limit;
-  return { items: records.slice(start, start + limit), total: records.length, page, limit };
+  return { items: categorizedRecords.slice(start, start + limit), total: categorizedRecords.length, page, limit };
+}
+
+export async function listProcurementCatalogCodeFamilies(options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  const records = await db.select().from(procurementCatalogItems).where(eq(procurementCatalogItems.isActive, 1)).orderBy(procurementCatalogItems.productCode);
+  const totals = records.reduce<Record<string, number>>((result, record) => {
+    const family = getCatalogCodeFamily(record.productCode);
+    result[family] = (result[family] ?? 0) + 1;
+    return result;
+  }, {});
+  return Object.entries(totals).sort(([left], [right]) => left.localeCompare(right, undefined, { numeric: true })).map(([codeFamily, itemCount]) => ({ codeFamily, label: `Source code family ${codeFamily}`, itemCount }));
+}
+
+export async function listProcurementCatalogFavorites(user: User, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  const rows = await db.select().from(procurementCatalogFavorites).where(eq(procurementCatalogFavorites.userId, user.id));
+  const catalogItemIds = rows.map((row) => row.catalogItemId);
+  if (!catalogItemIds.length) return [];
+  return db.select().from(procurementCatalogItems).where(and(inArray(procurementCatalogItems.id, catalogItemIds), eq(procurementCatalogItems.isActive, 1))).orderBy(procurementCatalogItems.description);
+}
+
+export async function setProcurementCatalogFavorite(input: { catalogItemId: number; isFavorite: boolean }, user: User, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  await assertActiveCatalogItemIds([input.catalogItemId], db);
+  if (input.isFavorite) {
+    await db.insert(procurementCatalogFavorites).values({ userId: user.id, catalogItemId: input.catalogItemId }).onDuplicateKeyUpdate({ set: { catalogItemId: input.catalogItemId } });
+  } else {
+    await db.delete(procurementCatalogFavorites).where(and(eq(procurementCatalogFavorites.userId, user.id), eq(procurementCatalogFavorites.catalogItemId, input.catalogItemId)));
+  }
+  return { catalogItemId: input.catalogItemId, isFavorite: input.isFavorite };
 }
 
 export async function getProcurementCatalogItem(catalogItemId: number) {
@@ -353,6 +389,10 @@ export async function updateUserProcurementRole(userId: number, role: Procuremen
 }
 
 async function getDocumentEntityRequesterId(entityType: DocumentEntityType, entityId: number, db: ReturnType<typeof drizzle>) {
+  if (entityType === "app_ppmp_entry") {
+    const [entry] = await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.id, entityId)).limit(1);
+    return entry?.preparedById ?? null;
+  }
   let purchaseRequestId: number | null = null;
   if (entityType === "purchase_request") purchaseRequestId = entityId;
   if (entityType === "pre_canvass") {

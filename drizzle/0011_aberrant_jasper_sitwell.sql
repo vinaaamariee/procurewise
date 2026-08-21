@@ -1,0 +1,1 @@
+ALTER TABLE `procurement_documents` MODIFY COLUMN `entityType` enum('app_ppmp_entry','purchase_request','pre_canvass','pre_canvass_quote','abstract_of_canvass','purchase_order','delivery_receipt','pmr_log') NOT NULL;

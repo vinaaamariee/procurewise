@@ -11,7 +11,7 @@ import { Download, FileText, FolderUp, LoaderCircle, Paperclip } from "lucide-re
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type EntityType = "purchase_request" | "pre_canvass" | "abstract_of_canvass" | "purchase_order";
+type EntityType = "app_ppmp_entry" | "purchase_request" | "pre_canvass" | "abstract_of_canvass" | "purchase_order";
 
 const documentTypeOptions = ["Supporting document", "Signed Purchase Request", "Supplier quotation", "Canvass acknowledgement", "Abstract of Canvass", "Purchase Order", "Delivery receipt", "PMR attachment"];
 
@@ -35,6 +35,7 @@ export default function DocumentsPage() {
   const [documentType, setDocumentType] = useState("Supporting document");
   const [file, setFile] = useState<File | null>(null);
   const recordOptions = useMemo(() => [
+    ...(dashboard.data?.appPpmpEntries ?? []).map((record) => ({ key: `app_ppmp_entry:${record.id}`, entityType: "app_ppmp_entry" as const, entityId: record.id, label: `FY ${record.fiscalYear} — ${record.description}` })),
     ...(dashboard.data?.purchaseRequests ?? []).map((record) => ({ key: `purchase_request:${record.id}`, entityType: "purchase_request" as const, entityId: record.id, label: `${record.prNumber} — Purchase Request` })),
     ...(dashboard.data?.preCanvasses ?? []).map((record) => ({ key: `pre_canvass:${record.id}`, entityType: "pre_canvass" as const, entityId: record.id, label: `${record.preCanvassNumber} — Pre-Canvass` })),
     ...(dashboard.data?.abstractsOfCanvass ?? []).map((record) => ({ key: `abstract_of_canvass:${record.id}`, entityType: "abstract_of_canvass" as const, entityId: record.id, label: `${record.abstractNumber} — Abstract of Canvass` })),
@@ -67,6 +68,7 @@ export default function DocumentsPage() {
   const downloadOfficialForm = () => {
     if (!selectedRecord) return toast.error("Select a procurement record before downloading an official-form copy.");
     const supplierMap = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier]));
+    if (selectedRecord.entityType === "app_ppmp_entry") return toast.info("A PPMP official PDF template has not been supplied; the supporting file can be opened from the register.");
     if (selectedRecord.entityType === "purchase_request") {
       if (!purchaseRequestDetail.data) return toast.error("Purchase Request details are still loading.");
       return downloadPurchaseRequestPdf(purchaseRequestDetail.data);

@@ -143,3 +143,11 @@
 - [x] Add import, selection, and workflow regression coverage and responsive validation.
 - [x] Save a checkpoint for the PhilGEPS item catalog and End-User workflow integration.
 - [x] Save a checkpoint for the expanded officer workflow enhancements.
+- [x] Add managed PhilGEPS catalog categories and searchable category filters for PPMP and Purchase Request item selection.
+- [x] Add secure per-user catalog favorites, including protected add/remove/list procedures and picker controls.
+- [x] Add regression coverage and responsive validation for catalog categories and favorites.
+- [x] Add a role-gated PPMP supporting-document upload control that stores the file securely and links it to the saved PPMP entry.
+- [x] Add regression coverage for PPMP attachment access, file validation, and form wiring.
+- [x] Ensure PPMP selection controls expose non-empty meaningful options and allow typed manual entry where an existing option does not apply.
+- [ ] Inspect authorized real procurement records and perform a non-fabricated PPMP-to-Abstract validation flow when eligible records are available.
+- [ ] Save a checkpoint for catalog discovery enhancements and real-record workflow validation.
