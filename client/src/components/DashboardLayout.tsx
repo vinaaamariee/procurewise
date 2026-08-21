@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
+import { NotificationToastListener } from "@/components/NotificationToastListener";
+import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LogOut, Menu, Paperclip, ReceiptText, Search, Settings2, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
+import { Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -20,6 +22,11 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Budget Control", path: "/budgets", icon: WalletCards, roles: ["administrative_approver", "admin"] },
   { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
+  { label: "Letters of Notice", path: "/officer/notices", icon: FileText, roles: ["procurement_officer", "admin"] },
+  { label: "BAC Transmittals", path: "/officer/transmittals", icon: Send, roles: ["procurement_officer", "admin"] },
+  { label: "Supplier Evaluations", path: "/supplier-evaluations", icon: Star, roles: ["procurement_officer", "admin"] },
+  { label: "Procurement Forecast", path: "/officer/forecast", icon: LineChart, roles: ["procurement_officer", "admin"] },
+  { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
 ];
 
@@ -32,6 +39,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const procurementRole = user ? normalizeProcurementRole(user.role) : "end_user";
   const roleLabel = roleLabels[procurementRole];
   const visibleNavigation = navigation.filter((item) => item.roles.includes(procurementRole));
+  const notifications = trpc.procurement.notifications.list.useQuery(undefined, { retry: false, enabled: Boolean(user), refetchInterval: 15_000, refetchIntervalInBackground: true });
+  const unreadCount = notifications.data?.filter((notification) => !notification.readAt).length ?? 0;
   const handleLogout = async () => { await logout(); setLocation("/access"); };
 
   if (loading) {
@@ -54,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[#f8f7f3] text-[#202833]">
+      <NotificationToastListener />
       <div className="border-b border-[#e4e1da] bg-white">
         <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">
           <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} className="h-9 w-9 rounded-[4px] lg:hidden" aria-label="Toggle navigation">
@@ -67,9 +77,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </label>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/notifications")} className="relative h-9 w-9 rounded-[4px]" aria-label="Notifications">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/notifications")} className="relative h-9 w-9 rounded-[4px]" aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}>
               <Bell className="h-4 w-4 text-[#566171]" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#b78327]" />
+              {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-white bg-[#7b1e1e] px-1 text-[8px] font-bold leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
             </Button>
             <div className="hidden items-center gap-2 border-l border-[#e4e1da] pl-3 sm:flex">
               <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">

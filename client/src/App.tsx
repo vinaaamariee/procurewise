@@ -9,6 +9,9 @@ import Dashboard from "./pages/Dashboard";
 import Access from "./pages/Access";
 import DocumentsPage from "./pages/Documents";
 import NotificationsPage from "./pages/Notifications";
+import { ForecastPage, NoticesPage, OfficerSettingsPage, SupplierEvaluationsPage, TransmittalsPage } from "./pages/OfficerPages";
+import { PrintNoticePage, PrintPreCanvassAbstractPage, PrintTransmittalPage } from "./pages/PrintPages";
+import PublicTrackingPage from "./pages/PublicTracking";
 import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
@@ -21,12 +24,21 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Landing} />
       <Route path={"/access"} component={Access} />
+      <Route path={"/track"} component={PublicTrackingPage} />
       <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
       <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
       <Route path={"/rfq"}>{protectedPage(<PreCanvassPage />)}</Route>
       <Route path={"/purchase-orders"}>{protectedPage(<ExecutionPage />)}</Route>
       <Route path={"/documents"}>{protectedPage(<DocumentsPage />)}</Route>
       <Route path={"/notifications"}>{protectedPage(<NotificationsPage />)}</Route>
+      <Route path={"/officer/notices"}>{protectedPage(<NoticesPage />)}</Route>
+      <Route path={"/officer/transmittals"}>{protectedPage(<TransmittalsPage />)}</Route>
+      <Route path={"/officer/forecast"}>{protectedPage(<ForecastPage />)}</Route>
+      <Route path={"/officer/settings"}>{protectedPage(<OfficerSettingsPage />)}</Route>
+      <Route path={"/supplier-evaluations"}>{protectedPage(<SupplierEvaluationsPage />)}</Route>
+      <Route path={"/print/notice"}>{protectedPage(<PrintNoticePage />)}</Route>
+      <Route path={"/print/transmittal"}>{protectedPage(<PrintTransmittalPage />)}</Route>
+      <Route path={"/print/pre-canvass-abstract"}>{protectedPage(<PrintPreCanvassAbstractPage />)}</Route>
       <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
       <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>

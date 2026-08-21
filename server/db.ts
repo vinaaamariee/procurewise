@@ -1,6 +1,7 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, budgetAllotments, deliveryReceipts, InsertUser, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierQuotations, suppliers, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -34,6 +35,18 @@ export function describePreCanvassHandoff(hasOpenCorrections: boolean) {
   return hasOpenCorrections
     ? { title: "Pre-Canvass resubmitted", body: "An End-User has resubmitted a returned Pre-Canvass package for review." }
     : { title: "Pre-Canvass awaiting review", body: "An End-User has forwarded a complete three-supplier Pre-Canvass package for review." };
+}
+
+export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPrice: string | number; deliveryDays: number; isCompliant: number }>) {
+  const compliantQuotes = quotes.filter((quote) => quote.isCompliant === 1);
+  if (!compliantQuotes.length) return [];
+  const lowestPrice = Math.min(...compliantQuotes.map((quote) => Number(quote.totalPrice)));
+  const fastestDelivery = Math.min(...compliantQuotes.map((quote) => quote.deliveryDays));
+  return compliantQuotes.map((quote) => {
+    const priceScore = (lowestPrice / Number(quote.totalPrice)) * 60;
+    const deliveryScore = fastestDelivery === 0 ? 20 : (fastestDelivery / Math.max(quote.deliveryDays, 1)) * 20;
+    return { quote, priceScore, deliveryScore, complianceScore: 20, totalScore: priceScore + deliveryScore + 20 };
+  }).sort((left, right) => right.totalScore - left.totalScore || Number(left.quote.totalPrice) - Number(right.quote.totalPrice));
 }
 
 export async function getDb() {
@@ -117,13 +130,17 @@ export async function getWorkspaceSetup() {
   };
 }
 
-export async function updateProcurementSettings(input: { entityName: string; authorizedOfficialName?: string; authorizedOfficialDesignation?: string; chiefAccountantName?: string }, user: User) {
+export async function updateProcurementSettings(input: { entityName: string; authorizedOfficialName?: string; authorizedOfficialDesignation?: string; chiefAccountantName?: string; defaultNoticeSignatory?: string; sessionTimeoutMinutes?: number; enableInAppNotifications?: boolean; notificationRefreshSeconds?: number }, user: User) {
   const db = await requireDb();
   const values = {
     entityName: input.entityName.trim() || "Batanes State College",
     authorizedOfficialName: input.authorizedOfficialName?.trim() || null,
     authorizedOfficialDesignation: input.authorizedOfficialDesignation?.trim() || null,
     chiefAccountantName: input.chiefAccountantName?.trim() || null,
+    defaultNoticeSignatory: input.defaultNoticeSignatory?.trim() || null,
+    sessionTimeoutMinutes: Math.min(240, Math.max(5, input.sessionTimeoutMinutes ?? 30)),
+    enableInAppNotifications: input.enableInAppNotifications === false ? 0 : 1,
+    notificationRefreshSeconds: Math.min(120, Math.max(10, input.notificationRefreshSeconds ?? 15)),
     updatedById: user.id,
   };
   const [existing] = await db.select().from(procurementSettings).limit(1);
@@ -184,6 +201,67 @@ export async function createSupplier(input: { supplierCode: string; companyName:
   await writeAuditEvent({ entityType: "supplier", entityId: supplier.id, action: "registered", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierCode: supplier.supplierCode } });
   return supplier;
 }
+
+export function validateSupplierEvaluationScores(scores: number[]) {
+  return scores.length === 4 && scores.every((score) => Number.isInteger(score) && score >= 1 && score <= 5);
+}
+
+export async function createSupplierEvaluation(input: { supplierId: number; purchaseOrderId?: number; qualityScore: number; deliveryScore: number; pricingScore: number; complianceScore: number; remarks?: string }, user: User) {
+  const scores = [input.qualityScore, input.deliveryScore, input.pricingScore, input.complianceScore];
+  if (!validateSupplierEvaluationScores(scores)) throw new Error("Each supplier evaluation score must be an integer from 1 to 5.");
+  const db = await requireDb();
+  await db.insert(supplierEvaluations).values({ ...input, purchaseOrderId: input.purchaseOrderId ?? null, remarks: input.remarks?.trim() || null, evaluatedById: user.id });
+  const [created] = await db.select().from(supplierEvaluations).where(and(eq(supplierEvaluations.supplierId, input.supplierId), eq(supplierEvaluations.evaluatedById, user.id))).orderBy(desc(supplierEvaluations.id)).limit(1);
+  if (!created) throw new Error("Supplier evaluation could not be saved.");
+  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
+  return created;
+}
+
+export async function updateSupplierEvaluation(input: { evaluationId: number; qualityScore: number; deliveryScore: number; pricingScore: number; complianceScore: number; remarks?: string }, user: User) {
+  const scores = [input.qualityScore, input.deliveryScore, input.pricingScore, input.complianceScore];
+  if (!validateSupplierEvaluationScores(scores)) throw new Error("Each supplier evaluation score must be an integer from 1 to 5.");
+  const db = await requireDb();
+  const [evaluation] = await db.select().from(supplierEvaluations).where(eq(supplierEvaluations.id, input.evaluationId)).limit(1);
+  if (!evaluation) throw new Error("Supplier evaluation not found.");
+  await db.update(supplierEvaluations).set({ qualityScore: input.qualityScore, deliveryScore: input.deliveryScore, pricingScore: input.pricingScore, complianceScore: input.complianceScore, remarks: input.remarks?.trim() || null }).where(eq(supplierEvaluations.id, evaluation.id));
+  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: evaluation.id, action: "updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
+}
+
+export async function listSupplierEvaluations() { const db = await requireDb(); return db.select().from(supplierEvaluations).orderBy(desc(supplierEvaluations.evaluatedAt)); }
+
+export async function createLetterOfNotice(input: { noticeType: "award" | "disqualification" | "clarification" | "other"; purchaseRequestId?: number; supplierId?: number; subject: string; body: string; issueNow?: boolean }, user: User) {
+  const db = await requireDb();
+  const noticeNumber = `LON-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  const status = input.issueNow ? "issued" : "draft" as const;
+  await db.insert(lettersOfNotice).values({ noticeNumber, noticeType: input.noticeType, purchaseRequestId: input.purchaseRequestId ?? null, supplierId: input.supplierId ?? null, subject: input.subject.trim(), body: input.body.trim(), status, issuedById: user.id, issuedAt: input.issueNow ? new Date() : null });
+  const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.noticeNumber, noticeNumber)).limit(1);
+  if (!notice) throw new Error("Letter of Notice could not be saved.");
+  await writeAuditEvent({ entityType: "letter_of_notice", entityId: notice.id, action: input.issueNow ? "issued" : "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { noticeNumber } });
+  return notice;
+}
+
+export async function listLettersOfNotice() { const db = await requireDb(); return db.select().from(lettersOfNotice).orderBy(desc(lettersOfNotice.createdAt)); }
+
+export async function createBacTransmittal(input: { purchaseRequestId?: number; fromOffice: string; toOffice: string; subject: string; remarks?: string; sendNow?: boolean }, user: User) {
+  const db = await requireDb();
+  const transmittalNumber = `BAC-T-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  const status = input.sendNow ? "sent" : "draft" as const;
+  await db.insert(bacTransmittals).values({ transmittalNumber, purchaseRequestId: input.purchaseRequestId ?? null, fromOffice: input.fromOffice.trim(), toOffice: input.toOffice.trim(), subject: input.subject.trim(), remarks: input.remarks?.trim() || null, status, preparedById: user.id, sentAt: input.sendNow ? new Date() : null });
+  const [transmittal] = await db.select().from(bacTransmittals).where(eq(bacTransmittals.transmittalNumber, transmittalNumber)).limit(1);
+  if (!transmittal) throw new Error("BAC Transmittal could not be saved.");
+  await writeAuditEvent({ entityType: "bac_transmittal", entityId: transmittal.id, action: input.sendNow ? "sent" : "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { transmittalNumber } });
+  return transmittal;
+}
+
+export async function acknowledgeBacTransmittal(input: { transmittalId: number; acknowledgedByName: string }, user: User) {
+  const db = await requireDb();
+  const [transmittal] = await db.select().from(bacTransmittals).where(eq(bacTransmittals.id, input.transmittalId)).limit(1);
+  if (!transmittal || transmittal.status !== "sent") throw new Error("Only a sent BAC Transmittal can be acknowledged.");
+  await db.update(bacTransmittals).set({ status: "acknowledged", acknowledgedByName: input.acknowledgedByName.trim(), acknowledgedAt: new Date() }).where(eq(bacTransmittals.id, input.transmittalId));
+  await writeAuditEvent({ entityType: "bac_transmittal", entityId: input.transmittalId, action: "acknowledged", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
+}
+
+export async function listBacTransmittals() { const db = await requireDb(); return db.select().from(bacTransmittals).orderBy(desc(bacTransmittals.createdAt)); }
 
 export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: number; objectOfExpenditureId: number; description: string; plannedAmount: number; papCode?: string; projectTitle?: string; modeOfProcurement?: string; fundSource?: string; procurementSchedule?: string; remarks?: string }, user: User) {
   const db = await requireDb();
@@ -338,6 +416,54 @@ export async function recordPreCanvassResubmission(preCanvassId: number, user: U
   await notifyRoleGroup(["procurement_officer"], { kind: "action_required", ...describePreCanvassHandoff(openCorrections.length > 0), entityType: "pre_canvass", entityId: preCanvassId });
 }
 
+export async function requestAbstractCorrection(input: { preCanvassId: number; reason: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const [abstract] = await db.select().from(abstractsOfCanvass).where(eq(abstractsOfCanvass.preCanvassId, input.preCanvassId)).limit(1);
+  if (!abstract || abstract.status !== "recommended") throw new Error("Only an Abstract awaiting an administrative decision can be returned for correction.");
+  await db.update(abstractsOfCanvass).set({ status: "returned", decidedById: user.id, decisionRemarks: input.reason.trim() }).where(eq(abstractsOfCanvass.id, abstract.id));
+  await db.insert(workflowCorrections).values({ entityType: "abstract_of_canvass", entityId: abstract.id, requestedById: user.id, assignedToId: abstract.preparedById, reason: input.reason.trim() });
+  const [correction] = await db.select().from(workflowCorrections).where(and(eq(workflowCorrections.entityType, "abstract_of_canvass"), eq(workflowCorrections.entityId, abstract.id), eq(workflowCorrections.assignedToId, abstract.preparedById), eq(workflowCorrections.status, "open"))).limit(1);
+  await recordAudit({ entityType: "abstract_of_canvass", entityId: abstract.id, action: "returned_for_correction", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { reason: input.reason.trim() } });
+  await notifyUser({ recipientUserId: abstract.preparedById, kind: "correction", title: "Abstract returned for correction", body: input.reason.trim(), entityType: "abstract_of_canvass", entityId: abstract.id });
+  return correction;
+}
+
+export async function resubmitAbstract(preCanvassId: number, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
+  const [abstract] = await db.select().from(abstractsOfCanvass).where(eq(abstractsOfCanvass.preCanvassId, preCanvassId)).limit(1);
+  if (!abstract || abstract.status !== "returned" || abstract.preparedById !== user.id) throw new Error("Only the assigned Procurement Officer may resubmit this returned Abstract.");
+  await db.update(abstractsOfCanvass).set({ status: "recommended", decidedById: null, decisionRemarks: null }).where(eq(abstractsOfCanvass.id, abstract.id));
+  await db.update(workflowCorrections).set({ status: "resubmitted", resolvedAt: new Date() }).where(and(eq(workflowCorrections.entityType, "abstract_of_canvass"), eq(workflowCorrections.entityId, abstract.id), eq(workflowCorrections.assignedToId, user.id), eq(workflowCorrections.status, "open")));
+  await notifyRoleGroup(["administrative_approver"], { kind: "action_required", title: "Abstract resubmitted", body: "A corrected Abstract of Canvass is ready for a new administrative decision.", entityType: "abstract_of_canvass", entityId: abstract.id });
+}
+
+export async function requestPurchaseOrderCorrection(input: { purchaseOrderId: number; reason: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const [purchaseOrder] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
+  if (!purchaseOrder || purchaseOrder.status !== "issued") throw new Error("Only an issued Purchase Order can be returned for correction before delivery is recorded.");
+  await db.update(purchaseOrders).set({ status: "returned" }).where(eq(purchaseOrders.id, purchaseOrder.id));
+  await db.insert(workflowCorrections).values({ entityType: "purchase_order", entityId: purchaseOrder.id, requestedById: user.id, assignedToId: purchaseOrder.generatedById, reason: input.reason.trim() });
+  const [correction] = await db.select().from(workflowCorrections).where(and(eq(workflowCorrections.entityType, "purchase_order"), eq(workflowCorrections.entityId, purchaseOrder.id), eq(workflowCorrections.assignedToId, purchaseOrder.generatedById), eq(workflowCorrections.status, "open"))).limit(1);
+  await recordAudit({ entityType: "purchase_order", entityId: purchaseOrder.id, action: "returned_for_correction", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { reason: input.reason.trim() } });
+  await notifyUser({ recipientUserId: purchaseOrder.generatedById, kind: "correction", title: "Purchase Order returned for correction", body: input.reason.trim(), entityType: "purchase_order", entityId: purchaseOrder.id });
+  return correction;
+}
+
+export async function resubmitPurchaseOrder(purchaseOrderId: number, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
+  const [purchaseOrder] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, purchaseOrderId)).limit(1);
+  if (!purchaseOrder || purchaseOrder.status !== "returned" || purchaseOrder.generatedById !== user.id) throw new Error("Only the issuing Procurement Officer may reissue this returned Purchase Order.");
+  await db.update(purchaseOrders).set({ status: "issued" }).where(eq(purchaseOrders.id, purchaseOrder.id));
+  await db.update(workflowCorrections).set({ status: "resubmitted", resolvedAt: new Date() }).where(and(eq(workflowCorrections.entityType, "purchase_order"), eq(workflowCorrections.entityId, purchaseOrder.id), eq(workflowCorrections.assignedToId, user.id), eq(workflowCorrections.status, "open")));
+  await notifyRoleGroup(["administrative_approver"], { kind: "status_change", title: "Purchase Order reissued", body: "A corrected Purchase Order has been reissued and is ready for monitored delivery.", entityType: "purchase_order", entityId: purchaseOrder.id });
+}
+
 export async function listPurchaseRequests(user: User) {
   const db = await requireDb();
   return normalizeProcurementRole(user.role) === "end_user"
@@ -345,11 +471,21 @@ export async function listPurchaseRequests(user: User) {
     : db.select().from(purchaseRequests);
 }
 
+export async function getPurchaseRequestDetail(purchaseRequestId: number, user: User) {
+  const db = await requireDb();
+  const [purchaseRequest] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  if (!purchaseRequest) throw new Error("Purchase Request not found.");
+  if (normalizeProcurementRole(user.role) === "end_user" && purchaseRequest.requestedById !== user.id) throw new Error("End-Users may access only their own Purchase Requests.");
+  const items = await db.select().from(purchaseRequestItems).where(eq(purchaseRequestItems.purchaseRequestId, purchaseRequestId));
+  return { purchaseRequest, items };
+}
+
 export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User) {
   const db = await requireDb();
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
   const prNumber = `PR-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  const trackingToken = randomUUID().replaceAll("-", "");
   await db.insert(purchaseRequests).values({
     prNumber,
     purpose: input.purpose,
@@ -361,6 +497,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     objectOfExpenditureId: input.objectOfExpenditureId,
     totalEstimate: totalEstimate.toFixed(2),
     requestedById: user.id,
+    trackingToken,
     ppmpEntryId: input.ppmpEntryId ?? null,
   });
   const [created] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.prNumber, prNumber)).limit(1);
@@ -517,6 +654,43 @@ export async function createRfqFromPurchaseRequest(purchaseRequestId: number, us
   return created;
 }
 
+export async function createMcdmRecommendation(preCanvassId: number, user: User) {
+  const db = await requireDb();
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
+  if (!preCanvass || !["submitted", "abstracted"].includes(preCanvass.status)) throw new Error("A submitted or abstracted Pre-Canvass is required for MCDM recommendation.");
+  const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
+  if (!hasRequiredSupplierQuotations(quotes.length)) throw new Error("Three supplier quotations are required for MCDM recommendation.");
+  const scored = calculateMcdmScores(quotes);
+  if (!scored.length) throw new Error("At least one compliant supplier quotation is required for MCDM recommendation.");
+  const top = scored[0];
+  const rationale = "MCDM recommendation based on 60% price, 20% delivery, and 20% compliance. Selected the highest-scoring compliant quotation.";
+  const [existing] = await db.select().from(mcdmRecommendations).where(eq(mcdmRecommendations.preCanvassId, preCanvassId)).limit(1);
+  const values = { recommendedSupplierId: top.quote.supplierId, priceScore: top.priceScore.toFixed(2), deliveryScore: top.deliveryScore.toFixed(2), complianceScore: "20.00", totalScore: top.totalScore.toFixed(2), rationale, createdById: user.id };
+  if (existing) await db.update(mcdmRecommendations).set(values).where(eq(mcdmRecommendations.id, existing.id)); else await db.insert(mcdmRecommendations).values({ preCanvassId, ...values });
+  const [recommendation] = await db.select().from(mcdmRecommendations).where(eq(mcdmRecommendations.preCanvassId, preCanvassId)).limit(1);
+  if (!recommendation) throw new Error("MCDM recommendation could not be saved.");
+  await writeAuditEvent({ entityType: "mcdm_recommendation", entityId: recommendation.id, action: "calculated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassId, recommendedSupplierId: recommendation.recommendedSupplierId, totalScore: recommendation.totalScore } });
+  return recommendation;
+}
+
+export async function createRfqFromPreCanvass(preCanvassId: number, user: User) {
+  const db = await requireDb();
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
+  if (!preCanvass || preCanvass.status !== "abstracted") throw new Error("Generate an Abstract of Canvass before creating the RFQ from a Pre-Canvass.");
+  const [mcdm] = await db.select().from(mcdmRecommendations).where(eq(mcdmRecommendations.preCanvassId, preCanvassId)).limit(1);
+  if (!mcdm) throw new Error("Calculate the MCDM recommendation before creating the RFQ.");
+  const [existing] = await db.select().from(rfqs).where(eq(rfqs.purchaseRequestId, preCanvass.purchaseRequestId)).limit(1);
+  if (existing) return existing;
+  const quoteRows = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
+  const rfqNumber = `RFQ-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(rfqs).values({ rfqNumber, purchaseRequestId: preCanvass.purchaseRequestId, status: "canvass", createdById: user.id });
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.rfqNumber, rfqNumber)).limit(1);
+  if (!rfq) throw new Error("RFQ could not be created from the Pre-Canvass.");
+  await db.insert(supplierQuotations).values(quoteRows.map((quote) => ({ rfqId: rfq.id, supplierId: quote.supplierId, totalPrice: quote.totalPrice, deliveryDays: quote.deliveryDays, isCompliant: quote.isCompliant, notes: `Imported from ${preCanvass.preCanvassNumber}; MCDM recommended supplier #${mcdm.recommendedSupplierId}.` })));
+  await writeAuditEvent({ entityType: "rfq", entityId: rfq.id, action: "created_from_mcdm_pre_canvass", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassId, recommendedSupplierId: mcdm.recommendedSupplierId } });
+  return rfq;
+}
+
 export async function addSupplierQuotation(input: { rfqId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; notes?: string }, user: User) {
   const db = await requireDb();
   await db.insert(supplierQuotations).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
@@ -564,6 +738,37 @@ export async function createPurchaseOrder(rfqId: number, user: User, options?: P
   if (!po) throw new Error("Purchase Order could not be created.");
   await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "generated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { poNumber } });
   return po;
+}
+
+export async function recordHistoricalPrice(input: { itemDescription: string; unit: string; unitPrice: number; supplierId?: number; purchaseOrderId?: number; observedAt?: Date }, user: User) {
+  const db = await requireDb();
+  if (input.unitPrice <= 0) throw new Error("Historical unit price must be positive.");
+  await db.insert(historicalPrices).values({ itemDescription: input.itemDescription.trim(), unit: input.unit.trim(), unitPrice: input.unitPrice.toFixed(2), supplierId: input.supplierId ?? null, purchaseOrderId: input.purchaseOrderId ?? null, observedAt: input.observedAt ?? new Date(), recordedById: user.id });
+  const [price] = await db.select().from(historicalPrices).where(and(eq(historicalPrices.itemDescription, input.itemDescription.trim()), eq(historicalPrices.recordedById, user.id))).orderBy(desc(historicalPrices.id)).limit(1);
+  if (!price) throw new Error("Historical price could not be recorded.");
+  return price;
+}
+
+export async function getProcurementForecast() {
+  const db = await requireDb();
+  const rows = await db.select().from(historicalPrices).orderBy(historicalPrices.itemDescription, historicalPrices.observedAt);
+  const byItem = rows.reduce<Record<string, typeof rows>>((grouped, row) => { (grouped[row.itemDescription] ??= []).push(row); return grouped; }, {});
+  return Object.entries(byItem).map(([itemDescription, points]) => {
+    const prices = points.map((point) => Number(point.unitPrice));
+    const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    const trend = prices.length > 1 ? (prices[prices.length - 1] - prices[0]) / Math.max(prices[0], 1) : 0;
+    return { itemDescription, unit: points[0].unit, points: points.map((point) => ({ observedAt: point.observedAt, unitPrice: Number(point.unitPrice) })), averagePrice: average, forecastPrice: average * (1 + trend), trendPercent: trend * 100 };
+  });
+}
+
+export async function getPublicPurchaseRequestTracking(trackingToken: string) {
+  const db = await requireDb();
+  const [purchaseRequest] = await db.select({ id: purchaseRequests.id, prNumber: purchaseRequests.prNumber, purpose: purchaseRequests.purpose, status: purchaseRequests.status, createdAt: purchaseRequests.createdAt, submittedAt: purchaseRequests.submittedAt, updatedAt: purchaseRequests.updatedAt }).from(purchaseRequests).where(eq(purchaseRequests.trackingToken, trackingToken)).limit(1);
+  if (!purchaseRequest) throw new Error("Tracking record not found.");
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequest.id)).limit(1);
+  const [purchaseOrder] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.purchaseRequestId, purchaseRequest.id)).limit(1);
+  const events = await db.select({ action: auditTrails.action, createdAt: auditTrails.createdAt }).from(auditTrails).where(eq(auditTrails.entityId, purchaseRequest.id)).orderBy(auditTrails.createdAt);
+  return { purchaseRequest, preCanvass: preCanvass ? { status: preCanvass.status, updatedAt: preCanvass.updatedAt } : null, purchaseOrder: purchaseOrder ? { poNumber: purchaseOrder.poNumber, status: purchaseOrder.status, updatedAt: purchaseOrder.updatedAt } : null, events };
 }
 
 export async function getProcurementDashboard(user: User) {

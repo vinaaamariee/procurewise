@@ -43,6 +43,20 @@
       "when": 1787294325361,
       "tag": "0005_clear_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787295840704,
+      "tag": "0006_acoustic_deathbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787296393163,
+      "tag": "0007_icy_sentry",
+      "breakpoints": true
     }
   ]
 }

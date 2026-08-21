@@ -94,6 +94,7 @@ export const purchaseRequests = mysqlTable("purchase_requests", {
   totalEstimate: decimal("totalEstimate", { precision: 14, scale: 2 }).notNull(),
   status: mysqlEnum("status", PR_STATUSES).default("draft").notNull(),
   requestedById: int("requestedById").notNull(),
+  trackingToken: varchar("trackingToken", { length: 48 }).notNull().unique(),
   ppmpEntryId: int("ppmpEntryId"),
   procurementReviewedById: int("procurementReviewedById"),
   administrativeApprovedById: int("administrativeApprovedById"),
@@ -158,7 +159,7 @@ export const abstractsOfCanvass = mysqlTable("abstracts_of_canvass", {
   openingDate: timestamp("openingDate").defaultNow().notNull(),
   openingLocation: varchar("openingLocation", { length: 160 }).default("Basco, Batanes").notNull(),
   procurementCategory: varchar("procurementCategory", { length: 120 }).default("Supplies and materials").notNull(),
-  status: mysqlEnum("status", ["recommended", "approved", "rejected"]).default("recommended").notNull(),
+  status: mysqlEnum("status", ["recommended", "returned", "approved", "rejected"]).default("recommended").notNull(),
   preparedById: int("preparedById").notNull(),
   decidedById: int("decidedById"),
   decisionRemarks: text("decisionRemarks"),
@@ -218,7 +219,7 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   authorizedOfficialName: varchar("authorizedOfficialName", { length: 180 }),
   authorizedOfficialDesignation: varchar("authorizedOfficialDesignation", { length: 160 }),
   chiefAccountantName: varchar("chiefAccountantName", { length: 180 }),
-  status: mysqlEnum("status", ["draft", "pending_approval", "approved", "issued", "delivered", "closed"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "pending_approval", "approved", "issued", "returned", "delivered", "closed"]).default("draft").notNull(),
   generatedById: int("generatedById").notNull(),
   approvedById: int("approvedById"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -253,6 +254,10 @@ export const procurementSettings = mysqlTable("procurement_settings", {
   authorizedOfficialName: varchar("authorizedOfficialName", { length: 180 }),
   authorizedOfficialDesignation: varchar("authorizedOfficialDesignation", { length: 160 }),
   chiefAccountantName: varchar("chiefAccountantName", { length: 180 }),
+  defaultNoticeSignatory: varchar("defaultNoticeSignatory", { length: 180 }),
+  sessionTimeoutMinutes: int("sessionTimeoutMinutes").default(30).notNull(),
+  enableInAppNotifications: int("enableInAppNotifications").default(1).notNull(),
+  notificationRefreshSeconds: int("notificationRefreshSeconds").default(15).notNull(),
   updatedById: int("updatedById"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -273,7 +278,7 @@ export const procurementDocuments = mysqlTable("procurement_documents", {
 
 export const workflowCorrections = mysqlTable("workflow_corrections", {
   id: int("id").autoincrement().primaryKey(),
-  entityType: mysqlEnum("entityType", ["purchase_request", "pre_canvass", "abstract_of_canvass"]).notNull(),
+  entityType: mysqlEnum("entityType", ["purchase_request", "pre_canvass", "abstract_of_canvass", "purchase_order"]).notNull(),
   entityId: int("entityId").notNull(),
   requestedById: int("requestedById").notNull(),
   assignedToId: int("assignedToId").notNull(),
@@ -294,6 +299,75 @@ export const workflowNotifications = mysqlTable("workflow_notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("notification_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt)]);
+
+export const lettersOfNotice = mysqlTable("letters_of_notice", {
+  id: int("id").autoincrement().primaryKey(),
+  noticeNumber: varchar("noticeNumber", { length: 48 }).notNull().unique(),
+  noticeType: mysqlEnum("noticeType", ["award", "disqualification", "clarification", "other"]).default("other").notNull(),
+  purchaseRequestId: int("purchaseRequestId"),
+  supplierId: int("supplierId"),
+  subject: varchar("subject", { length: 220 }).notNull(),
+  body: text("body").notNull(),
+  status: mysqlEnum("status", ["draft", "issued", "cancelled"]).default("draft").notNull(),
+  issuedById: int("issuedById").notNull(),
+  issuedAt: timestamp("issuedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("notice_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
+
+export const bacTransmittals = mysqlTable("bac_transmittals", {
+  id: int("id").autoincrement().primaryKey(),
+  transmittalNumber: varchar("transmittalNumber", { length: 48 }).notNull().unique(),
+  purchaseRequestId: int("purchaseRequestId"),
+  fromOffice: varchar("fromOffice", { length: 180 }).notNull(),
+  toOffice: varchar("toOffice", { length: 180 }).notNull(),
+  subject: varchar("subject", { length: 220 }).notNull(),
+  remarks: text("remarks"),
+  status: mysqlEnum("status", ["draft", "sent", "acknowledged"]).default("draft").notNull(),
+  preparedById: int("preparedById").notNull(),
+  sentAt: timestamp("sentAt"),
+  acknowledgedByName: varchar("acknowledgedByName", { length: 180 }),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("transmittal_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
+
+export const supplierEvaluations = mysqlTable("supplier_evaluations", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull(),
+  purchaseOrderId: int("purchaseOrderId"),
+  qualityScore: int("qualityScore").notNull(),
+  deliveryScore: int("deliveryScore").notNull(),
+  pricingScore: int("pricingScore").notNull(),
+  complianceScore: int("complianceScore").notNull(),
+  remarks: text("remarks"),
+  evaluatedById: int("evaluatedById").notNull(),
+  evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
+}, (table) => [index("supplier_evaluation_supplier_date_idx").on(table.supplierId, table.evaluatedAt)]);
+
+export const mcdmRecommendations = mysqlTable("mcdm_recommendations", {
+  id: int("id").autoincrement().primaryKey(),
+  preCanvassId: int("preCanvassId").notNull().unique(),
+  recommendedSupplierId: int("recommendedSupplierId").notNull(),
+  priceScore: decimal("priceScore", { precision: 7, scale: 2 }).notNull(),
+  deliveryScore: decimal("deliveryScore", { precision: 7, scale: 2 }).notNull(),
+  complianceScore: decimal("complianceScore", { precision: 7, scale: 2 }).notNull(),
+  totalScore: decimal("totalScore", { precision: 7, scale: 2 }).notNull(),
+  rationale: text("rationale").notNull(),
+  createdById: int("createdById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const historicalPrices = mysqlTable("historical_prices", {
+  id: int("id").autoincrement().primaryKey(),
+  itemDescription: varchar("itemDescription", { length: 220 }).notNull(),
+  unit: varchar("unit", { length: 40 }).notNull(),
+  unitPrice: decimal("unitPrice", { precision: 14, scale: 2 }).notNull(),
+  supplierId: int("supplierId"),
+  purchaseOrderId: int("purchaseOrderId"),
+  observedAt: timestamp("observedAt").defaultNow().notNull(),
+  recordedById: int("recordedById").notNull(),
+}, (table) => [index("historical_price_item_observed_idx").on(table.itemDescription, table.observedAt)]);
 
 export const auditTrails = mysqlTable("audit_trails", {
   id: int("id").autoincrement().primaryKey(),

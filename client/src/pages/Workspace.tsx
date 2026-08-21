@@ -38,8 +38,9 @@ export function PurchaseRequestsPage() {
     onError: (error) => toast.error(error.message),
   });
   const createRequest = trpc.procurement.purchaseRequests.create.useMutation({
-    onSuccess: () => {
-      toast.success("Purchase Request created and saved as draft.");
+    onSuccess: (created) => {
+      void navigator.clipboard?.writeText(created.trackingToken);
+      toast.success("Purchase Request created. Its public tracking token was copied to your clipboard.");
       setIsCreating(false);
       void utils.procurement.purchaseRequests.list.invalidate();
       void utils.procurement.dashboard.invalidate();

@@ -1,0 +1,23 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
+import { CheckCircle2, Circle, Search } from "lucide-react";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+
+const stages = ["Draft package", "Pre-Canvass", "Procurement review", "Administrative decision", "Purchase Order", "Delivery & PMR"];
+function stageIndex(status: string, hasPreCanvass: boolean, hasPurchaseOrder: boolean) {
+  if (["pmr_logged", "delivered"].includes(status)) return 5;
+  if (hasPurchaseOrder || status === "po") return 4;
+  if (status === "approved" || status === "approval_review") return 3;
+  if (status === "procurement_review") return 2;
+  if (hasPreCanvass) return 1;
+  return 0;
+}
+
+export default function PublicTrackingPage() {
+  const [token, setToken] = useState(""); const [submittedToken, setSubmittedToken] = useState("");
+  const tracking = trpc.procurement.publicTracking.lookup.useQuery({ token: submittedToken || "invalid-token" }, { enabled: submittedToken.length >= 16, retry: false });
+  const record = tracking.data; const index = record ? stageIndex(record.purchaseRequest.status, Boolean(record.preCanvass), Boolean(record.purchaseOrder)) : 0;
+  return <main className="min-h-screen bg-[#f8f7f3] px-4 py-8 sm:px-6"><div className="mx-auto max-w-3xl"><div className="flex justify-center"><ProcureWiseLogo /></div><section className="mt-10 border border-[#e1ddd4] bg-white p-6 shadow-[0_12px_36px_rgba(36,42,52,0.06)] sm:p-8"><p className="text-center text-[10px] font-bold uppercase tracking-[0.15em] text-[#9a6d19]">Public tracking</p><h1 className="mt-2 text-center font-display text-3xl font-semibold text-[#202833]">Track a Purchase Request</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-6 text-[#65717e]">Enter the secure tracking token shared by the requesting office. This page displays process status only and does not disclose personal, pricing, or supplier information.</p><form className="mx-auto mt-7 flex max-w-xl gap-2" onSubmit={(event) => { event.preventDefault(); setSubmittedToken(token.trim()); }}><Input value={token} onChange={(event) => setToken(event.target.value)} placeholder="Enter tracking token" className="h-10 rounded-[4px] text-sm" /><Button className="h-10 rounded-[4px] bg-[#7b1e1e] hover:bg-[#641818]"><Search className="mr-1.5 h-4 w-4" />Track</Button></form>{tracking.isError && <p className="mt-4 text-center text-xs text-[#a32929]">No tracking record was found for this token.</p>}</section>{record && <section className="mt-6 border border-[#e1ddd4] bg-white p-6 shadow-[0_12px_36px_rgba(36,42,52,0.05)] sm:p-8"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6d19]">{record.purchaseRequest.prNumber}</p><h2 className="mt-1 text-lg font-semibold text-[#202833]">{record.purchaseRequest.purpose}</h2></div><span className="rounded-full bg-[#f9f1e0] px-3 py-1 text-[10px] font-bold text-[#7b1e1e]">{record.purchaseRequest.status.replaceAll("_", " ").toUpperCase()}</span></div><ol className="mt-8 space-y-0">{stages.map((stage, stagePosition) => <li key={stage} className="relative flex gap-4 pb-7 last:pb-0"><div className="relative z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 border-white bg-[#f0ece5]">{stagePosition <= index ? <CheckCircle2 className="h-5 w-5 text-[#7b1e1e]" /> : <Circle className="h-4 w-4 text-[#aeb5bd]" />}</div>{stagePosition < stages.length - 1 && <span className={`absolute left-[13px] top-7 h-[calc(100%-18px)] w-px ${stagePosition < index ? "bg-[#7b1e1e]" : "bg-[#e5e1d9]"}`} />}<div className="pt-1"><p className={`text-sm font-semibold ${stagePosition <= index ? "text-[#303946]" : "text-[#9aa1a9]"}`}>{stage}</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">{stagePosition === index ? "Current workflow position" : stagePosition < index ? "Completed or recorded" : "Awaiting the required authorized action"}</p></div></li>)}</ol><div className="mt-8 border-t border-[#ece8df] pt-5"><p className="text-xs font-semibold text-[#3f4a57]">Recorded milestones</p>{record.events.length ? <ul className="mt-3 space-y-2 text-[11px] text-[#65717e]">{record.events.slice(-6).map((event, eventIndex) => <li key={`${event.action}-${eventIndex}`} className="flex justify-between gap-3"><span>{event.action.replaceAll("_", " ")}</span><span>{new Date(event.createdAt).toLocaleDateString("en-PH")}</span></li>)}</ul> : <p className="mt-2 text-[11px] text-[#77818d]">No public milestones are available yet.</p>}</div></section>}</div></main>;
+}

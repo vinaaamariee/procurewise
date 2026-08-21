@@ -81,3 +81,30 @@
 - [x] Add an in-app notification inbox for Pre-Canvass handoffs and key Abstract/PO status changes.
 - [x] Add automated coverage and responsive validation for attachments, corrections, setup readiness, and workflow notifications.
 - [x] Save a checkpoint for the operational-readiness enhancements.
+- [x] Define unread notification badge, live toast, extended correction, and official-form PDF export behavior with role controls.
+- [x] Add unread notification counts to the alert control and live toast feedback when new workflow alerts are received.
+- [x] Use active-browser refresh for unread badges and new-alert toast feedback; do not require always-on hosting.
+- [x] Extend return-for-correction comments and resubmission tracking to Abstract and Purchase Order workflow stages.
+- [x] Add downloadable offline PDF exports for official PR, Pre-Canvass/RFQ, Abstract of Canvass, and Purchase Order forms.
+- [x] Add automated coverage and responsive validation for notifications, correction extensions, and PDF export controls.
+- [x] Save a checkpoint for notification, correction, and PDF export enhancements.
+- [x] Audit current routes, schema, and workflow procedures against the expanded officer backlog before implementation.
+- [x] Implement full Letters of Notice and BAC Transmittals officer workspaces with print routes.
+- [x] Wire MCDM recommendation from Pre-Canvass to Abstract and RFQ creation.
+- [x] Replace the supplier evaluation list-only view with controlled create and edit forms.
+- [x] Add a visible Supplier Evaluation edit action with prefilled score and remarks fields that saves through the update procedure.
+- [x] Verify Supplier Evaluation create and edit paths through TypeScript, regression coverage, success handling, and responsive route validation without creating fabricated procurement records.
+- [x] Confirm offices and expenditure objects use existing managed administrative reference tables rather than free text.
+- [x] Build live procurement forecasting from historical transaction prices using Recharts.
+- [x] Unlock working General, Security, and Notifications officer settings.
+- [x] Enrich public PR tracking with a visual workflow timeline stepper.
+- [x] Add print routes for notices, transmittals, and Pre-Canvass Abstracts.
+- [x] Add automated coverage and responsive validation for the expanded officer workflow backlog.
+- [x] Capture desktop and mobile validation of the Documents PDF export controls and their download action area.
+- [x] Add stronger behavioral coverage for official-form PDF export triggers and documented output naming.
+- [x] Add service-level validation coverage for Supplier Evaluation create and update score rules.
+- [x] Capture mobile validation for Supplier Evaluations, Transmittals, Settings, and print routes.
+- [x] Add direct PDF-export function tests that assert document-save invocation and official output names.
+- [x] Add service-path tests confirming Supplier Evaluation create and update reject invalid score sets before database persistence.
+- [ ] Defer live-record PDF download and populated mobile workspace validation until an authorized, non-fabricated procurement record exists.
+- [x] Save a checkpoint for the expanded officer workflow enhancements.

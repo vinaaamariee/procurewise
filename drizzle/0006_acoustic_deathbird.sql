@@ -1,0 +1,3 @@
+ALTER TABLE `abstracts_of_canvass` MODIFY COLUMN `status` enum('recommended','returned','approved','rejected') NOT NULL DEFAULT 'recommended';--> statement-breakpoint
+ALTER TABLE `purchase_orders` MODIFY COLUMN `status` enum('draft','pending_approval','approved','issued','returned','delivered','closed') NOT NULL DEFAULT 'draft';--> statement-breakpoint
+ALTER TABLE `workflow_corrections` MODIFY COLUMN `entityType` enum('purchase_request','pre_canvass','abstract_of_canvass','purchase_order') NOT NULL;
