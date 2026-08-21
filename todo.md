@@ -176,4 +176,4 @@
 - [x] Add PPMP and Abstract package CSV exports with correctly scoped record data.
 - [x] Add PPMP and Abstract package PDF export controls that follow the existing official-form design rules.
 - [x] Add regression coverage and responsive validation for realtime updates and export controls.
-- [ ] Save a checkpoint for Supabase Realtime and PPMP/Abstract export enhancements.
+- [x] Save a checkpoint for Supabase Realtime and PPMP/Abstract export enhancements.
