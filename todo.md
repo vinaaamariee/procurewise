@@ -181,3 +181,5 @@
 - [x] Add a GitHub Actions workflow that installs dependencies and runs TypeScript and Vitest checks on pushes and pull requests.
 - [x] Document the external Vercel authentication deployment requirements, callback URL handling, required variables, and security verification steps in the README.
 - [x] Audit supplier intelligence, pricing, delivery, forecasting, budget, canvass-reporting, and recommendation capabilities; produce a prioritized implementation plan for identified gaps.
+- [x] Define an initial governed Best Value criteria and weight policy, including exclusions, evidence thresholds, and override controls.
+- [x] Create a field-level historic authorized-procurement record import template and validation guide for supplier, quote, award, delivery, and evaluation evidence.
