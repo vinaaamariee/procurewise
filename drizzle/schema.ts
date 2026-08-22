@@ -396,6 +396,10 @@ export const supplierEvaluations = pgTable("supplier_evaluations", {
   supplierId: integer("supplierId").notNull(),
   purchaseOrderId: integer("purchaseOrderId"),
   purchaseRequestId: integer("purchaseRequestId"),
+  reportedPurchaseRequestNumber: varchar("reportedPurchaseRequestNumber", { length: 80 }),
+  urgentPurchaseRequestReason: text("urgentPurchaseRequestReason"),
+  urgentPurchaseRequestUpdatedById: integer("urgentPurchaseRequestUpdatedById"),
+  urgentPurchaseRequestUpdatedAt: timestamp("urgentPurchaseRequestUpdatedAt"),
   officeId: integer("officeId"),
   evaluationAudience: varchar("evaluationAudience", { length: 32 }).$type<"end_user" | "procurement_office">().default("procurement_office").notNull(),
   goodsServicesType: varchar("goodsServicesType", { length: 220 }),
@@ -413,6 +417,17 @@ export const supplierEvaluations = pgTable("supplier_evaluations", {
   evaluatedById: integer("evaluatedById").notNull(),
   evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
 }, (table) => [index("supplier_evaluation_supplier_date_idx").on(table.supplierId, table.evaluatedAt)]);
+
+export const supplierEvaluationApprovals = pgTable("supplier_evaluation_approvals", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  supplierEvaluationId: integer("supplierEvaluationId").notNull().unique(),
+  approvedById: integer("approvedById").notNull(),
+  approverName: varchar("approverName", { length: 180 }).notNull(),
+  approverDesignation: varchar("approverDesignation", { length: 180 }).notNull(),
+  consentStatement: text("consentStatement").notNull(),
+  signatureDigest: varchar("signatureDigest", { length: 128 }).notNull(),
+  approvedAt: timestamp("approvedAt").defaultNow().notNull(),
+}, (table) => [index("supplier_evaluation_approval_approver_date_idx").on(table.approvedById, table.approvedAt)]);
 
 export const mcdmRecommendations = pgTable("mcdm_recommendations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),

@@ -192,3 +192,10 @@
 - [x] Provide role-scoped PDF export access for completed Supplier Evaluation forms using the supplied-form layout.
 - [x] Strengthen the active-page visual indicator in the sidebar for clearer navigation orientation.
 - [x] Document and enforce the controlled official-form preservation standard for all user-supplied government forms: no alteration of wording, sections, scoring, field order, signatories, or layout without explicit approval.
+- [x] Add an authenticated, role-gated electronic approval-signature section beneath the Supplier Evaluation Form, including approver identity, designation, timestamp, consent, immutable audit evidence, and PDF representation.
+- [x] Allow authorized urgent-case Purchase Request number entry or correction in the Supplier Evaluation Form with validation, an urgent-reason requirement, immutable original/reference values, and audit logging.
+- [x] Implement the supplied Annex D Request for Price Quotation as a controlled Pre-Canvass output, preserving its recipient, instructions, six notes, lot/item table, totals, supplier acceptance, reference number, and BAC Chairperson block exactly as supplied.
+- [x] Implement the supplied Annex E Acknowledgement for Request for Quotation as a controlled receipt/retrieval output, preserving its two supplier registers, six notes, and stated labels exactly as supplied.
+- [x] Implement the supplied Annex F Abstract of Quotation as a controlled quotation-comparison output, preserving its procurement-purpose marks, supplier columns, outcome statements, and BAC/End-User signature blocks exactly as supplied.
+- [x] Align the Appendix 61 Purchase Order output strictly to the supplied entity, delivery, payment, ten-line item table, signing, and accounting/ORS-BURS format.
+- [x] Match Appendix 60, Annex D, Annex F, and Appendix 61 controlled output geometry to the supplied reference images, including row counts, column proportions, thin-grid treatment, and footer/signature placement.

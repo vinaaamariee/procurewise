@@ -30,13 +30,16 @@ describe("Supabase Realtime browser credentials", () => {
     const listener = createClient(url, anonKey, { auth: { autoRefreshToken: false, persistSession: false } });
     const publisher = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
     let listenerChannel: ReturnType<typeof listener.channel> | null = null;
+    let resolveListenerSubscription: (() => void) | null = null;
+    const listenerSubscribed = new Promise<void>((resolve) => { resolveListenerSubscription = resolve; });
     const received = new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("Timed out waiting for Supabase Realtime broadcast.")), 10_000);
       listenerChannel = listener.channel(topic, { config: { broadcast: { self: false } } }).on("broadcast", { event: "record_changed" }, ({ payload }) => { clearTimeout(timer); resolve(payload); });
-      listenerChannel.subscribe((status) => { if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { clearTimeout(timer); reject(new Error(`Browser Realtime subscription failed: ${status}`)); } });
+      listenerChannel.subscribe((status) => { if (status === "SUBSCRIBED") resolveListenerSubscription?.(); if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { clearTimeout(timer); reject(new Error(`Browser Realtime subscription failed: ${status}`)); } });
     });
     const publisherChannel = publisher.channel(topic, { config: { broadcast: { ack: true, self: false } } });
     await new Promise<void>((resolve, reject) => publisherChannel.subscribe((status) => { if (status === "SUBSCRIBED") resolve(); if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error(`Server Realtime subscription failed: ${status}`)); }));
+    await listenerSubscribed;
     expect(await publisherChannel.send({ type: "broadcast", event: "record_changed", payload: { recordType: "pre_canvass", occurredAt: new Date().toISOString() } })).toBe("ok");
     expect(await received).toMatchObject({ recordType: "pre_canvass" });
     await publisher.removeChannel(publisherChannel);

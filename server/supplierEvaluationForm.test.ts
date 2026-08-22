@@ -58,5 +58,14 @@ describe("Supplier Evaluation Form authorization and rendering", () => {
     }, -1);
     expect(navigation).toContain('aria-current={active ? "page" : undefined}');
     expect(navigation).toContain('before:bg-[#d5ab55]');
+    const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const services = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+    const router = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    expect(schema).toContain("supplier_evaluation_approvals");
+    expect(schema).toContain("reportedPurchaseRequestNumber");
+    expect(services).toContain("signSupplierEvaluation");
+    expect(services).toContain("urgentPurchaseRequestReference");
+    expect(router).toContain("signApproval");
+    expect(router).toContain("urgentPurchaseRequestReason");
   });
 });

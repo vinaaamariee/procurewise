@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { downloadAbstractPdf, downloadPreCanvassPdf, downloadPurchaseOrderPdf, downloadPurchaseRequestPdf } from "@/lib/procurementPdf";
+import { downloadAbstractPdf, downloadPreCanvassPdf, downloadPurchaseOrderPdf, downloadPurchaseRequestPdf, downloadRfqAcknowledgementPdf } from "@/lib/procurementPdf";
 import { Download, FileText, FolderUp, LoaderCircle, Paperclip } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -42,7 +42,12 @@ export default function DocumentsPage() {
     ...(dashboard.data?.purchaseOrders ?? []).map((record) => ({ key: `purchase_order:${record.id}`, entityType: "purchase_order" as const, entityId: record.id, label: `${record.poNumber} — Purchase Order` })),
   ], [dashboard.data]);
   const selectedRecord = recordOptions.find((option) => option.key === entityKey);
-  const purchaseRequestDetail = trpc.procurement.purchaseRequests.detail.useQuery({ purchaseRequestId: selectedRecord?.entityId ?? 0 }, { enabled: selectedRecord?.entityType === "purchase_request", retry: false });
+  const selectedPreCanvass = selectedRecord?.entityType === "pre_canvass" ? dashboard.data?.preCanvasses.find((record) => record.id === selectedRecord.entityId) : undefined;
+  const selectedAbstract = selectedRecord?.entityType === "abstract_of_canvass" ? dashboard.data?.abstractsOfCanvass.find((record) => record.id === selectedRecord.entityId) : undefined;
+  const selectedPurchaseOrder = selectedRecord?.entityType === "purchase_order" ? dashboard.data?.purchaseOrders.find((record) => record.id === selectedRecord.entityId) : undefined;
+  const abstractPreCanvass = selectedAbstract ? dashboard.data?.preCanvasses.find((record) => record.id === selectedAbstract.preCanvassId) : undefined;
+  const linkedPurchaseRequestId = selectedRecord?.entityType === "purchase_request" ? selectedRecord.entityId : selectedPreCanvass?.purchaseRequestId ?? abstractPreCanvass?.purchaseRequestId ?? selectedPurchaseOrder?.purchaseRequestId ?? 0;
+  const purchaseRequestDetail = trpc.procurement.purchaseRequests.detail.useQuery({ purchaseRequestId: linkedPurchaseRequestId }, { enabled: Boolean(linkedPurchaseRequestId), retry: false });
   const attach = trpc.procurement.documents.attach.useMutation({
     onSuccess: () => {
       toast.success("Document attached to the procurement record.");
@@ -74,19 +79,29 @@ export default function DocumentsPage() {
       return downloadPurchaseRequestPdf(purchaseRequestDetail.data);
     }
     if (selectedRecord.entityType === "pre_canvass") {
-      const preCanvass = dashboard.data?.preCanvasses.find((record) => record.id === selectedRecord.entityId);
+      const preCanvass = selectedPreCanvass;
       if (!preCanvass) return toast.error("Pre-Canvass record is unavailable.");
-      return downloadPreCanvassPdf({ preCanvass, quotes: dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === preCanvass.id) ?? [], supplierNames: new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier.companyName] as [number, string])) });
+      if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
+      return downloadPreCanvassPdf({ preCanvass, items: purchaseRequestDetail.data.items });
     }
     if (selectedRecord.entityType === "abstract_of_canvass") {
-      const abstract = dashboard.data?.abstractsOfCanvass.find((record) => record.id === selectedRecord.entityId);
+      const abstract = selectedAbstract;
       if (!abstract) return toast.error("Abstract record is unavailable.");
-      return downloadAbstractPdf({ abstract, supplierName: supplierMap.get(abstract.recommendedSupplierId)?.companyName });
+      if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
+      const preCanvass = dashboard.data?.preCanvasses.find((record) => record.id === abstract.preCanvassId);
+      const supplierNames = (preCanvass ? dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === preCanvass.id) ?? [] : []).map((quote) => supplierMap.get(quote.supplierId)?.companyName || "");
+      return downloadAbstractPdf({ abstract, suppliers: supplierNames, items: purchaseRequestDetail.data.items });
     }
-    const purchaseOrder = dashboard.data?.purchaseOrders.find((record) => record.id === selectedRecord.entityId);
+    const purchaseOrder = selectedPurchaseOrder;
     if (!purchaseOrder) return toast.error("Purchase Order record is unavailable.");
     const supplier = supplierMap.get(purchaseOrder.supplierId);
-    return downloadPurchaseOrderPdf({ purchaseOrder, supplierName: supplier?.companyName, supplierTin: supplier?.tin });
+    if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
+    return downloadPurchaseOrderPdf({ purchaseOrder, supplierName: supplier?.companyName, supplierTin: supplier?.tin, items: purchaseRequestDetail.data.items });
+  };
+  const downloadAcknowledgement = () => {
+    if (!selectedPreCanvass) return toast.error("Select a Pre-Canvass record before downloading Annex E.");
+    const supplierMap = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier]));
+    return downloadRfqAcknowledgementPdf({ preCanvassNumber: selectedPreCanvass.preCanvassNumber, suppliers: (dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === selectedPreCanvass.id) ?? []).map((quote) => ({ companyName: supplierMap.get(quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`, receivedBy: quote.receivedBy, receivedAt: quote.acknowledgedAt })) });
   };
 
   return <div className="mx-auto max-w-[1240px]">
@@ -102,6 +117,6 @@ export default function DocumentsPage() {
       </FormShell>
       <section className="flat-panel overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Available documents</p><p className="mt-1 text-[11px] text-[#77818d]">You can access only documents associated with records visible to your assigned role.</p></div>{dashboard.isLoading ? <div className="grid min-h-48 place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-[#7b1e1e]" /></div> : dashboard.data?.documents.length ? <RecordTable className="border-0"><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Document</th><th className="px-4 py-3 font-semibold">Linked record</th><th className="px-4 py-3 font-semibold">Added</th><th className="px-4 py-3 font-semibold">Open</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{dashboard.data.documents.map((document) => <tr key={document.id}><td className="px-4 py-3"><p className="font-semibold text-[#3f4a57]">{document.documentType}</p><p className="mt-0.5 max-w-[210px] truncate text-[11px] text-[#77818d]">{document.originalFileName}</p></td><td className="px-4 py-3 text-[11px] text-[#65717e]">{recordLabel(document.entityType, document.entityId)}</td><td className="px-4 py-3 text-[11px] text-[#77818d]">{new Date(document.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3"><a href={document.storageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7b1e1e] hover:underline"><FileText className="h-3.5 w-3.5" />View</a></td></tr>)}</tbody></RecordTable> : <div className="p-8 text-center text-[11px] leading-5 text-[#77818d]">No authorised supporting documents are attached to the procurement records available to you.</div>}</section>
     </div>
-    <section className="flat-panel mt-6 flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-sm font-semibold text-[#34404e]">Official-form PDF copy</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">Download an offline Appendix 60 Purchase Request, Annex D Pre-Canvass/RFQ, Annex F Abstract, or Appendix 61 Purchase Order copy for the selected record.</p></div><Button type="button" onClick={downloadOfficialForm} disabled={!selectedRecord || (selectedRecord.entityType === "purchase_request" && purchaseRequestDetail.isLoading)} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]"><Download className="mr-1.5 h-3.5 w-3.5" />Download PDF</Button></section>
+    <section className="flat-panel mt-6 flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-sm font-semibold text-[#34404e]">Official-form PDF copy</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">Download the controlled Appendix 60 Purchase Request, Annex D Request for Price Quotation, Annex E acknowledgement, Annex F Abstract, or Appendix 61 Purchase Order for the selected record.</p></div><div className="flex flex-wrap gap-2"><Button type="button" onClick={downloadOfficialForm} disabled={!selectedRecord || purchaseRequestDetail.isLoading} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]"><Download className="mr-1.5 h-3.5 w-3.5" />Download official PDF</Button>{selectedRecord?.entityType === "pre_canvass" && <Button type="button" variant="outline" onClick={downloadAcknowledgement} className="h-9 rounded-[4px] border-[#d6c6a2] text-xs text-[#7b1e1e] hover:bg-[#fffaf0]"><Download className="mr-1.5 h-3.5 w-3.5" />Download Annex E</Button>}</div></section>
   </div>;
 }

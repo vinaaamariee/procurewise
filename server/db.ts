@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -421,6 +422,8 @@ type SupplierEvaluationFormInput = {
   supplierRegistryReference?: string;
   supplierRegistryRegisteredAt?: Date;
   supplierRegistryExpiresAt?: Date;
+  reportedPurchaseRequestNumber?: string;
+  urgentPurchaseRequestReason?: string;
   responseScores: Record<string, number>;
   remarks?: string;
   respondentName?: string;
@@ -442,10 +445,17 @@ export async function createSupplierEvaluationForm(input: SupplierEvaluationForm
   const { order, request } = await getVerifiedEvaluationOrder(input, user, audience);
   const db = await requireDb();
   const summary = deriveSupplierEvaluationSummary(audience, input.responseScores);
+  const reportedPurchaseRequestNumber = audience === "procurement_office" ? input.reportedPurchaseRequestNumber?.trim() || request.prNumber : request.prNumber;
+  const urgentPurchaseRequestReference = audience === "procurement_office" && reportedPurchaseRequestNumber !== request.prNumber;
+  if (urgentPurchaseRequestReference && !input.urgentPurchaseRequestReason?.trim()) throw new Error("Provide the urgent Purchase Request reference reason before submitting the form.");
   const [created] = await db.insert(supplierEvaluations).values({
     supplierId: input.supplierId,
     purchaseOrderId: order.id,
     purchaseRequestId: request.id,
+    reportedPurchaseRequestNumber,
+    urgentPurchaseRequestReason: urgentPurchaseRequestReference ? input.urgentPurchaseRequestReason?.trim() || null : null,
+    urgentPurchaseRequestUpdatedById: urgentPurchaseRequestReference ? user.id : null,
+    urgentPurchaseRequestUpdatedAt: urgentPurchaseRequestReference ? new Date() : null,
     officeId: request.officeId,
     evaluationAudience: audience,
     goodsServicesType: audience === "end_user" ? input.goodsServicesType?.trim() || null : null,
@@ -460,8 +470,37 @@ export async function createSupplierEvaluationForm(input: SupplierEvaluationForm
     evaluatedById: user.id,
   }).returning();
   if (!created) throw new Error("Supplier Evaluation Form could not be saved.");
-  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: created.id, action: `${audience}_form_submitted`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId, purchaseOrderId: order.id, criterionCount: Object.keys(input.responseScores).length } });
+  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: created.id, action: `${audience}_form_submitted`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId, purchaseOrderId: order.id, criterionCount: Object.keys(input.responseScores).length, originalPurchaseRequestNumber: request.prNumber, reportedPurchaseRequestNumber, urgentPurchaseRequestReference } });
   return created;
+}
+
+export async function listPendingSupplierEvaluationApprovals() {
+  const db = await requireDb();
+  const evaluations = await db.select().from(supplierEvaluations).orderBy(desc(supplierEvaluations.evaluatedAt));
+  if (!evaluations.length) return [];
+  const approvals = await db.select().from(supplierEvaluationApprovals);
+  const approvedEvaluationIds = new Set(approvals.map((approval) => approval.supplierEvaluationId));
+  const pending = evaluations.filter((evaluation) => !approvedEvaluationIds.has(evaluation.id));
+  if (!pending.length) return [];
+  const supplierRows = await db.select().from(suppliers).where(inArray(suppliers.id, Array.from(new Set(pending.map((evaluation) => evaluation.supplierId)))));
+  const orderRows = await db.select().from(purchaseOrders).where(inArray(purchaseOrders.id, Array.from(new Set(pending.map((evaluation) => evaluation.purchaseOrderId).filter((id): id is number => Boolean(id))))));
+  return pending.map((evaluation) => ({ evaluation, supplier: supplierRows.find((supplier) => supplier.id === evaluation.supplierId) ?? null, purchaseOrder: orderRows.find((order) => order.id === evaluation.purchaseOrderId) ?? null }));
+}
+
+export async function signSupplierEvaluation(input: { supplierEvaluationId: number; approverDesignation: string }, user: User) {
+  const db = await requireDb();
+  const [evaluation] = await db.select().from(supplierEvaluations).where(eq(supplierEvaluations.id, input.supplierEvaluationId)).limit(1);
+  if (!evaluation) throw new Error("Supplier Evaluation Form not found.");
+  const [existing] = await db.select().from(supplierEvaluationApprovals).where(eq(supplierEvaluationApprovals.supplierEvaluationId, evaluation.id)).limit(1);
+  if (existing) throw new Error("This Supplier Evaluation Form has already been electronically approved.");
+  const approvedAt = new Date();
+  const consentStatement = "I confirm that I am the authorized approver and electronically approve this completed Supplier Evaluation Form.";
+  const approverName = user.name?.trim() || user.email || `User #${user.id}`;
+  const signatureDigest = createHash("sha256").update(JSON.stringify({ supplierEvaluationId: evaluation.id, evaluatedAt: evaluation.evaluatedAt.toISOString(), respondentName: evaluation.respondentName, responseScores: evaluation.responseScores, approverId: user.id, approverName, approverDesignation: input.approverDesignation.trim(), consentStatement, approvedAt: approvedAt.toISOString() })).digest("hex");
+  const [approval] = await db.insert(supplierEvaluationApprovals).values({ supplierEvaluationId: evaluation.id, approvedById: user.id, approverName, approverDesignation: input.approverDesignation.trim(), consentStatement, signatureDigest, approvedAt }).returning();
+  if (!approval) throw new Error("Electronic approval could not be recorded.");
+  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: evaluation.id, action: "electronically_approved", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { approvalId: approval.id, approverName, approverDesignation: approval.approverDesignation, signatureDigest } });
+  return { evaluation, approval };
 }
 
 export async function listSupplierEvaluationsForEndUser(user: User) {
