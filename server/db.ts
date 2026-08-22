@@ -189,6 +189,26 @@ export async function getBestValuePolicy() {
   };
 }
 
+export async function getBestValuePolicyHistory() {
+  const db = await requireDb();
+  const policies = await db.select().from(bestValuePolicies).orderBy(desc(bestValuePolicies.version));
+  if (!policies.length) return [];
+  const policyIds = policies.map((policy) => policy.id);
+  const creatorIds = Array.from(new Set(policies.map((policy) => policy.createdById)));
+  const [criteria, creators, auditEvents] = await Promise.all([
+    db.select().from(bestValuePolicyCriteria).where(inArray(bestValuePolicyCriteria.policyId, policyIds)).orderBy(bestValuePolicyCriteria.sortOrder),
+    db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, creatorIds)),
+    db.select().from(auditTrails).where(and(eq(auditTrails.entityType, "best_value_policy"), inArray(auditTrails.entityId, policyIds))).orderBy(desc(auditTrails.createdAt)),
+  ]);
+  const creatorsById = new Map(creators.map((creator) => [creator.id, creator]));
+  return policies.map((policy) => ({
+    policy,
+    criteria: criteria.filter((criterion) => criterion.policyId === policy.id),
+    createdBy: creatorsById.get(policy.createdById) ?? null,
+    activationAudit: auditEvents.find((event) => event.entityId === policy.id) ?? null,
+  }));
+}
+
 export async function saveBestValuePolicy(input: { name: string; criteria: BestValueCriterionWeight[] }, user: User) {
   const validation = validateBestValueCriteria(input.criteria);
   if (!validation.valid) throw new Error(validation.error);

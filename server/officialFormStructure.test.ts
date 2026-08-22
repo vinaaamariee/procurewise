@@ -33,4 +33,12 @@ describe("official procurement form structure", () => {
     expect(schema).toContain('openingDate: timestamp("openingDate").defaultNow().notNull()');
     expect(migration).toContain("ADD `openingDate` timestamp DEFAULT (now()) NOT NULL");
   });
+
+  it("keeps the Best Value policy history compliance PDF exporter available with version and criteria sections", () => {
+    const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
+    expect(pdf).toContain("downloadBestValuePolicyHistoryPdf");
+    expect(pdf).toContain("BEST VALUE POLICY HISTORY");
+    expect(pdf).toContain("VERSION");
+    expect(pdf).toContain("CRITERION");
+  });
 });

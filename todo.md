@@ -184,3 +184,4 @@
 - [x] Define an initial governed Best Value criteria and weight policy, including exclusions, evidence thresholds, and override controls.
 - [x] Create a field-level historic authorized-procurement record import template and validation guide for supplier, quote, award, delivery, and evaluation evidence.
 - [x] Add an Admin-only database-backed Best Value policy settings page with adjustable criteria weights, 100% total validation, auditable versioning, and role-gated save controls.
+- [x] Add Admin-only CSV and PDF compliance exports for complete Best Value policy version history, criteria weights, active status, and audit context.

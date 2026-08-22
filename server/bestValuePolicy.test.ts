@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BEST_VALUE_CRITERIA, getDefaultBestValueCriteria, validateBestValueCriteria } from "../shared/bestValuePolicy";
-import { getBestValuePolicy } from "./db";
+import { getBestValuePolicy, getBestValuePolicyHistory } from "./db";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -28,6 +28,7 @@ describe("Best Value policy administration wiring", () => {
     expect(routerSource).toContain("bestValuePolicy: router");
     expect(routerSource).toContain("active: protectedProcedure.query");
     expect(routerSource).toContain("save: protectedProcedure.input");
+    expect(routerSource).toContain("history: protectedProcedure.query");
     expect(routerSource).toContain('assertRole(normalizeProcurementRole(ctx.user.role), ["admin"])');
   });
 
@@ -42,6 +43,8 @@ describe("Best Value policy administration wiring", () => {
     expect(pageSource).toContain("const isValid = total === 100");
     expect(pageSource).toContain("Save new policy version");
     expect(pageSource).toContain("Decision support only");
+    expect(pageSource).toContain("Policy version history");
+    expect(pageSource).toContain("Compliance PDF");
   });
 });
 
@@ -51,6 +54,15 @@ describe("Best Value policy runtime", () => {
     expect(result.policy.policyCode).toBe("BSC-BV");
     expect(result.criteria).toHaveLength(5);
     expect(result.criteria.reduce((total, criterion) => total + Number(criterion.weight), 0)).toBe(100);
+  });
+
+  it("reads the persisted policy history from Supabase without creating a policy record", async () => {
+    const history = await getBestValuePolicyHistory();
+    expect(Array.isArray(history)).toBe(true);
+    history.forEach((entry) => {
+      expect(entry.policy.policyCode).toBe("BSC-BV");
+      expect(entry.criteria).toHaveLength(5);
+    });
   });
 });
 
@@ -62,6 +74,7 @@ describe("Best Value policy authorization", () => {
       res: {} as TrpcContext["res"],
     });
     await expect(caller.procurement.bestValuePolicy.active()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.procurement.bestValuePolicy.history()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.procurement.bestValuePolicy.save({ name: "Unapproved change", criteria: getDefaultBestValueCriteria() })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

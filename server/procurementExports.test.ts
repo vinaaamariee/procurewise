@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAbstractPackageCsv, buildCsv, buildPpmpCsv } from "../client/src/lib/procurementExports";
+import { buildAbstractPackageCsv, buildBestValuePolicyHistoryCsv, buildCsv, buildPpmpCsv } from "../client/src/lib/procurementExports";
 
 describe("procurement CSV exports", () => {
   it("quotes special CSV characters and preserves a UTF-8 BOM for spreadsheet-compatible downloads", () => {
@@ -19,5 +19,14 @@ describe("procurement CSV exports", () => {
     expect(csv).toContain("Supplier A,Q-11,100.00,3,Yes");
     expect(csv).toContain("Supplier B,Q-12,110.00,4,Yes");
     expect(csv).toContain("Bond paper (10 ream)");
+  });
+
+  it("includes policy version, activation context, and each criterion weight in a Best Value compliance export", () => {
+    const csv = buildBestValuePolicyHistoryCsv([{ policy: { policyCode: "BSC-BV", name: "Initial Best Value Policy", version: 2, isActive: 1, totalWeight: "100.00", createdAt: new Date("2026-08-22T00:00:00Z"), deactivatedAt: null }, criteria: [{ criterionKey: "price_competitiveness", label: "Quoted price competitiveness", description: "Comparable eligible quotation price.", weight: "55.00", sortOrder: 1 }, { criterionKey: "delivery_commitment", label: "Delivery commitment", description: "Compliant delivery commitment.", weight: "45.00", sortOrder: 2 }], createdBy: { name: "Policy Administrator", email: "admin@example.test" }, activationAudit: { action: "version_activated", createdAt: new Date("2026-08-22T00:00:00Z"), performedByRole: "admin" } }]);
+    expect(csv).toContain("Policy code,Policy name,Version,Status,Total weight");
+    expect(csv).toContain("BSC-BV,Initial Best Value Policy,2,Active,100.00");
+    expect(csv).toContain("version_activated");
+    expect(csv).toContain("price_competitiveness,Quoted price competitiveness");
+    expect(csv).toContain("delivery_commitment,Delivery commitment");
   });
 });

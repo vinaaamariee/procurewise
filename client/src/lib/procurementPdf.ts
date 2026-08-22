@@ -1,5 +1,7 @@
 import { jsPDF } from "jspdf";
 
+import type { BestValuePolicyHistoryEntry } from "./procurementExports";
+
 type LineItem = { description: string; quantity: string | number; unit: string; amount: string | number; specification?: string | null; stockPropertyNo?: string | null };
 const money = (value: string | number | null | undefined) => `₱${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
 const date = (value: Date | string | null | undefined) => value ? new Date(value).toLocaleDateString("en-PH") : "";
@@ -68,6 +70,51 @@ export function downloadAbstractPackagePdf(input: { abstract: { abstractNumber: 
   y += 8; doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text("LINKED END-USER ITEM SCHEDULE", 14, y); y += 5; const itemCols = [{ label: "DESCRIPTION / SPECIFICATION", x: 14, width: 150 }, { label: "QTY.", x: 164, width: 28 }, { label: "UNIT", x: 192, width: 28 }, { label: "EST. UNIT COST", x: 220, width: 32 }, { label: "EST. TOTAL", x: 252, width: 31 }]; tableHead(doc, y, itemCols); y += 8;
   input.items.forEach((item) => { const height = 12; itemCols.forEach((column) => doc.rect(column.x, y, column.width, height)); doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.text(doc.splitTextToSize([item.description, item.specification].filter(Boolean).join(" — "), 146).slice(0, 2), 16, y + 4.5); doc.text(String(item.quantity), 178, y + 7, { align: "center" }); doc.text(item.unit, 206, y + 7, { align: "center" }); doc.text(item.estimatedUnitCost === undefined ? "—" : money(item.estimatedUnitCost), 250, y + 7, { align: "right" }); y += height; });
   y += 9; doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text("CERTIFICATION / RECOMMENDATION", 14, y); doc.setFont("helvetica", "normal"); doc.setFontSize(7.2); doc.text(doc.splitTextToSize(input.abstract.recommendationReason, 260), 14, y + 7); signBlock(doc, Math.min(y + 28, 171), "Prepared by Procurement / BAC:", "Recommended / approved by:"); footer(doc); invokeOfficialPdfDownload(doc, `${input.abstract.abstractNumber}_AnnexF_AbstractPackage.pdf`);
+}
+
+export function downloadBestValuePolicyHistoryPdf(history: BestValuePolicyHistoryEntry[]) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const issueDate = new Date().toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+  const startPage = () => {
+    formTitle(doc, "Compliance report", "BEST VALUE POLICY HISTORY");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.2);
+    doc.text(`Generated: ${issueDate}`, 14, 31);
+    doc.text("Batanes State College · ProcureWise controlled policy record", 196, 31, { align: "right" });
+  };
+  startPage();
+  let y = 40;
+  if (!history.length) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text("No saved Best Value policy versions are available in the authorized history.", 14, y);
+  }
+  history.forEach((entry) => {
+    const neededHeight = 41 + Math.max(1, entry.criteria.length) * 11;
+    if (y + neededHeight > 278) { footer(doc); doc.addPage("a4"); startPage(); y = 40; }
+    doc.setFillColor(entry.policy.isActive ? 239 : 248, entry.policy.isActive ? 249 : 247, entry.policy.isActive ? 242 : 243);
+    doc.rect(14, y, 182, 10, "F"); doc.setDrawColor(205, 198, 184); doc.rect(14, y, 182, 10);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(45, 55, 65);
+    doc.text(`${entry.policy.policyCode} · VERSION ${entry.policy.version} · ${entry.policy.isActive ? "ACTIVE" : "INACTIVE"}`, 16, y + 6.5);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text(`Total weight: ${Number(entry.policy.totalWeight).toFixed(2)}%`, 194, y + 6.5, { align: "right" });
+    y += 15;
+    doc.setTextColor(0, 0, 0); doc.setFontSize(7.2);
+    doc.text(`Policy: ${entry.policy.name}`, 16, y); y += 5;
+    doc.text(`Created: ${date(entry.policy.createdAt)} · By: ${entry.createdBy?.name || entry.createdBy?.email || "Recorded administrator"}`, 16, y); y += 5;
+    doc.text(`Status context: ${entry.activationAudit?.action || "Recorded policy version"} · ${entry.activationAudit ? date(entry.activationAudit.createdAt) : ""}${entry.policy.deactivatedAt ? ` · Deactivated: ${date(entry.policy.deactivatedAt)}` : ""}`, 16, y); y += 7;
+    const columns = [{ label: "#", x: 14, width: 10 }, { label: "CRITERION", x: 24, width: 62 }, { label: "EVIDENCE BASIS", x: 86, width: 82 }, { label: "WEIGHT", x: 168, width: 28 }];
+    tableHead(doc, y, columns); y += 8;
+    entry.criteria.forEach((criterion) => {
+      columns.forEach((column) => doc.rect(column.x, y, column.width, 11));
+      doc.setFont("helvetica", "normal"); doc.setFontSize(6.6);
+      doc.text(String(criterion.sortOrder), 19, y + 6.5, { align: "center" });
+      doc.text(doc.splitTextToSize(criterion.label, 58).slice(0, 2), 26, y + 4.2);
+      doc.text(doc.splitTextToSize(criterion.description || "", 78).slice(0, 2), 88, y + 4.2);
+      doc.text(`${Number(criterion.weight).toFixed(2)}%`, 194, y + 6.5, { align: "right" });
+      y += 11;
+    });
+    y += 7;
+  });
+  footer(doc);
+  invokeOfficialPdfDownload(doc, "BestValuePolicy_History_ComplianceReport.pdf");
 }
 
 export function downloadPurchaseOrderPdf(input: { purchaseOrder: { poNumber: string; totalAmount: string; status: string; placeOfDelivery: string | null; scheduledDeliveryDate: Date | null; deliveryTerm: string | null; paymentTerm: string | null; modeOfProcurement: string | null; fundCluster: string | null; orsBursNumber: string | null; fundsAvailable: string | null; authorizedOfficialName: string | null; authorizedOfficialDesignation: string | null; chiefAccountantName: string | null }; supplierName?: string; supplierTin?: string | null }) {

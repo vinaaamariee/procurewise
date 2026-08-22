@@ -3,10 +3,12 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildBestValuePolicyHistoryCsv, downloadCsv } from "@/lib/procurementExports";
+import { downloadBestValuePolicyHistoryPdf } from "@/lib/procurementPdf";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import { BEST_VALUE_CRITERIA, type BestValueCriterionKey } from "../../../shared/bestValuePolicy";
-import { AlertTriangle, CheckCircle2, LoaderCircle, Scale, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileDown, FileText, LoaderCircle, Scale, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +25,7 @@ export function BestValuePolicySettingsPage() {
   const { user } = useAuth();
   const isAdmin = user ? normalizeProcurementRole(user.role) === "admin" : false;
   const policy = trpc.procurement.bestValuePolicy.active.useQuery(undefined, { enabled: isAdmin, retry: false });
+  const history = trpc.procurement.bestValuePolicy.history.useQuery(undefined, { enabled: isAdmin, retry: false });
   const utils = trpc.useUtils();
   const [policyName, setPolicyName] = useState("Initial Best Value Policy");
   const [weights, setWeights] = useState<WeightDraft>(() => createWeightDraft([]));
@@ -43,6 +46,7 @@ export function BestValuePolicySettingsPage() {
     onSuccess: (saved) => {
       toast.success(`Best Value Policy version ${saved.policy.version} is now active.`);
       void utils.procurement.bestValuePolicy.active.invalidate();
+      void utils.procurement.bestValuePolicy.history.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -55,6 +59,15 @@ export function BestValuePolicySettingsPage() {
     event.preventDefault();
     if (!isValid) return toast.error("Set valid criteria weights that total exactly 100% before saving.");
     save.mutate({ name: policyName.trim(), criteria: BEST_VALUE_CRITERIA.map((criterion) => ({ criterionKey: criterion.criterionKey, weight: Number(weights[criterion.criterionKey]) })) });
+  };
+
+  const downloadHistoryCsv = () => {
+    if (!history.data?.length) return toast.error("No saved policy versions are available for export yet.");
+    downloadCsv("BestValuePolicy_History_ComplianceReport.csv", buildBestValuePolicyHistoryCsv(history.data));
+  };
+  const downloadHistoryPdf = () => {
+    if (!history.data?.length) return toast.error("No saved policy versions are available for export yet.");
+    downloadBestValuePolicyHistoryPdf(history.data);
   };
 
   return <div className="mx-auto max-w-[980px]">
@@ -70,5 +83,6 @@ export function BestValuePolicySettingsPage() {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#ece8df] bg-[#fbfaf7] px-5 py-4 sm:px-6"><p className="max-w-2xl text-[10px] leading-5 text-[#77818d]">The legacy MCDM calculation remains unchanged until the enhanced Best Value recommendation engine is implemented. This page establishes the approved, auditable policy configuration for that work.</p><Button disabled={!isValid || save.isPending || policy.isLoading} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{save.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Save new policy version</Button></div>
     </form>
+    <section className="flat-panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#ece8df] px-5 py-4 sm:px-6"><div><p className="text-sm font-semibold text-[#34404e]">Policy version history</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">Download the complete authorized policy register with criteria weights, active status, administrator context, and activation audit details.</p></div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={downloadHistoryCsv} disabled={!history.data?.length} className="h-8 rounded-[4px] text-[11px]"><FileDown className="mr-1.5 h-3.5 w-3.5" />CSV</Button><Button type="button" size="sm" variant="outline" onClick={downloadHistoryPdf} disabled={!history.data?.length} className="h-8 rounded-[4px] text-[11px]"><FileText className="mr-1.5 h-3.5 w-3.5" />Compliance PDF</Button></div></div>{history.isLoading ? <div className="flex items-center gap-2 p-5 text-[11px] text-[#77818d]"><LoaderCircle className="h-3.5 w-3.5 animate-spin" />Loading saved policy history…</div> : history.data?.length ? <div className="divide-y divide-[#efebe4]">{history.data.map((entry) => <div key={entry.policy.id} className="flex flex-wrap items-start justify-between gap-4 p-5"><div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold text-[#7b1e1e]">{entry.policy.policyCode} · Version {entry.policy.version}</p><span className={`rounded-[3px] border px-1.5 py-0.5 text-[9px] font-bold ${entry.policy.isActive ? "border-[#b7d8c4] bg-[#eff9f2] text-[#27633b]" : "border-[#dfd9ce] bg-[#f7f5f1] text-[#6d7580]"}`}>{entry.policy.isActive ? "ACTIVE" : "INACTIVE"}</span></div><p className="mt-1 text-sm font-medium text-[#3f4a57]">{entry.policy.name}</p><p className="mt-1 text-[11px] text-[#77818d]">Saved {new Date(entry.policy.createdAt).toLocaleString("en-PH")} · {entry.createdBy?.name || entry.createdBy?.email || "Recorded administrator"}</p></div><div className="text-right"><p className="text-lg font-semibold text-[#34404e]">{Number(entry.policy.totalWeight).toFixed(2)}%</p><p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-[#9a6d19]">{entry.criteria.length} criteria</p></div></div>)}</div> : <div className="grid min-h-32 place-items-center p-5 text-center"><div><FileText className="mx-auto h-5 w-5 text-[#b0a38d]" /><p className="mt-2 text-xs font-semibold text-[#566171]">No saved policy versions yet</p><p className="mt-1 text-[11px] text-[#77818d]">Save the reviewed policy configuration to establish the first exportable compliance record.</p></div></div>}</section>
   </div>;
 }

@@ -18,6 +18,39 @@ export function downloadCsv(fileName: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
+export type BestValuePolicyHistoryEntry = {
+  policy: { policyCode: string; name: string; version: number; isActive: number; totalWeight: string | number; createdAt: Date | string; deactivatedAt: Date | string | null };
+  criteria: Array<{ criterionKey: string; label: string; description: string | null; weight: string | number; sortOrder: number }>;
+  createdBy: { name: string | null; email: string | null } | null;
+  activationAudit: { action: string; createdAt: Date | string; performedByRole: string } | null;
+};
+
+const reportDate = (value: Date | string | null | undefined) => value ? new Date(value).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "";
+
+export function buildBestValuePolicyHistoryCsv(history: BestValuePolicyHistoryEntry[]) {
+  return buildCsv(
+    ["Policy code", "Policy name", "Version", "Status", "Total weight", "Created at", "Deactivated at", "Created by", "Activation audit action", "Activation audit date", "Activation audit role", "Criterion order", "Criterion key", "Criterion label", "Criterion description", "Weight"],
+    history.flatMap((entry) => (entry.criteria.length ? entry.criteria : [{ criterionKey: "", label: "", description: "", weight: "", sortOrder: 0 }]).map((criterion) => [
+      entry.policy.policyCode,
+      entry.policy.name,
+      entry.policy.version,
+      entry.policy.isActive ? "Active" : "Inactive",
+      entry.policy.totalWeight,
+      reportDate(entry.policy.createdAt),
+      reportDate(entry.policy.deactivatedAt),
+      entry.createdBy?.name || entry.createdBy?.email || "",
+      entry.activationAudit?.action || "",
+      reportDate(entry.activationAudit?.createdAt),
+      entry.activationAudit?.performedByRole || "",
+      criterion.sortOrder,
+      criterion.criterionKey,
+      criterion.label,
+      criterion.description,
+      criterion.weight,
+    ])),
+  );
+}
+
 export function buildPpmpCsv(entries: Array<{ fiscalYear: number; description: string; plannedAmount: string | number; actualAmount: string | number; status: string; officeId: number; objectOfExpenditureId: number; papCode?: string | null; projectTitle?: string | null; modeOfProcurement?: string | null; fundSource?: string | null; procurementSchedule?: string | null; remarks?: string | null }>, offices: Map<number, string>, objectsOfExpenditure: Map<number, string>) {
   return buildCsv(
     ["Fiscal year", "Office", "Object of expenditure", "PAP code", "Project title", "Description", "Planned amount", "Actual amount", "Status", "Mode of procurement", "Fund source", "Procurement schedule", "Remarks"],
