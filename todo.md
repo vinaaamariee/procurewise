@@ -191,3 +191,4 @@
 - [x] Add a mobile-only visual cue explaining that the Supplier Evaluation rating matrix scrolls horizontally.
 - [x] Provide role-scoped PDF export access for completed Supplier Evaluation forms using the supplied-form layout.
 - [x] Strengthen the active-page visual indicator in the sidebar for clearer navigation orientation.
+- [x] Document and enforce the controlled official-form preservation standard for all user-supplied government forms: no alteration of wording, sections, scoring, field order, signatories, or layout without explicit approval.
