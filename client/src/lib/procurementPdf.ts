@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 
 import type { BestValuePolicyHistoryEntry } from "./procurementExports";
+import { criteriaForSupplierEvaluation, SUPPLIER_EVALUATION_RATINGS, type SupplierEvaluationAudience } from "../../../shared/supplierEvaluationForm";
 
 type LineItem = { description: string; quantity: string | number; unit: string; amount: string | number; specification?: string | null; stockPropertyNo?: string | null };
 const money = (value: string | number | null | undefined) => `₱${Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -115,6 +116,33 @@ export function downloadBestValuePolicyHistoryPdf(history: BestValuePolicyHistor
   });
   footer(doc);
   invokeOfficialPdfDownload(doc, "BestValuePolicy_History_ComplianceReport.pdf");
+}
+
+export function downloadSupplierEvaluationFormPdf(input: { audience: SupplierEvaluationAudience; supplierName: string; goodsServicesType?: string | null; officeName?: string | null; purchaseRequestNumber?: string | null; purchaseOrderNumber: string; supplierRegistryReference?: string | null; supplierRegistryRegisteredAt?: Date | string | null; supplierRegistryExpiresAt?: Date | string | null; responseScores: Record<string, number>; remarks?: string | null; respondentName?: string | null; evaluatedAt: Date | string }) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  formTitle(doc, "Procurement Unit", "SUPPLIER EVALUATION FORM");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("(Goods)", 105, 27, { align: "center" });
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.text(`To be accomplished by ${input.audience === "end_user" ? "End-User" : "Procurement Office"}`, 105, 33, { align: "center" });
+  let y = 42;
+  line(doc, 14, y, 88, "Name of Supplier:", input.supplierName); line(doc, 110, y, 86, "Purchase Order No.:", input.purchaseOrderNumber); y += 7;
+  if (input.audience === "end_user") { line(doc, 14, y, 88, "Type of Goods/Services Provided:", input.goodsServicesType); line(doc, 110, y, 86, "Office/Unit:", input.officeName); y += 7; }
+  else { line(doc, 14, y, 88, "Purchase Request No.:", input.purchaseRequestNumber); line(doc, 110, y, 86, "Supplier registry reference:", input.supplierRegistryReference); y += 7; line(doc, 14, y, 88, "Date Registered:", date(input.supplierRegistryRegisteredAt)); line(doc, 110, y, 86, "Expiration Date:", date(input.supplierRegistryExpiresAt)); y += 7; }
+  doc.setFont("helvetica", "bold"); doc.setFontSize(7.3); doc.text("Instructions:", 14, y + 2); doc.setFont("helvetica", "normal");
+  doc.text(doc.splitTextToSize("This is a survey on the performance of our suppliers. It aims to improve our procurement service/system. Your sincere and honest answers will be highly appreciated and treated with utmost confidentiality.", 180), 14, y + 7); y += 17;
+  doc.text(doc.splitTextToSize("Please rate the supplier according to each criterion provided and put a mark on the column that best corresponds to your answer.", 180), 14, y); y += 9;
+  const columns = [{ label: "CRITERIA", x: 14, width: 90 }, ...SUPPLIER_EVALUATION_RATINGS.map((rating, index) => ({ label: `${rating.label.toUpperCase()}\n(${rating.score})`, x: 104 + index * 23, width: 23 }))];
+  columns.forEach((column) => { doc.rect(column.x, y, column.width, 11); doc.setFont("helvetica", "bold"); doc.setFontSize(5.6); doc.text(column.label.split("\n"), column.x + column.width / 2, y + 4, { align: "center" }); }); y += 11;
+  const criteria = criteriaForSupplierEvaluation(input.audience);
+  let lastSection = "";
+  criteria.forEach((criterion) => {
+    if (criterion.section !== lastSection) { lastSection = criterion.section; columns.forEach((column) => doc.rect(column.x, y, column.width, 5)); doc.setFont("helvetica", "bold"); doc.setFontSize(6.2); doc.text(criterion.section.toUpperCase(), 16, y + 3.5); y += 5; }
+    const lines = doc.splitTextToSize(criterion.label, 86); const height = Math.max(10, lines.length * 3.4 + 4);
+    columns.forEach((column) => doc.rect(column.x, y, column.width, height)); doc.setFont("helvetica", "normal"); doc.setFontSize(6.6); doc.text(lines, 16, y + 3.8);
+    SUPPLIER_EVALUATION_RATINGS.forEach((rating, index) => { if (input.responseScores[criterion.key] === rating.score) { doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text("X", 115.5 + index * 23, y + height / 2 + 1.5, { align: "center" }); } }); y += height;
+  });
+  const remarksHeight = 19; columns.forEach((column) => doc.rect(column.x, y, column.width, remarksHeight)); doc.setFont("helvetica", "italic"); doc.setFontSize(6.8); doc.text("Additional comments, suggestions, recommendations, and/or feedback.", 16, y + 4); doc.setFont("helvetica", "normal"); doc.text(doc.splitTextToSize(input.remarks || "", 176).slice(0, 3), 16, y + 9); y += remarksHeight + 10;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text(`Name and Signature of Respondent: ${input.respondentName || "____________________________"}`, 14, Math.min(y, 275)); doc.text(`Date: ${date(input.evaluatedAt)}`, 142, Math.min(y, 275)); footer(doc);
+  invokeOfficialPdfDownload(doc, `${input.purchaseOrderNumber}_SupplierEvaluation_${input.audience === "end_user" ? "EndUser" : "ProcurementOffice"}.pdf`);
 }
 
 export function downloadPurchaseOrderPdf(input: { purchaseOrder: { poNumber: string; totalAmount: string; status: string; placeOfDelivery: string | null; scheduledDeliveryDate: Date | null; deliveryTerm: string | null; paymentTerm: string | null; modeOfProcurement: string | null; fundCluster: string | null; orsBursNumber: string | null; fundsAvailable: string | null; authorizedOfficialName: string | null; authorizedOfficialDesignation: string | null; chiefAccountantName: string | null }; supplierName?: string; supplierTin?: string | null }) {

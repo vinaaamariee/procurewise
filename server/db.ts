@@ -8,6 +8,7 @@ import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
 import { storagePut } from "./storage";
 import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
+import { deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses, type SupplierEvaluationAudience } from "../shared/supplierEvaluationForm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -412,6 +413,70 @@ export async function updateSupplierEvaluation(input: { evaluationId: number; qu
 }
 
 export async function listSupplierEvaluations() { const db = await requireDb(); return db.select().from(supplierEvaluations).orderBy(desc(supplierEvaluations.evaluatedAt)); }
+
+type SupplierEvaluationFormInput = {
+  supplierId: number;
+  purchaseOrderId: number;
+  goodsServicesType?: string;
+  supplierRegistryReference?: string;
+  supplierRegistryRegisteredAt?: Date;
+  supplierRegistryExpiresAt?: Date;
+  responseScores: Record<string, number>;
+  remarks?: string;
+  respondentName?: string;
+};
+
+async function getVerifiedEvaluationOrder(input: SupplierEvaluationFormInput, user: User, audience: SupplierEvaluationAudience) {
+  const db = await requireDb();
+  const [order] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
+  if (!order || order.supplierId !== input.supplierId) throw new Error("Select a valid Purchase Order for the selected supplier.");
+  const [request] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, order.purchaseRequestId)).limit(1);
+  if (!request) throw new Error("The selected Purchase Order has no linked Purchase Request.");
+  if (audience === "end_user" && request.requestedById !== user.id) throw new Error("End-Users may submit supplier feedback only for Purchase Orders linked to their own Purchase Requests.");
+  return { order, request };
+}
+
+export async function createSupplierEvaluationForm(input: SupplierEvaluationFormInput, audience: SupplierEvaluationAudience, user: User) {
+  const responseError = validateSupplierEvaluationResponses(audience, input.responseScores);
+  if (responseError) throw new Error(responseError);
+  const { order, request } = await getVerifiedEvaluationOrder(input, user, audience);
+  const db = await requireDb();
+  const summary = deriveSupplierEvaluationSummary(audience, input.responseScores);
+  const [created] = await db.insert(supplierEvaluations).values({
+    supplierId: input.supplierId,
+    purchaseOrderId: order.id,
+    purchaseRequestId: request.id,
+    officeId: request.officeId,
+    evaluationAudience: audience,
+    goodsServicesType: audience === "end_user" ? input.goodsServicesType?.trim() || null : null,
+    supplierRegistryReference: audience === "procurement_office" ? input.supplierRegistryReference?.trim() || null : null,
+    supplierRegistryRegisteredAt: audience === "procurement_office" ? input.supplierRegistryRegisteredAt ?? null : null,
+    supplierRegistryExpiresAt: audience === "procurement_office" ? input.supplierRegistryExpiresAt ?? null : null,
+    responseScores: input.responseScores,
+    ...summary,
+    remarks: input.remarks?.trim() || null,
+    respondentName: input.respondentName?.trim() || user.name || null,
+    respondentSignedAt: new Date(),
+    evaluatedById: user.id,
+  }).returning();
+  if (!created) throw new Error("Supplier Evaluation Form could not be saved.");
+  await writeAuditEvent({ entityType: "supplier_evaluation", entityId: created.id, action: `${audience}_form_submitted`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId, purchaseOrderId: order.id, criterionCount: Object.keys(input.responseScores).length } });
+  return created;
+}
+
+export async function listSupplierEvaluationsForEndUser(user: User) {
+  const db = await requireDb();
+  return db.select().from(supplierEvaluations).where(and(eq(supplierEvaluations.evaluatedById, user.id), eq(supplierEvaluations.evaluationAudience, "end_user"))).orderBy(desc(supplierEvaluations.evaluatedAt));
+}
+
+export async function listEligibleSupplierEvaluationOrders(user: User) {
+  const db = await requireDb();
+  const requests = await db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id));
+  if (!requests.length) return [];
+  const requestIds = requests.map((request) => request.id);
+  const orders = await db.select().from(purchaseOrders).where(inArray(purchaseOrders.purchaseRequestId, requestIds)).orderBy(desc(purchaseOrders.createdAt));
+  return orders.map((order) => ({ order, request: requests.find((request) => request.id === order.purchaseRequestId) ?? null }));
+}
 
 export async function createLetterOfNotice(input: { noticeType: "award" | "disqualification" | "clarification" | "other"; purchaseRequestId?: number; supplierId?: number; subject: string; body: string; issueNow?: boolean }, user: User) {
   const db = await requireDb();

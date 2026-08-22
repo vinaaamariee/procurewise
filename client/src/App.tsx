@@ -15,6 +15,7 @@ import PublicTrackingPage from "./pages/PublicTracking";
 import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import { BestValuePolicySettingsPage } from "./pages/BestValuePolicySettingsPage";
+import { SupplierEvaluationFormPage } from "./pages/SupplierEvaluationFormPage";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
@@ -38,6 +39,7 @@ function Router() {
       <Route path={"/officer/forecast"}>{protectedPage(<ForecastPage />)}</Route>
       <Route path={"/officer/settings"}>{protectedPage(<OfficerSettingsPage />)}</Route>
       <Route path={"/supplier-evaluations"}>{protectedPage(<SupplierEvaluationsPage />)}</Route>
+      <Route path={"/supplier-evaluation-form"}>{protectedPage(<SupplierEvaluationFormPage />)}</Route>
       <Route path={"/print/notice"}>{protectedPage(<PrintNoticePage />)}</Route>
       <Route path={"/print/transmittal"}>{protectedPage(<PrintTransmittalPage />)}</Route>
       <Route path={"/print/pre-canvass-abstract"}>{protectedPage(<PrintPreCanvassAbstractPage />)}</Route>

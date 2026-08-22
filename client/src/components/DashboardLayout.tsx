@@ -24,7 +24,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "Letters of Notice", path: "/officer/notices", icon: FileText, roles: ["procurement_officer", "admin"] },
   { label: "BAC Transmittals", path: "/officer/transmittals", icon: Send, roles: ["procurement_officer", "admin"] },
-  { label: "Supplier Evaluations", path: "/supplier-evaluations", icon: Star, roles: ["procurement_officer", "admin"] },
+  { label: "Supplier Evaluation Form", path: "/supplier-evaluation-form", icon: Star, roles: ["end_user", "procurement_officer", "admin"] },
   { label: "Procurement Forecast", path: "/officer/forecast", icon: LineChart, roles: ["procurement_officer", "admin"] },
   { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },

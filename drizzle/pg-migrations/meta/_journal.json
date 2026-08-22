@@ -15,6 +15,13 @@
       "when": 1787407600887,
       "tag": "0001_black_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787408802337,
+      "tag": "0002_shallow_loki",
+      "breakpoints": true
     }
   ]
 }
