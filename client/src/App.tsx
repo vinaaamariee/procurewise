@@ -14,6 +14,7 @@ import { PrintNoticePage, PrintPreCanvassAbstractPage, PrintTransmittalPage } fr
 import PublicTrackingPage from "./pages/PublicTracking";
 import Landing from "./pages/Landing";
 import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
+import { BestValuePolicySettingsPage } from "./pages/BestValuePolicySettingsPage";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
@@ -47,6 +48,7 @@ function Router() {
       <Route path={"/audit"}>{protectedPage(<AuditTrailPage />)}</Route>
       <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
       <Route path={"/test-records"}>{protectedPage(<TestRecordManagementPage />)}</Route>
+      <Route path={"/best-value-policy"}>{protectedPage(<BestValuePolicySettingsPage />)}</Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -417,6 +417,35 @@ export const mcdmRecommendations = pgTable("mcdm_recommendations", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const bestValuePolicies = pgTable("best_value_policies", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  policyCode: varchar("policyCode", { length: 64 }).notNull(),
+  name: varchar("name", { length: 180 }).notNull(),
+  version: integer("version").notNull(),
+  isActive: integer("isActive").default(1).notNull(),
+  totalWeight: decimal("totalWeight", { precision: 7, scale: 2 }).notNull(),
+  createdById: integer("createdById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  deactivatedAt: timestamp("deactivatedAt"),
+}, (table) => [
+  uniqueIndex("best_value_policy_code_version_unique").on(table.policyCode, table.version),
+  index("best_value_policy_active_created_idx").on(table.isActive, table.createdAt),
+]);
+
+export const bestValuePolicyCriteria = pgTable("best_value_policy_criteria", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  policyId: integer("policyId").notNull(),
+  criterionKey: varchar("criterionKey", { length: 80 }).notNull(),
+  label: varchar("label", { length: 180 }).notNull(),
+  description: text("description"),
+  weight: decimal("weight", { precision: 7, scale: 2 }).notNull(),
+  sortOrder: integer("sortOrder").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("best_value_policy_criterion_unique").on(table.policyId, table.criterionKey),
+  index("best_value_policy_criteria_policy_order_idx").on(table.policyId, table.sortOrder),
+]);
+
 export const historicalPrices = pgTable("historical_prices", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   itemDescription: varchar("itemDescription", { length: 220 }).notNull(),

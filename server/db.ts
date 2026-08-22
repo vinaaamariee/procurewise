@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
 import { storagePut } from "./storage";
+import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -169,6 +170,49 @@ export async function updateProcurementSettings(input: { entityName: string; aut
   if (!settings) throw new Error("Procurement settings could not be saved.");
   await writeAuditEvent({ entityType: "procurement_settings", entityId: settings.id, action: "updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
   return settings;
+}
+
+export async function getBestValuePolicy() {
+  const db = await requireDb();
+  const [activePolicy] = await db.select().from(bestValuePolicies).where(eq(bestValuePolicies.isActive, 1)).orderBy(desc(bestValuePolicies.version)).limit(1);
+  if (!activePolicy) {
+    return {
+      policy: { id: null, policyCode: BEST_VALUE_POLICY_CODE, name: "Initial Best Value Policy", version: 0, isActive: 0, totalWeight: "100.00", createdAt: null, isPersisted: false },
+      criteria: BEST_VALUE_CRITERIA.map((criterion) => ({ ...criterion, weight: criterion.defaultWeight })),
+    };
+  }
+  const savedCriteria = await db.select().from(bestValuePolicyCriteria).where(eq(bestValuePolicyCriteria.policyId, activePolicy.id)).orderBy(bestValuePolicyCriteria.sortOrder);
+  const savedByKey = new Map(savedCriteria.map((criterion) => [criterion.criterionKey, criterion]));
+  return {
+    policy: { ...activePolicy, isPersisted: true },
+    criteria: BEST_VALUE_CRITERIA.map((criterion) => ({ ...criterion, weight: Number(savedByKey.get(criterion.criterionKey)?.weight ?? criterion.defaultWeight) })),
+  };
+}
+
+export async function saveBestValuePolicy(input: { name: string; criteria: BestValueCriterionWeight[] }, user: User) {
+  const validation = validateBestValueCriteria(input.criteria);
+  if (!validation.valid) throw new Error(validation.error);
+  const policyName = input.name.trim();
+  if (policyName.length < 3 || policyName.length > 180) throw new Error("Best Value policy name must be between 3 and 180 characters.");
+  const db = await requireDb();
+  const created = await db.transaction(async (tx) => {
+    const [latest] = await tx.select({ latestVersion: sql<string>`coalesce(max(${bestValuePolicies.version}), 0)` }).from(bestValuePolicies).where(eq(bestValuePolicies.policyCode, BEST_VALUE_POLICY_CODE));
+    const nextVersion = Number(latest?.latestVersion ?? 0) + 1;
+    await tx.update(bestValuePolicies).set({ isActive: 0, deactivatedAt: new Date() }).where(and(eq(bestValuePolicies.policyCode, BEST_VALUE_POLICY_CODE), eq(bestValuePolicies.isActive, 1)));
+    const [policy] = await tx.insert(bestValuePolicies).values({ policyCode: BEST_VALUE_POLICY_CODE, name: policyName, version: nextVersion, isActive: 1, totalWeight: validation.totalWeight.toFixed(2), createdById: user.id }).returning();
+    if (!policy) throw new Error("Best Value policy could not be saved.");
+    await tx.insert(bestValuePolicyCriteria).values(BEST_VALUE_CRITERIA.map((criterion, index) => ({
+      policyId: policy.id,
+      criterionKey: criterion.criterionKey,
+      label: criterion.label,
+      description: criterion.description,
+      weight: Number(input.criteria.find((item) => item.criterionKey === criterion.criterionKey)?.weight).toFixed(2),
+      sortOrder: index + 1,
+    })));
+    return policy;
+  });
+  await writeAuditEvent({ entityType: "best_value_policy", entityId: created.id, action: "version_activated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { policyCode: created.policyCode, version: created.version, totalWeight: validation.totalWeight, criteria: input.criteria } });
+  return getBestValuePolicy();
 }
 
 export async function getBudgetUtilization() {
