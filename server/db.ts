@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -172,6 +172,25 @@ export async function updateProcurementSettings(input: { entityName: string; aut
   if (!settings) throw new Error("Procurement settings could not be saved.");
   await writeAuditEvent({ entityType: "procurement_settings", entityId: settings.id, action: "updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
   return settings;
+}
+
+export async function listPurchaseRequestSignatories() {
+  const db = await requireDb();
+  return db.select().from(procurementSignatories).where(eq(procurementSignatories.isActive, 1)).orderBy(procurementSignatories.fullName);
+}
+
+export async function createPurchaseRequestSignatory(input: { fullName: string; designation: string; mayRequest: boolean; mayApprove: boolean }, user: User) {
+  const db = await requireDb();
+  const [created] = await db.insert(procurementSignatories).values({
+    fullName: input.fullName.trim(),
+    designation: input.designation.trim(),
+    mayRequest: input.mayRequest ? 1 : 0,
+    mayApprove: input.mayApprove ? 1 : 0,
+    createdById: user.id,
+  }).returning();
+  if (!created) throw new Error("The authorized signatory could not be saved.");
+  await writeAuditEvent({ entityType: "procurement_signatory", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { mayRequest: created.mayRequest, mayApprove: created.mayApprove } });
+  return created;
 }
 
 export async function getBestValuePolicy() {
@@ -775,12 +794,20 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
   return { purchaseRequest, items };
 }
 
-export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
+export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
   await assertActiveCatalogItemIds(input.items.map((item) => item.catalogItemId), db);
+  const [requestedRows, approvedRows] = await Promise.all([
+    input.requestedSignatoryId ? db.select().from(procurementSignatories).where(eq(procurementSignatories.id, input.requestedSignatoryId)).limit(1) : Promise.resolve([]),
+    input.approvedSignatoryId ? db.select().from(procurementSignatories).where(eq(procurementSignatories.id, input.approvedSignatoryId)).limit(1) : Promise.resolve([]),
+  ]);
+  const requestedSignatory = requestedRows[0];
+  const approvedSignatory = approvedRows[0];
+  if (input.requestedSignatoryId && (!requestedSignatory || !requestedSignatory.isActive || !requestedSignatory.mayRequest)) throw new Error("Select an active signatory authorized to request Purchase Requests.");
+  if (input.approvedSignatoryId && (!approvedSignatory || !approvedSignatory.isActive || !approvedSignatory.mayApprove)) throw new Error("Select an active signatory authorized to approve Purchase Requests.");
   const prNumber = `PR-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   const trackingToken = randomUUID().replaceAll("-", "");
   await db.insert(purchaseRequests).values({
@@ -790,6 +817,11 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     fundCluster: input.fundCluster || "01101101",
     responsibilityCenterCode: input.responsibilityCenterCode || null,
     requesterDesignation: input.requesterDesignation || null,
+    requestedSignatoryId: requestedSignatory?.id ?? null,
+    requestedSignatoryName: requestedSignatory?.fullName ?? null,
+    approvedSignatoryId: approvedSignatory?.id ?? null,
+    approvedSignatoryName: approvedSignatory?.fullName ?? null,
+    approvedSignatoryDesignation: approvedSignatory?.designation ?? null,
     officeId: input.officeId,
     objectOfExpenditureId: input.objectOfExpenditureId,
     totalEstimate: totalEstimate.toFixed(2),
@@ -810,7 +842,7 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     estimatedUnitCost: item.estimatedUnitCost.toFixed(2),
     totalCost: (item.quantity * item.estimatedUnitCost).toFixed(2),
   })));
-  await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber } });
+  await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber, requestedSignatoryId: requestedSignatory?.id ?? null, approvedSignatoryId: approvedSignatory?.id ?? null } });
   return created;
 }
 

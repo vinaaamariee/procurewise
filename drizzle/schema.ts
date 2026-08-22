@@ -147,6 +147,11 @@ export const purchaseRequests = pgTable("purchase_requests", {
   fundCluster: varchar("fundCluster", { length: 80 }).default("01101101").notNull(),
   responsibilityCenterCode: varchar("responsibilityCenterCode", { length: 80 }),
   requesterDesignation: varchar("requesterDesignation", { length: 160 }),
+  requestedSignatoryId: integer("requestedSignatoryId"),
+  requestedSignatoryName: varchar("requestedSignatoryName", { length: 180 }),
+  approvedSignatoryId: integer("approvedSignatoryId"),
+  approvedSignatoryName: varchar("approvedSignatoryName", { length: 180 }),
+  approvedSignatoryDesignation: varchar("approvedSignatoryDesignation", { length: 160 }),
   officeId: integer("officeId").notNull(),
   objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
   totalEstimate: decimal("totalEstimate", { precision: 14, scale: 2 }).notNull(),
@@ -320,6 +325,17 @@ export const procurementSettings = pgTable("procurement_settings", {
   updatedById: integer("updatedById"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
+
+export const procurementSignatories = pgTable("procurement_signatories", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  fullName: varchar("fullName", { length: 180 }).notNull(),
+  designation: varchar("designation", { length: 160 }).notNull(),
+  mayRequest: integer("mayRequest").default(0).notNull(),
+  mayApprove: integer("mayApprove").default(0).notNull(),
+  isActive: integer("isActive").default(1).notNull(),
+  createdById: integer("createdById").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("procurement_signatory_active_idx").on(table.isActive, table.mayRequest, table.mayApprove)]);
 
 export const procurementDocuments = pgTable("procurement_documents", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),

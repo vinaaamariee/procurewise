@@ -200,3 +200,7 @@
 - [x] Align the Appendix 61 Purchase Order output strictly to the supplied entity, delivery, payment, ten-line item table, signing, and accounting/ORS-BURS format.
 - [x] Match Appendix 60, Annex D, Annex F, and Appendix 61 controlled output geometry to the supplied reference images, including row counts, column proportions, thin-grid treatment, and footer/signature placement.
 - [x] Replace the live Purchase Request data-entry header preview with a complete Appendix 60 controlled-form canvas, retaining only system entry controls outside the official form surface.
+- [x] Add A4-specific print styling for the live Appendix 60 Purchase Request canvas so the item schedule and signature blocks remain together and are not cut off.
+- [x] Add controlled Requested by and Approved by authorized-signatory selectors for the live Appendix 60 Purchase Request canvas without placing interactive controls inside the official form surface.
+- [x] Preserve 01101101 as the default Fund Cluster while providing an editable controlled dropdown for permitted alternatives.
+- [x] Clarify the external Item details system-control area and improve its small-screen horizontal-use guidance without changing the official Appendix 60 item grid.

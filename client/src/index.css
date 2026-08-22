@@ -137,3 +137,35 @@
   label[for="ppmp-catalog-search"]::after { content: "Common-use procurement catalog (optional)"; font-size: 0.6875rem; font-weight: 600; }
   label[for="ppmp-catalog-search"] span { display: none; }
 }
+
+@page {
+  size: A4 portrait;
+  margin: 9mm;
+}
+
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  .official-purchase-request,
+  .official-purchase-request * { visibility: visible !important; }
+  .official-purchase-request {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    box-sizing: border-box !important;
+    width: 192mm !important;
+    min-height: 278mm !important;
+    margin: 0 !important;
+    padding: 5mm !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+    font-size: 8.2pt !important;
+    line-height: 1.15 !important;
+  }
+  .official-pr-grid { overflow: visible !important; }
+  .official-pr-grid table { width: 100% !important; min-width: 0 !important; }
+  .official-pr-grid tbody tr { height: 4.8mm !important; }
+  .official-pr-signature { break-inside: avoid !important; page-break-inside: avoid !important; margin-top: 4mm !important; }
+  .print-hidden { display: none !important; }
+}
+
+#pr-system-controls > .mt-7 > .overflow-x-auto { overflow-x: visible; }

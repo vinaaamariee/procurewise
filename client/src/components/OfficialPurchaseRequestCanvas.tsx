@@ -12,6 +12,10 @@ type OfficialPurchaseRequestCanvasProps = {
   officeSection: string;
   responsibilityCenterCode: string;
   purpose: string;
+  requestedByName?: string;
+  requestedByDesignation?: string;
+  approvedByName?: string;
+  approvedByDesignation?: string;
   items: OfficialPurchaseRequestItem[];
 };
 
@@ -36,12 +40,12 @@ function displayLineTotal(item?: OfficialPurchaseRequestItem) {
   return (quantity * cost).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function OfficialPurchaseRequestCanvas({ entityName, fundCluster, officeSection, responsibilityCenterCode, purpose, items }: OfficialPurchaseRequestCanvasProps) {
+export function OfficialPurchaseRequestCanvas({ entityName, fundCluster, officeSection, responsibilityCenterCode, purpose, requestedByName, requestedByDesignation, approvedByName, approvedByDesignation, items }: OfficialPurchaseRequestCanvasProps) {
   const visibleRows = Math.max(MINIMUM_OFFICIAL_ROWS, items.length);
   const purposeLines = purpose ? purpose.split(/\r?\n/).slice(0, 3) : [];
 
   return (
-    <section aria-label="Appendix 60 Purchase Request official form" className="overflow-hidden border border-[#aaa69c] bg-white p-3 text-[11px] leading-[1.35] text-[#161616] shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:p-5">
+    <section aria-label="Appendix 60 Purchase Request official form" className="official-purchase-request overflow-hidden border border-[#aaa69c] bg-white p-3 text-[11px] leading-[1.35] text-[#161616] shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:p-5">
       <div className="flex items-start justify-between border-b border-black pb-2 font-serif text-[11px] font-bold uppercase">
         <span>PURCHASE REQUEST</span>
         <span className="font-sans text-[9px] font-semibold normal-case">Appendix 60</span>
@@ -60,7 +64,7 @@ export function OfficialPurchaseRequestCanvas({ entityName, fundCluster, officeS
         <span className="font-semibold">Responsibility Center Code :</span> <span className="inline-block min-w-64 border-b border-black px-1">{displayText(responsibilityCenterCode)}</span>
       </div>
 
-      <div className="mt-5 overflow-x-auto border-l border-t border-black">
+      <div className="official-pr-grid mt-5 overflow-x-auto border-l border-t border-black">
         <table className="w-[920px] min-w-full table-fixed border-collapse font-serif text-[10px]">
           <thead>
             <tr className="text-center font-semibold">
@@ -97,7 +101,7 @@ export function OfficialPurchaseRequestCanvas({ entityName, fundCluster, officeS
         </div>
       </div>
 
-      <table className="mt-7 w-full border-collapse font-serif text-[10px]">
+      <table className="official-pr-signature mt-7 w-full border-collapse font-serif text-[10px]">
         <tbody>
           <tr>
             <td className="w-[22%]" />
@@ -111,8 +115,8 @@ export function OfficialPurchaseRequestCanvas({ entityName, fundCluster, officeS
           ].map((label) => (
             <tr key={label}>
               <td className="py-1 font-semibold">{label}</td>
-              <td className="px-2 py-1"><span className="block h-4 border-b border-black">{blank}</span></td>
-              <td className="px-2 py-1"><span className="block h-4 border-b border-black">{blank}</span></td>
+              <td className="px-2 py-1"><span className="block h-4 border-b border-black">{label === "Printed Name :" ? displayText(requestedByName) : label === "Designation :" ? displayText(requestedByDesignation) : blank}</span></td>
+              <td className="px-2 py-1"><span className="block h-4 border-b border-black">{label === "Printed Name :" ? displayText(approvedByName) : label === "Designation :" ? displayText(approvedByDesignation) : blank}</span></td>
             </tr>
           ))}
         </tbody>

@@ -22,6 +22,14 @@ describe("official procurement form structure", () => {
     ["Appendix 60", "PURCHASE REQUEST", "Entity Name:", "Fund Cluster:", "Office/Section :", "PR No.:", "Date:", "Responsibility Center Code :", "Stock/ Property No.", "Item Description", "Quantity", "Unit Cost", "Total Cost", "Purpose:", "Requested by:", "Approved by:", "Signature :", "Printed Name :", "Designation :", "MINIMUM_OFFICIAL_ROWS = 24"].forEach((label) => expect(purchaseRequests).toContain(label));
     expect(purchaseRequestWorkspace).toContain("System controls — not part of Appendix 60");
     expect(purchaseRequestWorkspace).toContain("OfficialPurchaseRequestCanvas");
+    expect(purchaseRequestWorkspace).toContain("Item details — system entry workspace");
+    expect(purchaseRequestWorkspace).toContain("pr-requested-signatories");
+    expect(purchaseRequestWorkspace).toContain("pr-approved-signatories");
+    expect(purchaseRequestWorkspace).toContain("pr-fund-cluster-options");
+    const styles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    expect(styles).toContain("@page");
+    expect(styles).toContain("size: A4 portrait");
+    expect(styles).toContain(".official-pr-signature");
     ["REQUEST FOR PRICE QUOTATION", "Annex D", "THE APPROVED BUDGET FOR THIS PROCUREMENT", "Item # / Qty. / Unit / PARTICULAR / Unit Price / Total"].forEach((label) => expect(preCanvass).toContain(label));
   });
 

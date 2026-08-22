@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { users } from "../drizzle/schema";
+import { procurementSignatories, users } from "../drizzle/schema";
 import { getDb, getProcurementDashboard } from "./db";
 
 describe("Supabase PostgreSQL runtime", () => {
@@ -12,5 +12,12 @@ describe("Supabase PostgreSQL runtime", () => {
     expect(dashboard.purchaseRequests.some((request) => request.prNumber === "PR-2026-2721129")).toBe(true);
     expect(dashboard.preCanvasses.some((record) => record.preCanvassNumber === "PC-2026-2721324")).toBe(true);
     expect(dashboard.abstractsOfCanvass.some((record) => record.abstractNumber === "AOC-2026-2804717")).toBe(true);
+  }, 30_000);
+
+  it("can read the migrated managed Purchase Request signatory register without creating a record", async () => {
+    const db = await getDb();
+    expect(db).toBeTruthy();
+    const signatories = await db!.select({ id: procurementSignatories.id }).from(procurementSignatories).limit(1);
+    expect(Array.isArray(signatories)).toBe(true);
   }, 30_000);
 });
