@@ -1,0 +1,92 @@
+name: ProcureWise CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: TypeScript and unit regression checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript validation
+        run: pnpm check
+
+      - name: Unit regression suite
+        run: >-
+          pnpm vitest run
+          --exclude server/supabaseConnection.test.ts
+          --exclude server/supabaseRuntime.test.ts
+          --exclude server/supabaseRealtime.test.ts
+          --exclude server/supabaseRealtimeCredentials.test.ts
+
+  supabase-integration:
+    name: Supabase integration checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    env:
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.CI_SUPABASE_DB_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check whether integration secrets are configured
+        id: integration-secrets
+        shell: bash
+        run: |
+          if [[ -n "$DATABASE_URL" && -n "$SUPABASE_DB_PASSWORD" && -n "$VITE_SUPABASE_URL" && -n "$VITE_SUPABASE_ANON_KEY" && -n "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Supabase integration checks skipped because one or more CI_* repository secrets are not configured."
+          fi
+
+      - name: Supabase integration regression suite
+        if: steps.integration-secrets.outputs.configured == 'true'
+        run: >-
+          pnpm vitest run
+          server/supabaseConnection.test.ts
+          server/supabaseRuntime.test.ts
+          server/supabaseRealtime.test.ts
+          server/supabaseRealtimeCredentials.test.ts
