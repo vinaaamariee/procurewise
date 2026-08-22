@@ -177,3 +177,4 @@
 - [x] Add PPMP and Abstract package PDF export controls that follow the existing official-form design rules.
 - [x] Add regression coverage and responsive validation for realtime updates and export controls.
 - [x] Save a checkpoint for Supabase Realtime and PPMP/Abstract export enhancements.
+- [x] Create a GitHub-ready README with ProcureWise overview, architecture, local setup, safe environment-variable guidance, Vercel deployment notes, and validation commands.
