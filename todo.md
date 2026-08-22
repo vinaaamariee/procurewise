@@ -199,3 +199,4 @@
 - [x] Implement the supplied Annex F Abstract of Quotation as a controlled quotation-comparison output, preserving its procurement-purpose marks, supplier columns, outcome statements, and BAC/End-User signature blocks exactly as supplied.
 - [x] Align the Appendix 61 Purchase Order output strictly to the supplied entity, delivery, payment, ten-line item table, signing, and accounting/ORS-BURS format.
 - [x] Match Appendix 60, Annex D, Annex F, and Appendix 61 controlled output geometry to the supplied reference images, including row counts, column proportions, thin-grid treatment, and footer/signature placement.
+- [x] Replace the live Purchase Request data-entry header preview with a complete Appendix 60 controlled-form canvas, retaining only system entry controls outside the official form surface.

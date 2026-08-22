@@ -16,9 +16,12 @@ describe("official procurement form structure", () => {
   });
 
   it("presents the supplied Appendix 60 and Annex D structure directly in their workspaces", () => {
-    const purchaseRequests = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");
+    const purchaseRequests = readFileSync(new URL("../client/src/components/OfficialPurchaseRequestCanvas.tsx", import.meta.url), "utf8");
+    const purchaseRequestWorkspace = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");
     const preCanvass = readFileSync(new URL("../client/src/pages/WorkflowPages.tsx", import.meta.url), "utf8");
-    ["Appendix 60 — Purchase Request", "Entity Name:", "Office/Section:", "Responsibility Center Code:", "Requested by / Approved by:"].forEach((label) => expect(purchaseRequests).toContain(label));
+    ["Appendix 60", "PURCHASE REQUEST", "Entity Name:", "Fund Cluster:", "Office/Section :", "PR No.:", "Date:", "Responsibility Center Code :", "Stock/ Property No.", "Item Description", "Quantity", "Unit Cost", "Total Cost", "Purpose:", "Requested by:", "Approved by:", "Signature :", "Printed Name :", "Designation :", "MINIMUM_OFFICIAL_ROWS = 24"].forEach((label) => expect(purchaseRequests).toContain(label));
+    expect(purchaseRequestWorkspace).toContain("System controls — not part of Appendix 60");
+    expect(purchaseRequestWorkspace).toContain("OfficialPurchaseRequestCanvas");
     ["REQUEST FOR PRICE QUOTATION", "Annex D", "THE APPROVED BUDGET FOR THIS PROCUREMENT", "Item # / Qty. / Unit / PARTICULAR / Unit Price / Total"].forEach((label) => expect(preCanvass).toContain(label));
   });
 
