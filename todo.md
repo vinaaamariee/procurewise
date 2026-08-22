@@ -186,3 +186,5 @@
 - [x] Add an Admin-only database-backed Best Value policy settings page with adjustable criteria weights, 100% total validation, auditable versioning, and role-gated save controls.
 - [x] Add Admin-only CSV and PDF compliance exports for complete Best Value policy version history, criteria weights, active status, and audit context.
 - [x] Integrate the supplied Supplier Evaluation Form into the role-gated supplier evaluation workflow, preserving its fields, scoring, and offline output.
+- [x] Align the Supplier Evaluation workflow strictly to the supplied End-User and Procurement Office forms, removing added workflow fields and summary behavior from the live form experience.
+- [x] Reorganize the role-aware sidebar navigation into a clear PPMP-to-PMR procurement workflow order with management and governance tools grouped after operational stages.

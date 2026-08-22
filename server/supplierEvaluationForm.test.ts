@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { END_USER_EVALUATION_CRITERIA, PROCUREMENT_OFFICE_EVALUATION_CRITERIA, deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses } from "../shared/supplierEvaluationForm";
+import { END_USER_EVALUATION_CRITERIA, PROCUREMENT_OFFICE_EVALUATION_CRITERIA, SUPPLIER_EVALUATION_RATINGS, deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses } from "../shared/supplierEvaluationForm";
 import { createSupplierEvaluationForm } from "./db";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
@@ -12,6 +12,7 @@ describe("supplied Supplier Evaluation Form criteria", () => {
   it("preserves the nine End-User prompts and five Procurement Office prompts with four-point ratings", () => {
     expect(END_USER_EVALUATION_CRITERIA).toHaveLength(9);
     expect(PROCUREMENT_OFFICE_EVALUATION_CRITERIA).toHaveLength(5);
+    expect(SUPPLIER_EVALUATION_RATINGS).toEqual([{ score: 4, label: "Strongly Agree" }, { score: 3, label: "Agree" }, { score: 2, label: "Disagree" }, { score: 1, label: "Strongly Disagree" }]);
     expect(validateSupplierEvaluationResponses("end_user", endUserResponses)).toBeNull();
     expect(validateSupplierEvaluationResponses("procurement_office", procurementResponses)).toBeNull();
   });
@@ -39,9 +40,21 @@ describe("Supplier Evaluation Form authorization and rendering", () => {
   it("keeps the supplied headings, instructions, form audiences, and controlled PDF exporter wired into the application", () => {
     const page = readFileSync(new URL("../client/src/pages/SupplierEvaluationFormPage.tsx", import.meta.url), "utf8");
     const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
-    ["To be accomplished by End-User", "To be accomplished by Procurement Office", "Type of Goods/Services Provided", "Supplier registry reference", "treated with utmost confidentiality", "Thank you very much.", "Strongly Agree", "Additional comments, suggestions, recommendations, and/or feedback", "Submit Supplier Evaluation Form"].forEach((label) => expect(page).toContain(label));
+    ["To be accomplished by", "end-user", "Procurement Office", "Type of Goods/Services Provided", "Supplier Registry RN", "treated with utmost confidentiality", "Thank you very much.", "Additional comments, suggestions, recommendations, and/or feedback", "Name and Signature of Respondent"].forEach((label) => expect(page).toContain(label));
+    expect(page).not.toContain("Submitted form register");
+    expect(page).not.toContain("Summary");
     expect(pdf).toContain("downloadSupplierEvaluationFormPdf");
     expect(pdf).toContain("SUPPLIER EVALUATION FORM");
     expect(pdf).toContain("Name and Signature of Respondent");
+  });
+
+  it("orders the sidebar from planning through procurement close-out before performance and governance tools", () => {
+    const navigation = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+    const requiredOrder = ["PPMP Planning", "PPMP & Purchase Requests", "Suppliers", "Pre-Canvass", "Letters of Notice", "BAC Transmittals", "Abstracts, PO & PMR", "Supplier Evaluation Form", "Documents", "Budget Control", "Procurement Forecast", "Analytics", "Audit Trail", "Officer settings", "Best Value Policy", "System setup"];
+    requiredOrder.reduce((previousIndex, label) => {
+      const nextIndex = navigation.indexOf(`label: \"${label}\"`);
+      expect(nextIndex).toBeGreaterThan(previousIndex);
+      return nextIndex;
+    }, -1);
   });
 });
