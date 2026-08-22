@@ -106,8 +106,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {visibleNavigation.map((item) => {
               const active = location === item.path;
               return (
-                <button key={item.path} onClick={() => { setLocation(item.path); setMenuOpen(false); }} className={`flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs font-medium transition-colors ${active ? "bg-[#f9f1e0] text-[#7b1e1e]" : "text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946]"}`}>
-                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#7b1e1e]" : "text-[#7c8795]"}`} />
+                <button key={item.path} onClick={() => { setLocation(item.path); setMenuOpen(false); }} aria-current={active ? "page" : undefined} className={`relative flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs transition-colors ${active ? "bg-[#7b1e1e] pl-3 font-bold text-white shadow-[0_2px_7px_rgba(92,20,20,0.18)] before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r before:bg-[#d5ab55]" : "font-medium text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946]"}`}>
+                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#f7d98b]" : "text-[#7c8795]"}`} />
                   <span>{item.label}</span>
                 </button>
               );

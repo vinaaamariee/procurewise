@@ -40,7 +40,7 @@ describe("Supplier Evaluation Form authorization and rendering", () => {
   it("keeps the supplied headings, instructions, form audiences, and controlled PDF exporter wired into the application", () => {
     const page = readFileSync(new URL("../client/src/pages/SupplierEvaluationFormPage.tsx", import.meta.url), "utf8");
     const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
-    ["To be accomplished by", "end-user", "Procurement Office", "Type of Goods/Services Provided", "Supplier Registry RN", "treated with utmost confidentiality", "Thank you very much.", "Additional comments, suggestions, recommendations, and/or feedback", "Name and Signature of Respondent"].forEach((label) => expect(page).toContain(label));
+    ["To be accomplished by", "end-user", "Procurement Office", "Type of Goods/Services Provided", "Supplier Registry RN", "treated with utmost confidentiality", "Thank you very much.", "Additional comments, suggestions, recommendations, and/or feedback", "Name and Signature of Respondent", "Swipe the matrix horizontally", "Download PDF", "downloadSupplierEvaluationFormPdf"].forEach((label) => expect(page).toContain(label));
     expect(page).not.toContain("Submitted form register");
     expect(page).not.toContain("Summary");
     expect(pdf).toContain("downloadSupplierEvaluationFormPdf");
@@ -56,5 +56,7 @@ describe("Supplier Evaluation Form authorization and rendering", () => {
       expect(nextIndex).toBeGreaterThan(previousIndex);
       return nextIndex;
     }, -1);
+    expect(navigation).toContain('aria-current={active ? "page" : undefined}');
+    expect(navigation).toContain('before:bg-[#d5ab55]');
   });
 });

@@ -188,3 +188,6 @@
 - [x] Integrate the supplied Supplier Evaluation Form into the role-gated supplier evaluation workflow, preserving its fields, scoring, and offline output.
 - [x] Align the Supplier Evaluation workflow strictly to the supplied End-User and Procurement Office forms, removing added workflow fields and summary behavior from the live form experience.
 - [x] Reorganize the role-aware sidebar navigation into a clear PPMP-to-PMR procurement workflow order with management and governance tools grouped after operational stages.
+- [x] Add a mobile-only visual cue explaining that the Supplier Evaluation rating matrix scrolls horizontally.
+- [x] Provide role-scoped PDF export access for completed Supplier Evaluation forms using the supplied-form layout.
+- [x] Strengthen the active-page visual indicator in the sidebar for clearer navigation orientation.
