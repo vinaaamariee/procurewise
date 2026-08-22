@@ -180,3 +180,4 @@
 - [x] Create a GitHub-ready README with ProcureWise overview, architecture, local setup, safe environment-variable guidance, Vercel deployment notes, and validation commands.
 - [x] Add a GitHub Actions workflow that installs dependencies and runs TypeScript and Vitest checks on pushes and pull requests.
 - [x] Document the external Vercel authentication deployment requirements, callback URL handling, required variables, and security verification steps in the README.
+- [x] Audit supplier intelligence, pricing, delivery, forecasting, budget, canvass-reporting, and recommendation capabilities; produce a prioritized implementation plan for identified gaps.
