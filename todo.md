@@ -210,15 +210,15 @@
 - [ ] Complete secure Vercel production configuration, allowlist the OAuth callback, and verify the deployed End-User Purchase Request workflow without creating unapproved procurement records.
 - [x] Replace the Manus-specific OAuth browser and server path with Supabase Auth while preserving role-gated procurement access and existing users matched by verified email.
 - [x] Add Supabase Auth login, registration, session-token verification, existing-account role preservation, and revised Vercel/Supabase Auth deployment documentation without exposing credentials.
-- [ ] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
+- [x] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
 - [x] Remove the unconfigured optional analytics placeholder script from the Vercel production entrypoint and publish a clean build without affecting Supabase Auth or procurement workflows.
 - [x] Fix Vercel TypeScript errors in server.ts, storageProxy.ts, supabaseRealtime.ts, and supabaseAuth.ts, then publish a clean redeployable commit before testing Supabase Auth.
-- [ ] Diagnose and fix the live Vercel `FUNCTION_INVOCATION_FAILED` response on `/api/trpc`, using the deployment runtime error without exposing secrets, then redeploy and revalidate Supabase Auth.
-- [ ] Replace the Vercel API function’s directory import with an explicit module import so `/api/trpc/auth.me` starts successfully under Node ESM, then redeploy and verify Supabase Auth.
-- [ ] Resolve Vercel’s conflicting global Request/Response/Application typings in server.ts, storageProxy.ts, and supabaseAuth.ts without weakening runtime behavior, then publish a clean redeployable build.
-- [ ] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
-- [ ] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
-- [ ] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
+- [x] Diagnose and fix the live Vercel `FUNCTION_INVOCATION_FAILED` response on `/api/trpc`, using the deployment runtime error without exposing secrets, then redeploy and revalidate Supabase Auth.
+- [x] Replace the Vercel API function’s directory import with an explicit module import so `/api/trpc/auth.me` starts successfully under Node ESM, then redeploy and verify Supabase Auth; superseded by the final committed self-contained API bundle.
+- [x] Resolve Vercel’s conflicting global Request/Response/Application typings in server.ts, storageProxy.ts, and supabaseAuth.ts without weakening runtime behavior, then publish a clean redeployable build.
+- [x] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
+- [x] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
+- [x] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
 - [x] Correct Vercel `functions.api/index.ts.includeFiles` from an array to the schema-required string pattern, validate the config, and publish a redeployable commit.
 - [x] Remove the invalid explicit Vercel runtime override, validate the configuration and application, and publish a redeployable commit.
 - [x] Diagnose and fix the live deployment `FUNCTION_INVOCATION_FAILED` still occurring on `/api/trpc/auth.me` after the runtime-schema correction, then validate a Vercel-compatible API packaging path.
