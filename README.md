@@ -118,7 +118,7 @@ The project also contains integrations originally supplied by its managed develo
 
 ## Vercel and Supabase Auth deployment
 
-The repository includes `server.ts` and `vercel.json` for Vercel. Vercel serves the Vite production output from `dist/public` and routes `/api/*` requests to the Express/tRPC function. Do not remove the `/api/*` rewrite; it is required for protected workflow actions.
+The repository includes `vercel.json` and a committed `api/index.mjs` Express/tRPC function bundle for Vercel. The bundle is generated from `server/vercelApiEntrypoint.ts` by `pnpm build:vercel-api` during every production build. Vercel serves the Vite production output from `dist/public` and routes `/api/*` requests to the Express/tRPC function. Do not remove the `/api/*` rewrite; it is required for protected workflow actions. The standalone bundle avoids runtime resolution of the TypeScript source-module graph inside Vercel’s Node function loader.
 
 ProcureWise uses **Supabase Auth** for the browser session. The browser sends its short-lived Supabase access token to the protected tRPC procedures, where the server verifies it before resolving the corresponding ProcureWise user and role. When a verified Supabase email matches an existing ProcureWise user, the system updates that existing identity record while preserving its internal user ID, assigned role, and linked procurement records.
 

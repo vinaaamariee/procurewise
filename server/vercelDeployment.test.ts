@@ -1,29 +1,30 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Vercel deployment configuration", () => {
-  it("keeps the Express API entrypoint and static SPA rewrite boundaries", () => {
-    const entrypoint = readFileSync(new URL("../server.ts", import.meta.url), "utf8");
+  it("uses the committed Express bundle and static SPA rewrite boundaries", () => {
     const config = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
       buildCommand?: string;
       outputDirectory?: string;
-      functions?: { "api/index.ts"?: { runtime?: string; includeFiles?: string } };
+      functions?: Record<string, unknown>;
       rewrites?: Array<{ source: string; destination: string }>;
     };
+    const apiBundle = readFileSync(new URL("../api/index.mjs", import.meta.url), "utf8");
+    const apiSource = readFileSync(new URL("../server/vercelApiEntrypoint.ts", import.meta.url), "utf8");
 
-    const apiEntrypoint = readFileSync(new URL("../api/index.ts", import.meta.url), "utf8");
-    expect(entrypoint).toContain("export default app");
-    expect(apiEntrypoint).toContain('import express from "express"');
-    expect(apiEntrypoint).toContain('import { appRouter } from "../server/routers"');
-    expect(apiEntrypoint).toContain('app.use("/api/trpc"');
-    expect(apiEntrypoint).toContain("export default app");
-    expect(entrypoint).toContain("createExpressMiddleware");
-    expect(entrypoint).not.toContain("registerOAuthRoutes(app)");
-    expect(entrypoint).toContain('"/api/trpc"');
+    expect(existsSync(new URL("../api/index.mjs", import.meta.url))).toBe(true);
+    expect(existsSync(new URL("../api/index.ts", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../server.ts", import.meta.url))).toBe(false);
+    expect(apiSource).toContain('import express from "express"');
+    expect(apiSource).toContain('import { appRouter } from "./routers"');
+    expect(apiSource).toContain('app.use("/api/trpc"');
+    expect(apiSource).toContain("export default app");
+    expect(apiBundle).toContain('app.use("/api/trpc"');
+    expect(apiBundle).toContain("export {");
+    expect(apiBundle).not.toContain("registerOAuthRoutes(app)");
     expect(config.buildCommand).toBe("pnpm build");
     expect(config.outputDirectory).toBe("dist/public");
-    expect(config.functions?.["api/index.ts"]?.runtime).toBeUndefined();
-    expect(config.functions?.["api/index.ts"]?.includeFiles).toBe("{server/**,shared/**}");
+    expect(config.functions).toBeUndefined();
     expect(config.rewrites).toContainEqual({ source: "/api/(.*)", destination: "/api/index" });
     expect(config.rewrites).toContainEqual({ source: "/(.*)", destination: "/index.html" });
   });
