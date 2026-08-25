@@ -12,7 +12,7 @@ describe("Vercel deployment configuration", () => {
 
     const apiEntrypoint = readFileSync(new URL("../api/index.ts", import.meta.url), "utf8");
     expect(entrypoint).toContain("export default app");
-    expect(apiEntrypoint).toContain('import app from "../server"');
+    expect(apiEntrypoint).toContain('import app from "../server.ts"');
     expect(apiEntrypoint).toContain("export default app");
     expect(entrypoint).toContain("createExpressMiddleware");
     expect(entrypoint).not.toContain("registerOAuthRoutes(app)");

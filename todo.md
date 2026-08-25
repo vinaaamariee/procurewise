@@ -213,3 +213,5 @@
 - [ ] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
 - [x] Remove the unconfigured optional analytics placeholder script from the Vercel production entrypoint and publish a clean build without affecting Supabase Auth or procurement workflows.
 - [x] Fix Vercel TypeScript errors in server.ts, storageProxy.ts, supabaseRealtime.ts, and supabaseAuth.ts, then publish a clean redeployable commit before testing Supabase Auth.
+- [ ] Diagnose and fix the live Vercel `FUNCTION_INVOCATION_FAILED` response on `/api/trpc`, using the deployment runtime error without exposing secrets, then redeploy and revalidate Supabase Auth.
+- [ ] Replace the Vercel API function’s directory import with an explicit module import so `/api/trpc/auth.me` starts successfully under Node ESM, then redeploy and verify Supabase Auth.
