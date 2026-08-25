@@ -221,3 +221,4 @@
 - [ ] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
 - [x] Correct Vercel `functions.api/index.ts.includeFiles` from an array to the schema-required string pattern, validate the config, and publish a redeployable commit.
 - [x] Remove the invalid explicit Vercel runtime override, validate the configuration and application, and publish a redeployable commit.
+- [x] Diagnose and fix the live deployment `FUNCTION_INVOCATION_FAILED` still occurring on `/api/trpc/auth.me` after the runtime-schema correction, then validate a Vercel-compatible API packaging path.
