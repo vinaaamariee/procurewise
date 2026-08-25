@@ -7,6 +7,7 @@ describe("Vercel deployment configuration", () => {
     const config = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
       buildCommand?: string;
       outputDirectory?: string;
+      functions?: { "api/index.ts"?: { runtime?: string; includeFiles?: string } };
       rewrites?: Array<{ source: string; destination: string }>;
     };
 
@@ -21,6 +22,8 @@ describe("Vercel deployment configuration", () => {
     expect(entrypoint).toContain('"/api/trpc"');
     expect(config.buildCommand).toBe("pnpm build");
     expect(config.outputDirectory).toBe("dist/public");
+    expect(config.functions?.["api/index.ts"]?.runtime).toBeUndefined();
+    expect(config.functions?.["api/index.ts"]?.includeFiles).toBe("{server/**,shared/**}");
     expect(config.rewrites).toContainEqual({ source: "/api/(.*)", destination: "/api/index" });
     expect(config.rewrites).toContainEqual({ source: "/(.*)", destination: "/index.html" });
   });

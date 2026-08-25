@@ -220,3 +220,4 @@
 - [ ] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
 - [ ] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
 - [x] Correct Vercel `functions.api/index.ts.includeFiles` from an array to the schema-required string pattern, validate the config, and publish a redeployable commit.
+- [x] Remove the invalid explicit Vercel runtime override, validate the configuration and application, and publish a redeployable commit.
