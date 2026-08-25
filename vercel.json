@@ -3,6 +3,12 @@
   "framework": null,
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs22.x",
+      "includeFiles": ["server/**", "shared/**"]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

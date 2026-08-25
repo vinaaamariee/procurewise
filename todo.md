@@ -218,3 +218,4 @@
 - [ ] Resolve Vercel’s conflicting global Request/Response/Application typings in server.ts, storageProxy.ts, and supabaseAuth.ts without weakening runtime behavior, then publish a clean redeployable build.
 - [ ] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
 - [ ] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
+- [ ] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
