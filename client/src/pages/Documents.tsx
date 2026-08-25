@@ -70,19 +70,19 @@ export default function DocumentsPage() {
   };
 
   const recordLabel = (entityType: string, entityId: number) => recordOptions.find((option) => option.entityType === entityType && option.entityId === entityId)?.label || `${entityType.replaceAll("_", " ")} #${entityId}`;
-  const downloadOfficialForm = () => {
+  const downloadOfficialForm = async () => {
     if (!selectedRecord) return toast.error("Select a procurement record before downloading an official-form copy.");
     const supplierMap = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier]));
     if (selectedRecord.entityType === "app_ppmp_entry") return toast.info("A PPMP official PDF template has not been supplied; the supporting file can be opened from the register.");
     if (selectedRecord.entityType === "purchase_request") {
       if (!purchaseRequestDetail.data) return toast.error("Purchase Request details are still loading.");
-      return downloadPurchaseRequestPdf(purchaseRequestDetail.data);
+      return await downloadPurchaseRequestPdf(purchaseRequestDetail.data);
     }
     if (selectedRecord.entityType === "pre_canvass") {
       const preCanvass = selectedPreCanvass;
       if (!preCanvass) return toast.error("Pre-Canvass record is unavailable.");
       if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
-      return downloadPreCanvassPdf({ preCanvass, items: purchaseRequestDetail.data.items });
+      return await downloadPreCanvassPdf({ preCanvass, items: purchaseRequestDetail.data.items });
     }
     if (selectedRecord.entityType === "abstract_of_canvass") {
       const abstract = selectedAbstract;
@@ -90,18 +90,18 @@ export default function DocumentsPage() {
       if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
       const preCanvass = dashboard.data?.preCanvasses.find((record) => record.id === abstract.preCanvassId);
       const supplierNames = (preCanvass ? dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === preCanvass.id) ?? [] : []).map((quote) => supplierMap.get(quote.supplierId)?.companyName || "");
-      return downloadAbstractPdf({ abstract, suppliers: supplierNames, items: purchaseRequestDetail.data.items });
+      return await downloadAbstractPdf({ abstract, suppliers: supplierNames, items: purchaseRequestDetail.data.items });
     }
     const purchaseOrder = selectedPurchaseOrder;
     if (!purchaseOrder) return toast.error("Purchase Order record is unavailable.");
     const supplier = supplierMap.get(purchaseOrder.supplierId);
     if (!purchaseRequestDetail.data) return toast.error("Linked Purchase Request items are still loading.");
-    return downloadPurchaseOrderPdf({ purchaseOrder, supplierName: supplier?.companyName, supplierTin: supplier?.tin, items: purchaseRequestDetail.data.items });
+    return await downloadPurchaseOrderPdf({ purchaseOrder, supplierName: supplier?.companyName, supplierTin: supplier?.tin, items: purchaseRequestDetail.data.items });
   };
-  const downloadAcknowledgement = () => {
+  const downloadAcknowledgement = async () => {
     if (!selectedPreCanvass) return toast.error("Select a Pre-Canvass record before downloading Annex E.");
     const supplierMap = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier]));
-    return downloadRfqAcknowledgementPdf({ preCanvassNumber: selectedPreCanvass.preCanvassNumber, suppliers: (dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === selectedPreCanvass.id) ?? []).map((quote) => ({ companyName: supplierMap.get(quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`, receivedBy: quote.receivedBy, receivedAt: quote.acknowledgedAt })) });
+    return await downloadRfqAcknowledgementPdf({ preCanvassNumber: selectedPreCanvass.preCanvassNumber, suppliers: (dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === selectedPreCanvass.id) ?? []).map((quote) => ({ companyName: supplierMap.get(quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`, receivedBy: quote.receivedBy, receivedAt: quote.acknowledgedAt })) });
   };
 
   return <div className="mx-auto max-w-[1240px]">

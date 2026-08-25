@@ -15,6 +15,15 @@ describe("official procurement form structure", () => {
     expect(print).toContain("Prepared by Procurement / BAC");
   });
 
+  it("keeps BSC letterhead print-only and applies it to generated official PDFs", () => {
+    const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
+    const print = readFileSync(new URL("../client/src/pages/PrintPages.tsx", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    ["/manus-storage/bsc-header_31d256ab.png", "/manus-storage/bsc-footer_9296dc8a.png", "addBscLetterhead", "await addBscLetterhead(doc)"].forEach((marker) => expect(pdf).toContain(marker));
+    ["print-bsc-header", "print-bsc-footer", "print:hidden"].forEach((marker) => expect(print).toContain(marker));
+    expect(styles).toContain(".print-bsc-header");
+  });
+
   it("presents the supplied Appendix 60 and Annex D structure directly in their workspaces", () => {
     const purchaseRequests = readFileSync(new URL("../client/src/components/OfficialPurchaseRequestCanvas.tsx", import.meta.url), "utf8");
     const purchaseRequestWorkspace = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");

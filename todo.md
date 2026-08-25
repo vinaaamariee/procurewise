@@ -223,3 +223,4 @@
 - [x] Remove the invalid explicit Vercel runtime override, validate the configuration and application, and publish a redeployable commit.
 - [x] Diagnose and fix the live deployment `FUNCTION_INVOCATION_FAILED` still occurring on `/api/trpc/auth.me` after the runtime-schema correction, then validate a Vercel-compatible API packaging path.
 - [x] Replace the Vercel TypeScript API source function with a committed self-contained `api/index.mjs` bundle, remove ambiguous competing entrypoints, and verify the generated artifact locally.
+- [x] Add the supplied BSC header and footer artwork to official print/PDF outputs only, preserving the existing on-screen forms and document content.
