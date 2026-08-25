@@ -16,12 +16,12 @@ describe("repository automation and external authentication documentation", () =
     expect(workflow).toContain("CI_SUPABASE_SERVICE_ROLE_KEY");
   });
 
-  it("documents the deployed OAuth callback, environment boundaries, and sign-in verification process", () => {
-    expect(readme).toContain("## Vercel authentication deployment");
-    expect(readme).toContain("/api/oauth/callback");
-    expect(readme).toContain("VITE_APP_ID");
-    expect(readme).toContain("JWT_SECRET");
-    expect(readme).toContain("window.location.origin");
+  it("documents Supabase Auth deployment, environment boundaries, and role-preserving sign-in verification", () => {
+    expect(readme).toContain("## Vercel and Supabase Auth deployment");
+    expect(readme).toContain("VITE_SUPABASE_ANON_KEY");
+    expect(readme).toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(readme).toContain("Authentication → URL Configuration");
+    expect(readme).toContain("retains its assigned");
     expect(readme).toContain("## GitHub Actions continuous integration");
   });
 });

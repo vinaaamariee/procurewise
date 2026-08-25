@@ -11,7 +11,8 @@ describe("Vercel deployment configuration", () => {
     };
 
     expect(entrypoint).toContain("export default app");
-    expect(entrypoint).toContain("registerOAuthRoutes(app)");
+    expect(entrypoint).toContain("createExpressMiddleware");
+    expect(entrypoint).not.toContain("registerOAuthRoutes(app)");
     expect(entrypoint).toContain('"/api/trpc"');
     expect(config.buildCommand).toBe("pnpm build");
     expect(config.outputDirectory).toBe("dist/public");

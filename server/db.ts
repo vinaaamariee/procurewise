@@ -105,6 +105,31 @@ export async function upsertUser(user: InsertUser, options?: UserUpsertOptions):
   await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
 }
 
+/**
+ * Maps a verified Supabase identity to the existing ProcureWise user row. An
+ * existing matching email keeps its user ID and role, so its procurement
+ * records stay connected after the external-auth conversion.
+ */
+export async function upsertSupabaseAuthUser(input: { openId: string; email: string | null; name: string | null }): Promise<User> {
+  const db = await requireDb();
+  const existingByOpenId = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
+  const existingByEmail = !existingByOpenId[0] && input.email
+    ? await db.select().from(users).where(eq(users.email, input.email)).limit(1)
+    : [];
+  const existing = existingByOpenId[0] ?? existingByEmail[0];
+  const values = { openId: input.openId, email: input.email, name: input.name, loginMethod: "supabase", lastSignedIn: new Date() };
+
+  if (existing) {
+    const [updated] = await db.update(users).set(values).where(eq(users.id, existing.id)).returning();
+    if (!updated) throw new Error("The existing ProcureWise user could not be updated.");
+    return updated;
+  }
+
+  const [created] = await db.insert(users).values({ ...values, role: "end_user" }).returning();
+  if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
+  return created;
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;

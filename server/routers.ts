@@ -1,7 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listAdminTestRecordPackages, listBacTransmittals, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listPendingSupplierEvaluationApprovals, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listPurchaseRequestSignatories, listPurchaseRequests, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordPreCanvassResubmission, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, resubmitAbstract, resubmitPurchaseOrder, saveBestValuePolicy, setProcurementCatalogFavorite, setSupplierTags, signSupplierEvaluation, submitPreCanvass, updateProcurementSettings, updateSupplierEvaluation, updateUserProcurementRole } from "./db";
@@ -17,10 +15,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
-      return { success: true } as const;
-    }),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
   procurement: router({
     dashboard: protectedProcedure.query(({ ctx }) => getProcurementDashboard(ctx.user)),

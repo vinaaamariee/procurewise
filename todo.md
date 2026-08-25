@@ -206,3 +206,7 @@
 - [x] Clarify the external Item details system-control area and improve its small-screen horizontal-use guidance without changing the official Appendix 60 item grid.
 - [x] Validate the production build and prepare the project-specific secure Vercel deployment, environment-variable, OAuth callback, and post-deployment verification checklist.
 - [x] Add and verify a Vercel-compatible Express entrypoint and SPA/API routing configuration for the current full-stack ProcureWise application.
+- [ ] Publish the verified ProcureWise repository to a private GitHub repository and connect it to a Vercel project without exposing secrets.
+- [ ] Complete secure Vercel production configuration, allowlist the OAuth callback, and verify the deployed End-User Purchase Request workflow without creating unapproved procurement records.
+- [x] Replace the Manus-specific OAuth browser and server path with Supabase Auth while preserving role-gated procurement access and existing users matched by verified email.
+- [x] Add Supabase Auth login, registration, session-token verification, existing-account role preservation, and revised Vercel/Supabase Auth deployment documentation without exposing credentials.

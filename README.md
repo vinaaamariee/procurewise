@@ -116,45 +116,34 @@ This repository runs a Node/Express server in addition to its Vite frontend. A d
 
 The project also contains integrations originally supplied by its managed development environment, including authentication and document storage helpers. When moving to an external provider, verify each integration has an equivalent external configuration before treating the deployment as production-ready.
 
-## Vercel authentication deployment
+## Vercel and Supabase Auth deployment
 
-ProcureWise currently uses an OAuth flow that starts in the browser and completes at the server route below:
+The repository includes `server.ts` and `vercel.json` for Vercel. Vercel serves the Vite production output from `dist/public` and routes `/api/*` requests to the Express/tRPC function. Do not remove the `/api/*` rewrite; it is required for protected workflow actions.
 
-```text
-https://YOUR-VERCEL-DOMAIN/api/oauth/callback
-```
+ProcureWise uses **Supabase Auth** for the browser session. The browser sends its short-lived Supabase access token to the protected tRPC procedures, where the server verifies it before resolving the corresponding ProcureWise user and role. When a verified Supabase email matches an existing ProcureWise user, the system updates that existing identity record while preserving its internal user ID, assigned role, and linked procurement records.
 
-The repository includes `server.ts` and `vercel.json` for Vercel. Vercel serves the production Vite output from `dist/public` and routes `/api/*` requests to the Express/tRPC/OAuth function. Do not change the build command to a static-only build or remove the `/api/*` rewrite; doing so disables protected workflow actions and sign-in.
-
-The application derives this URL from `window.location.origin`; it must not be hardcoded in source code. When the Vercel domain, custom domain, or preview domain changes, the OAuth provider must recognize the corresponding callback URL before sign-in can succeed.
-
-### Required configuration
+### Required Vercel variables
 
 | Setting | Where to configure it | Classification |
 |---|---|---|
-| `VITE_APP_ID` | Vercel environment variables and the OAuth application configuration | Browser-visible identifier |
-| `VITE_OAUTH_PORTAL_URL` | Vercel environment variables | Browser-visible provider URL |
-| `OAUTH_SERVER_URL` | Vercel environment variables | Server configuration |
-| `JWT_SECRET` | Vercel environment variables | **Secret**; use a long, unique random value |
-| `https://YOUR-VERCEL-DOMAIN/api/oauth/callback` | OAuth provider’s allowed redirect/callback URL list | Required redirect URL |
+| `SUPABASE_DB_PASSWORD` | Vercel environment variables | **Secret** |
+| `VITE_SUPABASE_URL` | Vercel environment variables | Browser-visible project URL |
+| `VITE_SUPABASE_ANON_KEY` | Vercel environment variables | Browser-visible publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel environment variables | **Secret**; server verification and Realtime broadcasts |
+| `OWNER_OPEN_ID` | Vercel environment variables | **Secret**; retain only if owner migration behavior is needed |
+| `OWNER_NAME` | Vercel environment variables | Non-secret owner display value |
 
-Complete the setup in this order:
+Do **not** add Manus-only values such as `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OAUTH_SERVER_URL`, `BUILT_IN_FORGE_API_KEY`, or `BUILT_IN_FORGE_API_URL` to Vercel.
 
-1. Choose a stable production domain, preferably a custom Batanes State College domain rather than a changing preview URL.
-2. Add the four variables above in **Vercel → Project Settings → Environment Variables**. Set `JWT_SECRET` as sensitive and never use a `VITE_` prefix for it. Vercel applies variable changes only to new deployments, so redeploy afterwards.[1]
-3. In the OAuth provider or application administration console, register the exact callback URL shown above. The scheme, host, and path must match the deployed domain exactly.
-4. Complete a browser sign-in from `/access`, return through `/api/oauth/callback`, and verify that the authenticated dashboard loads and the session survives a page refresh.
-5. Confirm sign-out clears the session, and confirm that an End-User can access only records permitted by the server-side role rules.
+### Supabase Auth setup and verification
 
-> **Important:** The current OAuth integration is provider-specific. If the provider cannot register your Vercel or custom-domain callback URL, environment variables alone cannot make external sign-in work. In that case, migrate the application to an OAuth provider you control, such as Supabase Auth or an institutional identity provider, before publishing production access.
+1. In **Supabase Dashboard → Authentication → Providers**, enable **Email** authentication and configure its email-confirmation policy for your institution.
+2. In **Authentication → URL Configuration**, set the Site URL to the stable Vercel production domain and add `https://YOUR-VERCEL-DOMAIN/access` as an allowed redirect URL. Add a custom domain only after it is active.
+3. Add the Vercel variables above for Production and Preview. Vercel applies variable changes only to new deployments, so redeploy after changes.[1]
+4. Create or sign in through `/access` using a verified work email. Confirm that a new user receives the End-User role and that an existing user with the same email retains its assigned Procurement Officer, Administrative Approver, or Admin role.
+5. Confirm sign-out removes the client session and that protected routes reject requests without a valid Supabase access token.
 
-The login flow creates a one-time state nonce in a secure cookie and validates it in the callback. Do not replace the dynamic callback mechanism, remove the nonce check, or call the login initializer during React rendering. These protections prevent OAuth state mismatch and session-fixation failures.
-
-Vercel deployment must be HTTPS. The OAuth state cookie and signed session cookie use secure cookie settings. Users who block all cookies, or use browser privacy modes that prevent them, may be unable to complete sign-in.
-
-### Preview deployments
-
-Treat pull-request preview URLs as non-production. They often have a different origin from the production domain and therefore require a separately allowlisted callback URL. Do not weaken the callback check or add broad redirect wildcards solely to make preview login work. Prefer production-domain authentication testing unless the OAuth provider supports a carefully constrained preview-domain allowlist.
+> **Preview deployment note:** Preview URLs are separate origins. Do not use broad redirect wildcards for production access; add only the specific preview address required for controlled testing, then remove it when testing is complete.
 
 ## GitHub Actions continuous integration
 
