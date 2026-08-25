@@ -124,6 +124,8 @@ ProcureWise currently uses an OAuth flow that starts in the browser and complete
 https://YOUR-VERCEL-DOMAIN/api/oauth/callback
 ```
 
+The repository includes `server.ts` and `vercel.json` for Vercel. Vercel serves the production Vite output from `dist/public` and routes `/api/*` requests to the Express/tRPC/OAuth function. Do not change the build command to a static-only build or remove the `/api/*` rewrite; doing so disables protected workflow actions and sign-in.
+
 The application derives this URL from `window.location.origin`; it must not be hardcoded in source code. When the Vercel domain, custom domain, or preview domain changes, the OAuth provider must recognize the corresponding callback URL before sign-in can succeed.
 
 ### Required configuration

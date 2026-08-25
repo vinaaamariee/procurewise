@@ -204,3 +204,5 @@
 - [x] Add controlled Requested by and Approved by authorized-signatory selectors for the live Appendix 60 Purchase Request canvas without placing interactive controls inside the official form surface.
 - [x] Preserve 01101101 as the default Fund Cluster while providing an editable controlled dropdown for permitted alternatives.
 - [x] Clarify the external Item details system-control area and improve its small-screen horizontal-use guidance without changing the official Appendix 60 item grid.
+- [x] Validate the production build and prepare the project-specific secure Vercel deployment, environment-variable, OAuth callback, and post-deployment verification checklist.
+- [x] Add and verify a Vercel-compatible Express entrypoint and SPA/API routing configuration for the current full-stack ProcureWise application.
