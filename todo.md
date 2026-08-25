@@ -217,3 +217,4 @@
 - [ ] Replace the Vercel API function’s directory import with an explicit module import so `/api/trpc/auth.me` starts successfully under Node ESM, then redeploy and verify Supabase Auth.
 - [ ] Resolve Vercel’s conflicting global Request/Response/Application typings in server.ts, storageProxy.ts, and supabaseAuth.ts without weakening runtime behavior, then publish a clean redeployable build.
 - [ ] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
+- [ ] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
