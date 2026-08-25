@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./server/_core/storageProxy";
 import { appRouter } from "./server/routers";
@@ -16,7 +16,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 registerStorageProxy(app);
 app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
 
-app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error("[Vercel] Unhandled API error", error);
   res.status(500).json({ error: "Internal server error" });
 });

@@ -9,7 +9,7 @@ const accessSource = readFileSync(resolve(root, "client/src/pages/Access.tsx"), 
 
 describe("Supabase Auth identity bridge", () => {
   it("verifies bearer tokens and preserves existing ProcureWise roles by verified email", () => {
-    expect(bridgeSource).toContain("client.auth.getUser(token)");
+    expect(bridgeSource).toContain(".getUser(token)");
     expect(bridgeSource).toContain("upsertSupabaseAuthUser");
     expect(databaseSource).toContain("existingByEmail");
     expect(databaseSource).toContain("where(eq(users.id, existing.id))");

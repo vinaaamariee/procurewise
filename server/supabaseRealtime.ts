@@ -24,7 +24,7 @@ export async function publishProcurementRealtimeUpdate(recordType: ProcurementRe
   try {
     const subscribed = await new Promise<boolean>((resolve) => {
       const timeout = setTimeout(() => resolve(false), 2_500);
-      channel.subscribe((status) => {
+      channel.subscribe((status: string) => {
         if (status === "SUBSCRIBED") { clearTimeout(timeout); resolve(true); }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") { clearTimeout(timeout); resolve(false); }
       });

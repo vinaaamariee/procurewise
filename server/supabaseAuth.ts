@@ -1,9 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Request } from "express";
+import type { Request as ExpressRequest } from "express";
 import type { User } from "../drizzle/schema";
 import { upsertSupabaseAuthUser } from "./db";
 
-function getBearerToken(req: Request) {
+function getBearerToken(req: ExpressRequest) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return null;
   const token = header.slice("Bearer ".length).trim();
@@ -18,12 +18,19 @@ function getAuthClient() {
 }
 
 /** Verify the caller's Supabase access token and map it to a ProcureWise user. */
-export async function authenticateSupabaseRequest(req: Request): Promise<User | null> {
+type AuthClient = {
+  getUser: (jwt: string) => Promise<{
+    data: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null };
+    error: { message: string } | null;
+  }>;
+};
+
+export async function authenticateSupabaseRequest(req: ExpressRequest): Promise<User | null> {
   const token = getBearerToken(req);
   const client = getAuthClient();
   if (!token || !client) return null;
 
-  const { data, error } = await client.auth.getUser(token);
+  const { data, error } = await (client.auth as unknown as AuthClient).getUser(token);
   if (error || !data.user) return null;
 
   const fullName = typeof data.user.user_metadata?.full_name === "string"
