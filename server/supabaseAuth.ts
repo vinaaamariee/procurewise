@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Request as ExpressRequest } from "express";
 import type { User } from "../drizzle/schema";
 import { upsertSupabaseAuthUser } from "./db";
 
-function getBearerToken(req: ExpressRequest) {
+type AuthRequest = { headers: { authorization?: string } };
+
+function getBearerToken(req: AuthRequest) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return null;
   const token = header.slice("Bearer ".length).trim();
@@ -25,7 +26,7 @@ type AuthClient = {
   }>;
 };
 
-export async function authenticateSupabaseRequest(req: ExpressRequest): Promise<User | null> {
+export async function authenticateSupabaseRequest(req: AuthRequest): Promise<User | null> {
   const token = getBearerToken(req);
   const client = getAuthClient();
   if (!token || !client) return null;
