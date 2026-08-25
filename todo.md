@@ -210,3 +210,5 @@
 - [ ] Complete secure Vercel production configuration, allowlist the OAuth callback, and verify the deployed End-User Purchase Request workflow without creating unapproved procurement records.
 - [x] Replace the Manus-specific OAuth browser and server path with Supabase Auth while preserving role-gated procurement access and existing users matched by verified email.
 - [x] Add Supabase Auth login, registration, session-token verification, existing-account role preservation, and revised Vercel/Supabase Auth deployment documentation without exposing credentials.
+- [ ] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
+- [ ] Remove the unconfigured optional analytics placeholder script from the Vercel production entrypoint and publish a clean build without affecting Supabase Auth or procurement workflows.
