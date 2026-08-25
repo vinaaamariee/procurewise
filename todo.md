@@ -212,4 +212,4 @@
 - [x] Add Supabase Auth login, registration, session-token verification, existing-account role preservation, and revised Vercel/Supabase Auth deployment documentation without exposing credentials.
 - [ ] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
 - [x] Remove the unconfigured optional analytics placeholder script from the Vercel production entrypoint and publish a clean build without affecting Supabase Auth or procurement workflows.
-- [ ] Fix Vercel TypeScript errors in server.ts, storageProxy.ts, supabaseRealtime.ts, and supabaseAuth.ts, then publish a clean redeployable commit before testing Supabase Auth.
+- [x] Fix Vercel TypeScript errors in server.ts, storageProxy.ts, supabaseRealtime.ts, and supabaseAuth.ts, then publish a clean redeployable commit before testing Supabase Auth.
