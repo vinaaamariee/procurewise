@@ -216,3 +216,4 @@
 - [ ] Diagnose and fix the live Vercel `FUNCTION_INVOCATION_FAILED` response on `/api/trpc`, using the deployment runtime error without exposing secrets, then redeploy and revalidate Supabase Auth.
 - [ ] Replace the Vercel API function’s directory import with an explicit module import so `/api/trpc/auth.me` starts successfully under Node ESM, then redeploy and verify Supabase Auth.
 - [ ] Resolve Vercel’s conflicting global Request/Response/Application typings in server.ts, storageProxy.ts, and supabaseAuth.ts without weakening runtime behavior, then publish a clean redeployable build.
+- [ ] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
