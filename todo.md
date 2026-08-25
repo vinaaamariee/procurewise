@@ -219,3 +219,4 @@
 - [ ] Fix the final Vercel type mismatch between the tRPC Express context request and the Supabase Auth adapter, then publish and redeploy a clean build before live login testing.
 - [ ] Remove the remaining cross-root server import from the Vercel function by creating a self-contained API entrypoint or bundling path, then redeploy and verify `/api/trpc/auth.me`.
 - [ ] Resolve the remaining public Vercel `FUNCTION_INVOCATION_FAILED` after the self-contained entrypoint by enforcing a bundled Node function configuration, then redeploy and revalidate Supabase Auth.
+- [x] Correct Vercel `functions.api/index.ts.includeFiles` from an array to the schema-required string pattern, validate the config, and publish a redeployable commit.
