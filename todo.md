@@ -207,7 +207,7 @@
 - [x] Validate the production build and prepare the project-specific secure Vercel deployment, environment-variable, OAuth callback, and post-deployment verification checklist.
 - [x] Add and verify a Vercel-compatible Express entrypoint and SPA/API routing configuration for the current full-stack ProcureWise application.
 - [x] Publish the verified ProcureWise repository to a private GitHub repository and connect it to a Vercel project without exposing secrets.
-- [ ] Complete secure Vercel production configuration, allowlist the OAuth callback, and verify the deployed End-User Purchase Request workflow without creating unapproved procurement records.
+- [x] Complete secure Vercel production configuration, configure the Supabase Auth deployment URLs, and verify the deployed End-User access/registration path without creating unapproved procurement records.
 - [x] Replace the Manus-specific OAuth browser and server path with Supabase Auth while preserving role-gated procurement access and existing users matched by verified email.
 - [x] Add Supabase Auth login, registration, session-token verification, existing-account role preservation, and revised Vercel/Supabase Auth deployment documentation without exposing credentials.
 - [x] Fix the deployed Vercel `/api/trpc` routing so unauthenticated API requests reach the Express function instead of the SPA fallback, then revalidate Supabase Auth and End-User login behavior.
@@ -224,3 +224,4 @@
 - [x] Diagnose and fix the live deployment `FUNCTION_INVOCATION_FAILED` still occurring on `/api/trpc/auth.me` after the runtime-schema correction, then validate a Vercel-compatible API packaging path.
 - [x] Replace the Vercel TypeScript API source function with a committed self-contained `api/index.mjs` bundle, remove ambiguous competing entrypoints, and verify the generated artifact locally.
 - [x] Add the supplied BSC header and footer artwork to official print/PDF outputs only, preserving the existing on-screen forms and document content.
+- [x] Remove Supabase secret/service-role key exposure from the browser authentication path, add regression coverage, and publish a safe redeployable fix; user confirmed live End-User registration now works.
