@@ -225,3 +225,6 @@
 - [x] Replace the Vercel TypeScript API source function with a committed self-contained `api/index.mjs` bundle, remove ambiguous competing entrypoints, and verify the generated artifact locally.
 - [x] Add the supplied BSC header and footer artwork to official print/PDF outputs only, preserving the existing on-screen forms and document content.
 - [x] Remove Supabase secret/service-role key exposure from the browser authentication path, add regression coverage, and publish a safe redeployable fix; user confirmed live End-User registration now works.
+- [x] Add Catalog to the authenticated sidebar and verify its role-aware route.
+- [x] Add a print-preview action for official documents so users can inspect the BSC header/footer layout before printing.
+- [x] Prepare safe demo access for End-User, Procurement Officer, and Administrative Approver roles without exposing credentials in source code or creating fabricated procurement transactions.

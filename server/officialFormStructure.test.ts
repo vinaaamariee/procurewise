@@ -54,6 +54,18 @@ describe("official procurement form structure", () => {
     expect(migration).toContain("ADD `openingDate` timestamp DEFAULT (now()) NOT NULL");
   });
 
+  it("exposes Catalog in the authenticated sidebar and keeps the catalog route protected", () => {
+    const navigation = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+    const routes = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const catalog = readFileSync(new URL("../client/src/pages/Catalog.tsx", import.meta.url), "utf8");
+    expect(navigation).toContain('label: "Catalog"');
+    expect(navigation).toContain('path: "/catalog"');
+    expect(routes).toContain('<Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>');
+    ["trpc.procurement.catalog.list", "trpc.procurement.catalog.codeFamilies", "trpc.procurement.catalog.favorites"].forEach((marker) => expect(catalog).toContain(marker));
+    const documents = readFileSync(new URL("../client/src/pages/Documents.tsx", import.meta.url), "utf8");
+    expect(documents).toContain("Preview before printing");
+  });
+
   it("keeps the Best Value policy history compliance PDF exporter available with version and criteria sections", () => {
     const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
     expect(pdf).toContain("downloadBestValuePolicyHistoryPdf");

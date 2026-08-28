@@ -20,6 +20,7 @@ import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
+import CatalogPage from "./pages/Catalog";
 
 function Router() {
   const protectedPage = (page: React.ReactNode) => <DashboardLayout>{page}</DashboardLayout>;
@@ -44,6 +45,7 @@ function Router() {
       <Route path={"/print/transmittal"}>{protectedPage(<PrintTransmittalPage />)}</Route>
       <Route path={"/print/pre-canvass-abstract"}>{protectedPage(<PrintPreCanvassAbstractPage />)}</Route>
       <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
+      <Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>
       <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>
       <Route path={"/analytics"}>{protectedPage(<AnalyticsPage />)}</Route>
