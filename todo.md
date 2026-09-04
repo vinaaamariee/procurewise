@@ -250,3 +250,17 @@
 - [ ] Test End-User registration and sign-in on the deployed Vercel site without exposing account credentials, and document the result.
 - [ ] Fix the confirmed production Supabase sign-in redirect loop where a valid session returns to the unauthenticated Access gate instead of the dashboard.
 - [ ] Fix the production Supabase session-token handoff so authenticated `/api/trpc/auth.me` requests return the internal End-User profile instead of null.
+- [ ] Resolve the production profile-bridge failure after Supabase sign-in succeeds, so `auth.me` returns the internal user and the dashboard opens.
+- [ ] Reverify the Vercel Production Supabase database variable and confirm the core PostgreSQL `users` schema is present; the profile bridge still returns no internal user after sign-in.
+- [ ] Verify the matching Supabase project contains the core `users` table and the deployed `SUPABASE_DATABASE_URL` targets that same project before another sign-in test.
+- [ ] Apply the complete PostgreSQL migration sequence to the latest Supabase project `tfswokhkuxwvpcpxekso`; the users, catalog, and saved-cart tables are currently all missing.
+- [ ] Replace the full rerun with a safe completion migration for the partially initialized latest Supabase schema; do not drop or overwrite existing tables or data.
+- [ ] Inventory the latest project’s existing `audit_trails` columns and repair the missing `entityType`-compatible schema without destructive table replacement.
+- [ ] Do not apply ProcureWise Drizzle migrations to the existing Prisma-schema Supabase project; choose a dedicated or isolated PostgreSQL target that preserves its existing data.
+- [ ] Create a dedicated Supabase project for the current ProcureWise version and leave the existing paused Prisma project unchanged.
+- [ ] Initialize the dedicated project with the complete ProcureWise PostgreSQL schema and align Vercel Auth/database variables.
+- [ ] Stop rerunning the full schema script and prepare a targeted ProcureWise-only migration that preserves the pre-existing `audit_trails` table and creates only missing compatible objects.
+- [ ] Complete the same-project targeted schema/profile bridge so the newly created Auth user can open `/dashboard` for the adviser demonstration.
+- [ ] Remove all remaining `audit_trails`/`entityType` statements from the targeted migration and validate the corrected script before asking the user to run it again.
+- [ ] Stop applying ProcureWise migrations to the incompatible existing schema after the `itemDescription` conflict; preserve existing tables and move to a clean isolated schema/database target.
+- [x] Patch the server database pool to set `search_path` to `procurewise, public` explicitly, validate, publish, and retest the authenticated workspace; code validation is complete, while live authenticated retest remains deployment-dependent.
