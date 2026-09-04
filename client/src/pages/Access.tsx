@@ -31,7 +31,10 @@ export default function Access() {
       if (mode === "sign-in") {
         const { error } = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        await refresh();
+        const refreshed = await refresh();
+        if (!refreshed.data) {
+          throw new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
+        }
         setLocation("/dashboard");
         return;
       }
@@ -46,7 +49,10 @@ export default function Access() {
         setMode("sign-in");
         return;
       }
-      await refresh();
+      const refreshed = await refresh();
+      if (!refreshed.data) {
+        throw new Error("Your account was created, but ProcureWise could not load your workspace profile. Please sign in again after the account is provisioned.");
+      }
       setLocation("/dashboard");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Authentication could not be completed.");

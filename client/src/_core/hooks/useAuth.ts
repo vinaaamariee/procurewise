@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { supabaseAuth } from "@/lib/supabaseAuth";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -15,11 +15,29 @@ export function useAuth(options?: UseAuthOptions) {
   // desync it from an in-flight login's `state`.
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
   const utils = trpc.useUtils();
+  const [sessionReady, setSessionReady] = useState(false);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
+    enabled: sessionReady,
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    let mounted = true;
+    void supabaseAuth.auth.getSession().finally(() => {
+      if (mounted) setSessionReady(true);
+    });
+    const { data } = supabaseAuth.auth.onAuthStateChange(() => {
+      if (!mounted) return;
+      setSessionReady(true);
+      void utils.auth.me.invalidate();
+    });
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, [utils]);
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -52,7 +70,7 @@ export function useAuth(options?: UseAuthOptions) {
     );
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      loading: !sessionReady || meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
@@ -60,6 +78,7 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
+    sessionReady,
     logoutMutation.error,
     logoutMutation.isPending,
   ]);

@@ -244,4 +244,9 @@
 - [x] Resolve the Supabase PostgreSQL `ECONNREFUSED` connection blocker before applying the saved-cart migration or claiming cross-device persistence is verified; user confirmed the Supabase migration succeeded.
 - [ ] Resolve the invalid demo End-User credentials by aligning the account with the Supabase project used by the current deployment, without exposing passwords or service keys.
 - [ ] Diagnose and fix the main production URL redirect/session mismatch where newly created Supabase users are sent to the landing/access gate instead of the authenticated dashboard.
-- [ ] Publish the validated saved-cart and authentication fixes to `vinaaamariee/procurewise` `main` and provide Vercel with a real GitHub commit reference.
+- [x] Publish the validated saved-cart and authentication fixes to `vinaaamariee/procurewise` `main` and provide Vercel with a real GitHub commit reference.
+- [x] Correct the Git commit author email for the saved-cart deployment so Vercel accepts the GitHub commit and resume production verification.
+- [x] Run a non-sensitive smoke test of the latest Vercel deployment and document public/API/route-guard results separately from authenticated workflow coverage.
+- [ ] Test End-User registration and sign-in on the deployed Vercel site without exposing account credentials, and document the result.
+- [ ] Fix the confirmed production Supabase sign-in redirect loop where a valid session returns to the unauthenticated Access gate instead of the dashboard.
+- [ ] Fix the production Supabase session-token handoff so authenticated `/api/trpc/auth.me` requests return the internal End-User profile instead of null.
