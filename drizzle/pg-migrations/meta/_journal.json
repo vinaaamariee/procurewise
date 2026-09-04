@@ -36,6 +36,13 @@
       "when": 1787413741634,
       "tag": "0004_bouncy_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788530903129,
+      "tag": "0005_adorable_swordsman",
+      "breakpoints": true
     }
   ]
 }

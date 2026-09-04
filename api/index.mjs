@@ -313,6 +313,18 @@ var procurementCatalogFavorites = pgTable("procurement_catalog_favorites", {
   index("procurement_catalog_favorite_user_idx").on(table.userId),
   index("procurement_catalog_favorite_item_idx").on(table.catalogItemId)
 ]);
+var procurementCatalogSavedItems = pgTable("procurement_catalog_saved_items", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  userId: integer("userId").notNull(),
+  catalogItemId: integer("catalogItemId").notNull(),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).default("1.00").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+}, (table) => [
+  uniqueIndex("procurement_catalog_saved_user_item_unique").on(table.userId, table.catalogItemId),
+  index("procurement_catalog_saved_user_idx").on(table.userId),
+  index("procurement_catalog_saved_item_idx").on(table.catalogItemId)
+]);
 var appPpmpEntries = pgTable("app_ppmp_entries", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fiscalYear: integer("fiscalYear").notNull(),
@@ -915,10 +927,11 @@ function calculateMcdmScores(quotes) {
 }
 async function getDb() {
   const password = process.env.SUPABASE_DB_PASSWORD;
-  if (!_db && password) {
+  const configuredConnectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!_db && (configuredConnectionString || password)) {
     try {
-      const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
-      _pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+      const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -1143,6 +1156,31 @@ async function listProcurementCatalogCodeFamilies(options) {
     return result;
   }, {});
   return Object.entries(totals).sort(([left], [right]) => left.localeCompare(right, void 0, { numeric: true })).map(([codeFamily, itemCount]) => ({ codeFamily, label: `Source code family ${codeFamily}`, itemCount }));
+}
+async function listProcurementCatalogSavedItems(user, options) {
+  const db = options?.db ?? await requireDb();
+  return db.select({
+    catalogItemId: procurementCatalogSavedItems.catalogItemId,
+    quantity: procurementCatalogSavedItems.quantity,
+    productCode: procurementCatalogItems.productCode,
+    description: procurementCatalogItems.description,
+    unit: procurementCatalogItems.unit,
+    referencePrice: procurementCatalogItems.referencePrice,
+    remarks: procurementCatalogItems.remarks
+  }).from(procurementCatalogSavedItems).innerJoin(procurementCatalogItems, eq(procurementCatalogSavedItems.catalogItemId, procurementCatalogItems.id)).where(and(eq(procurementCatalogSavedItems.userId, user.id), eq(procurementCatalogItems.isActive, 1))).orderBy(procurementCatalogItems.description);
+}
+async function replaceProcurementCatalogSavedItems(input, user, options) {
+  const db = options?.db ?? await requireDb();
+  const items = Array.from(new Map(input.items.map((item) => [item.catalogItemId, item])).values());
+  await assertActiveCatalogItemIds(items.map((item) => item.catalogItemId), db);
+  await db.delete(procurementCatalogSavedItems).where(eq(procurementCatalogSavedItems.userId, user.id));
+  if (items.length) await db.insert(procurementCatalogSavedItems).values(items.map((item) => ({ userId: user.id, catalogItemId: item.catalogItemId, quantity: item.quantity.toFixed(2) })));
+  return listProcurementCatalogSavedItems(user, { db });
+}
+async function clearProcurementCatalogSavedItems(user, options) {
+  const db = options?.db ?? await requireDb();
+  await db.delete(procurementCatalogSavedItems).where(eq(procurementCatalogSavedItems.userId, user.id));
+  return { cleared: true };
 }
 async function listProcurementCatalogFavorites(user, options) {
   const db = options?.db ?? await requireDb();
@@ -2094,6 +2132,9 @@ var appRouter = router({
       get: protectedProcedure.input(z2.object({ catalogItemId: z2.number().int().positive() })).query(({ input }) => getProcurementCatalogItem(input.catalogItemId)),
       codeFamilies: protectedProcedure.query(() => listProcurementCatalogCodeFamilies()),
       favorites: protectedProcedure.query(({ ctx }) => listProcurementCatalogFavorites(ctx.user)),
+      saved: protectedProcedure.query(({ ctx }) => listProcurementCatalogSavedItems(ctx.user)),
+      save: protectedProcedure.input(z2.object({ items: z2.array(z2.object({ catalogItemId: z2.number().int().positive(), quantity: z2.number().positive().max(1e6) })).max(500) })).mutation(({ ctx, input }) => replaceProcurementCatalogSavedItems(input, ctx.user)),
+      clearSaved: protectedProcedure.mutation(({ ctx }) => clearProcurementCatalogSavedItems(ctx.user)),
       setFavorite: protectedProcedure.input(z2.object({ catalogItemId: z2.number().int().positive(), isFavorite: z2.boolean() })).mutation(({ ctx, input }) => setProcurementCatalogFavorite(input, ctx.user))
     }),
     testRecords: router({

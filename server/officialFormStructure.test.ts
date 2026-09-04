@@ -65,9 +65,17 @@ describe("official procurement form structure", () => {
     const documents = readFileSync(new URL("../client/src/pages/Documents.tsx", import.meta.url), "utf8");
     const workspace = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");
     expect(documents).toContain("Preview before printing");
-    ["minReference", "maxReference", "reference_low", "reference_high", "Use in new Purchase Request", "catalogItemId=${item.id}"].forEach((marker) => expect(catalog).toContain(marker));
+    ["minReference", "maxReference", "reference_low", "reference_high", "Add saved items to new PR", "procurewise.catalogSelection", "Search catalog items by name or code", "Select", "Saved selection", "Clear all", "Quantity for"].forEach((marker) => expect(catalog).toContain(marker));
     expect(catalog).not.toContain("Reference price</p>");
-    ["useSearch", "catalogItemId", "Catalog item added", "Review and edit the quantity"].forEach((marker) => expect(workspace).toContain(marker));
+    ["useSearch", "catalogItemIds", "catalogSelection", "catalogSelectionNotice", "catalog item", "saved quantities", "Review and edit each quantity"].forEach((marker) => expect(workspace).toContain(marker));
+    const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const db = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+    const router = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const drizzleConfig = readFileSync(new URL("../drizzle.config.ts", import.meta.url), "utf8");
+    ["procurementCatalogSavedItems", "quantity: decimal", "procurement_catalog_saved_user_item_unique"].forEach((marker) => expect(schema).toContain(marker));
+    ["listProcurementCatalogSavedItems", "replaceProcurementCatalogSavedItems", "clearProcurementCatalogSavedItems", "SUPABASE_DATABASE_URL"].forEach((marker) => expect(db).toContain(marker));
+    ["saved: protectedProcedure", "save: protectedProcedure", "clearSaved: protectedProcedure"].forEach((marker) => expect(router).toContain(marker));
+    expect(drizzleConfig).toContain("process.env.SUPABASE_DATABASE_URL");
   });
 
   it("keeps the Best Value policy history compliance PDF exporter available with version and criteria sections", () => {

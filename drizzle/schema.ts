@@ -108,6 +108,19 @@ export const procurementCatalogFavorites = pgTable("procurement_catalog_favorite
   index("procurement_catalog_favorite_item_idx").on(table.catalogItemId),
 ]);
 
+export const procurementCatalogSavedItems = pgTable("procurement_catalog_saved_items", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  userId: integer("userId").notNull(),
+  catalogItemId: integer("catalogItemId").notNull(),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).default("1.00").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("procurement_catalog_saved_user_item_unique").on(table.userId, table.catalogItemId),
+  index("procurement_catalog_saved_user_idx").on(table.userId),
+  index("procurement_catalog_saved_item_idx").on(table.catalogItemId),
+]);
+
 export const appPpmpEntries = pgTable("app_ppmp_entries", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fiscalYear: integer("fiscalYear").notNull(),

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -67,10 +67,11 @@ export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPri
 
 export async function getDb() {
   const password = process.env.SUPABASE_DB_PASSWORD;
-  if (!_db && password) {
+  const configuredConnectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!_db && (configuredConnectionString || password)) {
     try {
-      const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
-      _pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+      const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password as string)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -356,6 +357,34 @@ export async function listProcurementCatalogCodeFamilies(options?: { db?: Return
     return result;
   }, {});
   return Object.entries(totals).sort(([left], [right]) => left.localeCompare(right, undefined, { numeric: true })).map(([codeFamily, itemCount]) => ({ codeFamily, label: `Source code family ${codeFamily}`, itemCount }));
+}
+
+export async function listProcurementCatalogSavedItems(user: User, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  return db.select({
+    catalogItemId: procurementCatalogSavedItems.catalogItemId,
+    quantity: procurementCatalogSavedItems.quantity,
+    productCode: procurementCatalogItems.productCode,
+    description: procurementCatalogItems.description,
+    unit: procurementCatalogItems.unit,
+    referencePrice: procurementCatalogItems.referencePrice,
+    remarks: procurementCatalogItems.remarks,
+  }).from(procurementCatalogSavedItems).innerJoin(procurementCatalogItems, eq(procurementCatalogSavedItems.catalogItemId, procurementCatalogItems.id)).where(and(eq(procurementCatalogSavedItems.userId, user.id), eq(procurementCatalogItems.isActive, 1))).orderBy(procurementCatalogItems.description);
+}
+
+export async function replaceProcurementCatalogSavedItems(input: { items: Array<{ catalogItemId: number; quantity: number }> }, user: User, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  const items = Array.from(new Map(input.items.map((item) => [item.catalogItemId, item])).values());
+  await assertActiveCatalogItemIds(items.map((item) => item.catalogItemId), db);
+  await db.delete(procurementCatalogSavedItems).where(eq(procurementCatalogSavedItems.userId, user.id));
+  if (items.length) await db.insert(procurementCatalogSavedItems).values(items.map((item) => ({ userId: user.id, catalogItemId: item.catalogItemId, quantity: item.quantity.toFixed(2) })));
+  return listProcurementCatalogSavedItems(user, { db });
+}
+
+export async function clearProcurementCatalogSavedItems(user: User, options?: { db?: ReturnType<typeof drizzle> }) {
+  const db = options?.db ?? await requireDb();
+  await db.delete(procurementCatalogSavedItems).where(eq(procurementCatalogSavedItems.userId, user.id));
+  return { cleared: true as const };
 }
 
 export async function listProcurementCatalogFavorites(user: User, options?: { db?: ReturnType<typeof drizzle> }) {

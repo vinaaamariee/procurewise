@@ -231,3 +231,17 @@
 - [x] Add one-click catalog item selection that opens a new Purchase Request with the item prefilled and editable.
 - [x] Add catalog category/code-family and price-range filtering plus sorting controls while keeping all prices hidden from catalog cards and results.
 - [x] Add regression coverage and validate the Catalog-to-Purchase-Request flow without creating a real procurement transaction; focused regression, TypeScript, build, and visual route checks pass, while integration tests requiring the sandbox Supabase database remain connectivity-limited.
+- [x] Add multi-item selection from the Catalog into one new Purchase Request.
+- [x] Show a confirmation toast or notification when Catalog items are added to the Purchase Request.
+- [x] Add a text search bar in the Catalog sidebar/workspace for item names and product codes.
+- [x] Add regression coverage and validate the multi-item Catalog-to-Purchase-Request flow without creating a real procurement transaction; focused regression, TypeScript, and production build pass.
+- [x] Add a saved-selection/cart panel that lets users review chosen catalog items before opening a Purchase Request.
+- [x] Add editable quantity fields for selected catalog items and carry those quantities into the Purchase Request rows.
+- [x] Add a Clear all action for the saved selection and add regression coverage for the quantity-aware handoff.
+- [x] Add authenticated server-side persistence for saved Catalog cart items and quantities, scoped to the signed-in user.
+- [x] Synchronize the Catalog cart with the server and preserve the Purchase Request handoff and clear-all behavior.
+- [ ] Apply the database change and test cart selection, quantity edits, clearing, cross-device reload behavior, and PR handoff using the demo End-User without creating a real procurement record.
+- [x] Resolve the Supabase PostgreSQL `ECONNREFUSED` connection blocker before applying the saved-cart migration or claiming cross-device persistence is verified; user confirmed the Supabase migration succeeded.
+- [ ] Resolve the invalid demo End-User credentials by aligning the account with the Supabase project used by the current deployment, without exposing passwords or service keys.
+- [ ] Diagnose and fix the main production URL redirect/session mismatch where newly created Supabase users are sent to the landing/access gate instead of the authenticated dashboard.
+- [ ] Publish the validated saved-cart and authentication fixes to `vinaaamariee/procurewise` `main` and provide Vercel with a real GitHub commit reference.
