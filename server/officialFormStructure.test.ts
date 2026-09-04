@@ -63,7 +63,11 @@ describe("official procurement form structure", () => {
     expect(routes).toContain('<Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>');
     ["trpc.procurement.catalog.list", "trpc.procurement.catalog.codeFamilies", "trpc.procurement.catalog.favorites"].forEach((marker) => expect(catalog).toContain(marker));
     const documents = readFileSync(new URL("../client/src/pages/Documents.tsx", import.meta.url), "utf8");
+    const workspace = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");
     expect(documents).toContain("Preview before printing");
+    ["minReference", "maxReference", "reference_low", "reference_high", "Use in new Purchase Request", "catalogItemId=${item.id}"].forEach((marker) => expect(catalog).toContain(marker));
+    expect(catalog).not.toContain("Reference price</p>");
+    ["useSearch", "catalogItemId", "Catalog item added", "Review and edit the quantity"].forEach((marker) => expect(workspace).toContain(marker));
   });
 
   it("keeps the Best Value policy history compliance PDF exporter available with version and criteria sections", () => {

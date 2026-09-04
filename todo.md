@@ -228,3 +228,6 @@
 - [x] Add Catalog to the authenticated sidebar and verify its role-aware route.
 - [x] Add a print-preview action for official documents so users can inspect the BSC header/footer layout before printing.
 - [x] Prepare safe demo access for End-User, Procurement Officer, and Administrative Approver roles without exposing credentials in source code or creating fabricated procurement transactions.
+- [x] Add one-click catalog item selection that opens a new Purchase Request with the item prefilled and editable.
+- [x] Add catalog category/code-family and price-range filtering plus sorting controls while keeping all prices hidden from catalog cards and results.
+- [x] Add regression coverage and validate the Catalog-to-Purchase-Request flow without creating a real procurement transaction; focused regression, TypeScript, build, and visual route checks pass, while integration tests requiring the sandbox Supabase database remain connectivity-limited.
