@@ -31,7 +31,13 @@ export default function Access() {
       if (mode === "sign-in") {
         const { error } = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        await refresh();
+        try {
+          await refresh();
+        } catch {
+          // auth.me threw — most likely a DB unavailability error. The error
+          // message from the server is shown directly to the user.
+          throw new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
+        }
         setLocation("/dashboard");
         return;
       }

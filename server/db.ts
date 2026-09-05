@@ -71,12 +71,19 @@ export async function getDb() {
   if (!_db && (configuredConnectionString || password)) {
     try {
       const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password as string)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      const source = configuredConnectionString
+        ? (process.env.SUPABASE_DATABASE_URL ? "SUPABASE_DATABASE_URL" : "DATABASE_URL")
+        : "SUPABASE_DB_PASSWORD (built-in template)";
+      console.log(`[Database] Connecting via ${source} …`);
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
       _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to initialise pool:", error instanceof Error ? error.message : error);
       _db = null;
     }
+  }
+  if (!_db && !configuredConnectionString && !password) {
+    console.error("[Database] No DB env var found. Set SUPABASE_DATABASE_URL, DATABASE_URL, or SUPABASE_DB_PASSWORD in Vercel.");
   }
   return _db;
 }

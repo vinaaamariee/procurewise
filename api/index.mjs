@@ -931,12 +931,17 @@ async function getDb() {
   if (!_db && (configuredConnectionString || password)) {
     try {
       const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      const source = configuredConnectionString ? process.env.SUPABASE_DATABASE_URL ? "SUPABASE_DATABASE_URL" : "DATABASE_URL" : "SUPABASE_DB_PASSWORD (built-in template)";
+      console.log(`[Database] Connecting via ${source} \u2026`);
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
       _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to initialise pool:", error instanceof Error ? error.message : error);
       _db = null;
     }
+  }
+  if (!_db && !configuredConnectionString && !password) {
+    console.error("[Database] No DB env var found. Set SUPABASE_DATABASE_URL, DATABASE_URL, or SUPABASE_DB_PASSWORD in Vercel.");
   }
   return _db;
 }
@@ -2048,7 +2053,15 @@ function assertRole(role, permittedRoles) {
 var appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query((opts) => {
+      if (opts.ctx.dbError) {
+        throw new TRPCError3({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration."
+        });
+      }
+      return opts.ctx.user;
+    }),
     logout: publicProcedure.mutation(() => ({ success: true }))
   }),
   procurement: router({
@@ -2393,17 +2406,37 @@ async function authenticateSupabaseRequest(req) {
 // server/_core/context.ts
 async function createContext(opts) {
   let user = null;
+  let dbError = null;
   try {
     user = await authenticateSupabaseRequest(
       opts.req
     );
   } catch (error) {
+    const authHeader = opts.req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const message = error instanceof Error ? error.message : "Database is unavailable.";
+      dbError = message;
+      console.error("[Auth] DB error during Supabase auth bridge:", message);
+      console.error(
+        "[Auth] Env check \u2014 SUPABASE_DATABASE_URL:",
+        Boolean(process.env.SUPABASE_DATABASE_URL),
+        "DATABASE_URL:",
+        Boolean(process.env.DATABASE_URL),
+        "SUPABASE_DB_PASSWORD:",
+        Boolean(process.env.SUPABASE_DB_PASSWORD),
+        "SUPABASE_SERVICE_ROLE_KEY:",
+        Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        "VITE_SUPABASE_URL:",
+        Boolean(process.env.VITE_SUPABASE_URL)
+      );
+    }
     user = null;
   }
   return {
     req: opts.req,
     res: opts.res,
-    user
+    user,
+    dbError
   };
 }
 
