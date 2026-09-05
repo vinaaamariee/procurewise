@@ -78,6 +78,17 @@ describe("official procurement form structure", () => {
     expect(drizzleConfig).toContain("process.env.SUPABASE_DATABASE_URL");
   });
 
+  it("prevents the Supabase sign-in redirect loop while the session and internal profile hydrate", () => {
+    const authHook = readFileSync(new URL("../client/src/_core/hooks/useAuth.ts", import.meta.url), "utf8");
+    const access = readFileSync(new URL("../client/src/pages/Access.tsx", import.meta.url), "utf8");
+    expect(authHook).toContain("const [sessionReady, setSessionReady] = useState(false)");
+    expect(authHook).toContain("enabled: sessionReady");
+    expect(authHook).toContain("supabaseAuth.auth.onAuthStateChange");
+    expect(authHook).toContain("void utils.auth.me.invalidate()");
+    expect(access).toContain("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile.");
+    expect(access).toContain("if (!refreshed.data)");
+  });
+
   it("keeps the Best Value policy history compliance PDF exporter available with version and criteria sections", () => {
     const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
     expect(pdf).toContain("downloadBestValuePolicyHistoryPdf");

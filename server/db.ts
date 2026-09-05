@@ -76,6 +76,12 @@ export async function getDb() {
         : "SUPABASE_DB_PASSWORD (built-in template)";
       console.log(`[Database] Connecting via ${source} …`);
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
+      _pool.on("connect", (client) => {
+        void client.query("SET search_path TO procurewise, public").catch((error) => {
+          console.warn("[Database] Failed to set ProcureWise search_path:", error);
+        });
+      });
+      await _pool.query("SET search_path TO procurewise, public");
       _db = drizzle(_pool);
     } catch (error) {
       console.error("[Database] Failed to initialise pool:", error instanceof Error ? error.message : error);

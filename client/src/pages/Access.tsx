@@ -32,11 +32,13 @@ export default function Access() {
         const { error } = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
         try {
-          await refresh();
-        } catch {
-          // auth.me threw — most likely a DB unavailability error. The error
-          // message from the server is shown directly to the user.
-          throw new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
+          const refreshed = await refresh();
+          if (!refreshed.data) {
+            throw new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
+          }
+        } catch (err) {
+          // auth.me threw (e.g. DB unavailability) — surface the message directly.
+          throw err instanceof Error ? err : new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
         }
         setLocation("/dashboard");
         return;
@@ -52,7 +54,10 @@ export default function Access() {
         setMode("sign-in");
         return;
       }
-      await refresh();
+      const refreshed = await refresh();
+      if (!refreshed.data) {
+        throw new Error("Your account was created, but ProcureWise could not load your workspace profile. Please sign in again after the account is provisioned.");
+      }
       setLocation("/dashboard");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Authentication could not be completed.");

@@ -934,6 +934,12 @@ async function getDb() {
       const source = configuredConnectionString ? process.env.SUPABASE_DATABASE_URL ? "SUPABASE_DATABASE_URL" : "DATABASE_URL" : "SUPABASE_DB_PASSWORD (built-in template)";
       console.log(`[Database] Connecting via ${source} \u2026`);
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
+      _pool.on("connect", (client) => {
+        void client.query("SET search_path TO procurewise, public").catch((error) => {
+          console.warn("[Database] Failed to set ProcureWise search_path:", error);
+        });
+      });
+      await _pool.query("SET search_path TO procurewise, public");
       _db = drizzle(_pool);
     } catch (error) {
       console.error("[Database] Failed to initialise pool:", error instanceof Error ? error.message : error);
