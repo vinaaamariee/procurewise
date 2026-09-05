@@ -14,7 +14,10 @@ function getBearerToken(req: AuthRequest) {
 function getAuthClient() {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
+  if (!url || !key) {
+    console.error("[SupabaseAuth] Missing env vars — VITE_SUPABASE_URL:", Boolean(url), "key (service role or anon):", Boolean(key));
+    return null;
+  }
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
@@ -32,7 +35,13 @@ export async function authenticateSupabaseRequest(req: AuthRequest): Promise<Use
   if (!token || !client) return null;
 
   const { data, error } = await (client.auth as unknown as AuthClient).getUser(token);
-  if (error || !data.user) return null;
+  if (error) {
+    // Throw so context.ts captures this as dbError and surfaces it to the client.
+    // Common causes: SUPABASE_SERVICE_ROLE_KEY is wrong or missing in Vercel env vars.
+    console.error("[SupabaseAuth] getUser error:", error.message);
+    throw new Error(`Supabase API error: ${error.message}. Check SUPABASE_SERVICE_ROLE_KEY in Vercel environment variables.`);
+  }
+  if (!data.user) return null;
 
   const fullName = typeof data.user.user_metadata?.full_name === "string"
     ? data.user.user_metadata.full_name
