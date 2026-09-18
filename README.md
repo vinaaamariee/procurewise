@@ -93,6 +93,7 @@ Create local configuration outside Git and configure the same values in your dep
 | Variable | Used by | Classification |
 |---|---|---|
 | `DATABASE_URL` | Application PostgreSQL connection at runtime | **Secret** |
+| `SUPABASE_DATABASE_URL` | Vercel serverless PostgreSQL connection at runtime | **Secret** |
 | `SUPABASE_DB_PASSWORD` | Drizzle migration configuration | **Secret** |
 | `VITE_SUPABASE_URL` | Supabase project URL used by the server to provide browser-safe Realtime configuration | Browser-safe |
 | `VITE_SUPABASE_ANON_KEY` | Browser-safe Supabase Realtime credential | Browser-safe |
@@ -127,6 +128,7 @@ ProcureWise uses **Supabase Auth** for the browser session. The browser sends it
 | Setting | Where to configure it | Classification |
 |---|---|---|
 | `SUPABASE_DB_PASSWORD` | Vercel environment variables | **Secret** |
+| `SUPABASE_DATABASE_URL` | Vercel environment variables | **Secret**; use the active Supabase project and port 6543 |
 | `VITE_SUPABASE_URL` | Vercel environment variables | Browser-visible project URL |
 | `VITE_SUPABASE_ANON_KEY` | Vercel environment variables | Browser-visible publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel environment variables | **Secret**; server verification and Realtime broadcasts |
@@ -134,6 +136,16 @@ ProcureWise uses **Supabase Auth** for the browser session. The browser sends it
 | `OWNER_NAME` | Vercel environment variables | Non-secret owner display value |
 
 Do **not** add Manus-only values such as `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OAUTH_SERVER_URL`, `BUILT_IN_FORGE_API_KEY`, or `BUILT_IN_FORGE_API_URL` to Vercel.
+
+### Production database connection string
+
+For Vercel serverless functions, prefer Supabase’s transaction pooler on port `6543`. The connection must target the same Supabase project as `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Use this structure, replacing only the password:
+
+```text
+postgresql://postgres.PROJECT_REF:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&options=-c%20search_path%3Dprocurewise%2Cpublic
+```
+
+The `options` parameter is URL-encoded intentionally. It selects the isolated `procurewise` schema before ordinary unqualified queries run. ProcureWise also binds its Drizzle tables explicitly to that schema, so both connection-level and ORM-level protection are present. Never commit the completed URL or paste its password into an issue, chat, screenshot, or repository.
 
 ### Supabase Auth setup and verification
 
@@ -144,6 +156,12 @@ Do **not** add Manus-only values such as `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`,
 5. Confirm sign-out removes the client session and that protected routes reject requests without a valid Supabase access token.
 
 > **Preview deployment note:** Preview URLs are separate origins. Do not use broad redirect wildcards for production access; add only the specific preview address required for controlled testing, then remove it when testing is complete.
+
+### Authentication troubleshooting
+
+If the Access page reports that Supabase sign-in succeeded but the workspace profile could not load, authentication has completed and the failure is in the server-side profile bridge. Confirm that the deployed function has `SUPABASE_DATABASE_URL`, `VITE_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` for the same Supabase project, then create a new deployment; Vercel does not apply changed variables to an existing deployment. Confirm that the authenticated email has a corresponding row in `procurewise.users`, or allow the server bridge to provision it automatically. The server emits redacted diagnostic messages for missing configuration, missing bearer tokens, rejected tokens, and database/profile errors; it never logs passwords or secret key values.
+
+If the browser reports `Failed to fetch`, first verify connectivity to the Supabase project URL and that the URL is reachable from the deployed origin. The Access form includes a show/hide password control; this only changes local display and never sends or stores the password outside Supabase Auth.
 
 ## GitHub Actions continuous integration
 

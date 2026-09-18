@@ -215,8 +215,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 // drizzle/schema.ts
-import { decimal, index, integer, json, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
-var users = pgTable("users", {
+import { decimal, index, integer, json, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+var procurewiseSchema = pgSchema("procurewise");
+var users = procurewiseSchema.table("users", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
@@ -227,21 +228,21 @@ var users = pgTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull()
 });
-var offices = pgTable("offices", {
+var offices = procurewiseSchema.table("offices", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   code: varchar("code", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 160 }).notNull(),
   isActive: integer("isActive").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var objectsOfExpenditure = pgTable("objects_of_expenditure", {
+var objectsOfExpenditure = procurewiseSchema.table("objects_of_expenditure", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   code: varchar("code", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 180 }).notNull(),
   isActive: integer("isActive").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var budgetAllotments = pgTable("budget_allotments", {
+var budgetAllotments = procurewiseSchema.table("budget_allotments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   officeId: integer("officeId").notNull(),
   objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
@@ -255,7 +256,7 @@ var budgetAllotments = pgTable("budget_allotments", {
   uniqueIndex("budget_allotment_office_object_year_unique").on(table.officeId, table.objectOfExpenditureId, table.fiscalYear),
   index("budget_allotment_office_year_idx").on(table.officeId, table.fiscalYear)
 ]);
-var suppliers = pgTable("suppliers", {
+var suppliers = procurewiseSchema.table("suppliers", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierCode: varchar("supplierCode", { length: 40 }).notNull().unique(),
   companyName: varchar("companyName", { length: 180 }).notNull(),
@@ -270,7 +271,7 @@ var suppliers = pgTable("suppliers", {
   createdById: integer("createdById").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("supplier_company_idx").on(table.companyName)]);
-var supplierTags = pgTable("supplier_tags", {
+var supplierTags = procurewiseSchema.table("supplier_tags", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   name: varchar("name", { length: 120 }).notNull().unique(),
   description: varchar("description", { length: 320 }),
@@ -278,7 +279,7 @@ var supplierTags = pgTable("supplier_tags", {
   createdById: integer("createdById").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("supplier_tag_active_idx").on(table.isActive)]);
-var supplierTagAssignments = pgTable("supplier_tag_assignments", {
+var supplierTagAssignments = procurewiseSchema.table("supplier_tag_assignments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierId: integer("supplierId").notNull(),
   supplierTagId: integer("supplierTagId").notNull(),
@@ -289,7 +290,7 @@ var supplierTagAssignments = pgTable("supplier_tag_assignments", {
   index("supplier_tag_assignment_supplier_idx").on(table.supplierId),
   index("supplier_tag_assignment_tag_idx").on(table.supplierTagId)
 ]);
-var procurementCatalogItems = pgTable("procurement_catalog_items", {
+var procurementCatalogItems = procurewiseSchema.table("procurement_catalog_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   source: varchar("source", { length: 80 }).default("Common-use supplies and equipment catalog").notNull(),
   productCode: varchar("productCode", { length: 80 }).notNull().unique(),
@@ -303,7 +304,7 @@ var procurementCatalogItems = pgTable("procurement_catalog_items", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [index("procurement_catalog_active_idx").on(table.isActive)]);
-var procurementCatalogFavorites = pgTable("procurement_catalog_favorites", {
+var procurementCatalogFavorites = procurewiseSchema.table("procurement_catalog_favorites", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   userId: integer("userId").notNull(),
   catalogItemId: integer("catalogItemId").notNull(),
@@ -313,7 +314,7 @@ var procurementCatalogFavorites = pgTable("procurement_catalog_favorites", {
   index("procurement_catalog_favorite_user_idx").on(table.userId),
   index("procurement_catalog_favorite_item_idx").on(table.catalogItemId)
 ]);
-var procurementCatalogSavedItems = pgTable("procurement_catalog_saved_items", {
+var procurementCatalogSavedItems = procurewiseSchema.table("procurement_catalog_saved_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   userId: integer("userId").notNull(),
   catalogItemId: integer("catalogItemId").notNull(),
@@ -325,7 +326,7 @@ var procurementCatalogSavedItems = pgTable("procurement_catalog_saved_items", {
   index("procurement_catalog_saved_user_idx").on(table.userId),
   index("procurement_catalog_saved_item_idx").on(table.catalogItemId)
 ]);
-var appPpmpEntries = pgTable("app_ppmp_entries", {
+var appPpmpEntries = procurewiseSchema.table("app_ppmp_entries", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fiscalYear: integer("fiscalYear").notNull(),
   officeId: integer("officeId").notNull(),
@@ -345,7 +346,7 @@ var appPpmpEntries = pgTable("app_ppmp_entries", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [index("app_ppmp_office_year_idx").on(table.officeId, table.fiscalYear)]);
-var testRecordArchives = pgTable("test_record_archives", {
+var testRecordArchives = procurewiseSchema.table("test_record_archives", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   ppmpEntryId: integer("ppmpEntryId").notNull().unique(),
   archivedById: integer("archivedById").notNull(),
@@ -353,7 +354,7 @@ var testRecordArchives = pgTable("test_record_archives", {
   archivedAt: timestamp("archivedAt").defaultNow().notNull(),
   cleanedAt: timestamp("cleanedAt")
 }, (table) => [index("test_record_archive_status_idx").on(table.cleanedAt, table.archivedAt)]);
-var purchaseRequests = pgTable("purchase_requests", {
+var purchaseRequests = procurewiseSchema.table("purchase_requests", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   prNumber: varchar("prNumber", { length: 40 }).notNull().unique(),
   purpose: text("purpose").notNull(),
@@ -386,7 +387,7 @@ var purchaseRequests = pgTable("purchase_requests", {
   index("pr_requester_status_idx").on(table.requestedById, table.status),
   index("pr_office_status_idx").on(table.officeId, table.status)
 ]);
-var purchaseRequestItems = pgTable("purchase_request_items", {
+var purchaseRequestItems = procurewiseSchema.table("purchase_request_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseRequestId: integer("purchaseRequestId").notNull(),
   catalogItemId: integer("catalogItemId"),
@@ -398,7 +399,7 @@ var purchaseRequestItems = pgTable("purchase_request_items", {
   estimatedUnitCost: decimal("estimatedUnitCost", { precision: 14, scale: 2 }).notNull(),
   totalCost: decimal("totalCost", { precision: 14, scale: 2 }).notNull()
 }, (table) => [index("pr_item_pr_idx").on(table.purchaseRequestId), index("pr_item_catalog_idx").on(table.catalogItemId)]);
-var preCanvasses = pgTable("pre_canvasses", {
+var preCanvasses = procurewiseSchema.table("pre_canvasses", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassNumber: varchar("preCanvassNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -411,7 +412,7 @@ var preCanvasses = pgTable("pre_canvasses", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var preCanvassQuotes = pgTable("pre_canvass_quotes", {
+var preCanvassQuotes = procurewiseSchema.table("pre_canvass_quotes", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassId: integer("preCanvassId").notNull(),
   supplierId: integer("supplierId").notNull(),
@@ -425,7 +426,7 @@ var preCanvassQuotes = pgTable("pre_canvass_quotes", {
   receivedBy: varchar("receivedBy", { length: 160 }),
   submittedAt: timestamp("submittedAt").defaultNow().notNull()
 }, (table) => [uniqueIndex("pre_canvass_quote_supplier_unique").on(table.preCanvassId, table.supplierId)]);
-var abstractsOfCanvass = pgTable("abstracts_of_canvass", {
+var abstractsOfCanvass = procurewiseSchema.table("abstracts_of_canvass", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   abstractNumber: varchar("abstractNumber", { length: 40 }).notNull().unique(),
   preCanvassId: integer("preCanvassId").notNull().unique(),
@@ -441,7 +442,7 @@ var abstractsOfCanvass = pgTable("abstracts_of_canvass", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var rfqs = pgTable("rfqs", {
+var rfqs = procurewiseSchema.table("rfqs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqNumber: varchar("rfqNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -450,7 +451,7 @@ var rfqs = pgTable("rfqs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var supplierQuotations = pgTable("supplier_quotations", {
+var supplierQuotations = procurewiseSchema.table("supplier_quotations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqId: integer("rfqId").notNull(),
   supplierId: integer("supplierId").notNull(),
@@ -460,7 +461,7 @@ var supplierQuotations = pgTable("supplier_quotations", {
   notes: text("notes"),
   submittedAt: timestamp("submittedAt").defaultNow().notNull()
 }, (table) => [uniqueIndex("supplier_quote_rfq_supplier_unique").on(table.rfqId, table.supplierId)]);
-var quotationAbstracts = pgTable("quotation_abstracts", {
+var quotationAbstracts = procurewiseSchema.table("quotation_abstracts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqId: integer("rfqId").notNull().unique(),
   recommendedSupplierId: integer("recommendedSupplierId").notNull(),
@@ -471,7 +472,7 @@ var quotationAbstracts = pgTable("quotation_abstracts", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var purchaseOrders = pgTable("purchase_orders", {
+var purchaseOrders = procurewiseSchema.table("purchase_orders", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   poNumber: varchar("poNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -496,7 +497,7 @@ var purchaseOrders = pgTable("purchase_orders", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var deliveryReceipts = pgTable("delivery_receipts", {
+var deliveryReceipts = procurewiseSchema.table("delivery_receipts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
   receiptNumber: varchar("receiptNumber", { length: 40 }).notNull().unique(),
@@ -508,7 +509,7 @@ var deliveryReceipts = pgTable("delivery_receipts", {
   remarks: text("remarks"),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var pmrLogs = pgTable("pmr_logs", {
+var pmrLogs = procurewiseSchema.table("pmr_logs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
   pmrNumber: varchar("pmrNumber", { length: 40 }).notNull().unique(),
@@ -516,7 +517,7 @@ var pmrLogs = pgTable("pmr_logs", {
   loggedById: integer("loggedById").notNull(),
   loggedAt: timestamp("loggedAt").defaultNow().notNull()
 });
-var procurementSettings = pgTable("procurement_settings", {
+var procurementSettings = procurewiseSchema.table("procurement_settings", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityName: varchar("entityName", { length: 180 }).default("Batanes State College").notNull(),
   authorizedOfficialName: varchar("authorizedOfficialName", { length: 180 }),
@@ -529,7 +530,7 @@ var procurementSettings = pgTable("procurement_settings", {
   updatedById: integer("updatedById"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var procurementSignatories = pgTable("procurement_signatories", {
+var procurementSignatories = procurewiseSchema.table("procurement_signatories", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fullName: varchar("fullName", { length: 180 }).notNull(),
   designation: varchar("designation", { length: 160 }).notNull(),
@@ -539,7 +540,7 @@ var procurementSignatories = pgTable("procurement_signatories", {
   createdById: integer("createdById").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("procurement_signatory_active_idx").on(table.isActive, table.mayRequest, table.mayApprove)]);
-var procurementDocuments = pgTable("procurement_documents", {
+var procurementDocuments = procurewiseSchema.table("procurement_documents", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
@@ -552,7 +553,7 @@ var procurementDocuments = pgTable("procurement_documents", {
   uploadedById: integer("uploadedById").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("document_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("document_uploader_created_idx").on(table.uploadedById, table.createdAt)]);
-var workflowCorrections = pgTable("workflow_corrections", {
+var workflowCorrections = procurewiseSchema.table("workflow_corrections", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
@@ -563,7 +564,7 @@ var workflowCorrections = pgTable("workflow_corrections", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt")
 }, (table) => [index("correction_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("correction_assignee_status_idx").on(table.assignedToId, table.status)]);
-var workflowNotifications = pgTable("workflow_notifications", {
+var workflowNotifications = procurewiseSchema.table("workflow_notifications", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   recipientUserId: integer("recipientUserId").notNull(),
   kind: varchar("kind", { length: 64 }).notNull(),
@@ -574,7 +575,7 @@ var workflowNotifications = pgTable("workflow_notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("notification_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt)]);
-var lettersOfNotice = pgTable("letters_of_notice", {
+var lettersOfNotice = procurewiseSchema.table("letters_of_notice", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   noticeNumber: varchar("noticeNumber", { length: 48 }).notNull().unique(),
   noticeType: varchar("noticeType", { length: 64 }).default("other").notNull(),
@@ -588,7 +589,7 @@ var lettersOfNotice = pgTable("letters_of_notice", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [index("notice_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
-var bacTransmittals = pgTable("bac_transmittals", {
+var bacTransmittals = procurewiseSchema.table("bac_transmittals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   transmittalNumber: varchar("transmittalNumber", { length: 48 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId"),
@@ -604,7 +605,7 @@ var bacTransmittals = pgTable("bac_transmittals", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [index("transmittal_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
-var supplierEvaluations = pgTable("supplier_evaluations", {
+var supplierEvaluations = procurewiseSchema.table("supplier_evaluations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierId: integer("supplierId").notNull(),
   purchaseOrderId: integer("purchaseOrderId"),
@@ -630,7 +631,7 @@ var supplierEvaluations = pgTable("supplier_evaluations", {
   evaluatedById: integer("evaluatedById").notNull(),
   evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull()
 }, (table) => [index("supplier_evaluation_supplier_date_idx").on(table.supplierId, table.evaluatedAt)]);
-var supplierEvaluationApprovals = pgTable("supplier_evaluation_approvals", {
+var supplierEvaluationApprovals = procurewiseSchema.table("supplier_evaluation_approvals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierEvaluationId: integer("supplierEvaluationId").notNull().unique(),
   approvedById: integer("approvedById").notNull(),
@@ -640,7 +641,7 @@ var supplierEvaluationApprovals = pgTable("supplier_evaluation_approvals", {
   signatureDigest: varchar("signatureDigest", { length: 128 }).notNull(),
   approvedAt: timestamp("approvedAt").defaultNow().notNull()
 }, (table) => [index("supplier_evaluation_approval_approver_date_idx").on(table.approvedById, table.approvedAt)]);
-var mcdmRecommendations = pgTable("mcdm_recommendations", {
+var mcdmRecommendations = procurewiseSchema.table("mcdm_recommendations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassId: integer("preCanvassId").notNull().unique(),
   recommendedSupplierId: integer("recommendedSupplierId").notNull(),
@@ -652,7 +653,7 @@ var mcdmRecommendations = pgTable("mcdm_recommendations", {
   createdById: integer("createdById").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var bestValuePolicies = pgTable("best_value_policies", {
+var bestValuePolicies = procurewiseSchema.table("best_value_policies", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   policyCode: varchar("policyCode", { length: 64 }).notNull(),
   name: varchar("name", { length: 180 }).notNull(),
@@ -666,7 +667,7 @@ var bestValuePolicies = pgTable("best_value_policies", {
   uniqueIndex("best_value_policy_code_version_unique").on(table.policyCode, table.version),
   index("best_value_policy_active_created_idx").on(table.isActive, table.createdAt)
 ]);
-var bestValuePolicyCriteria = pgTable("best_value_policy_criteria", {
+var bestValuePolicyCriteria = procurewiseSchema.table("best_value_policy_criteria", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   policyId: integer("policyId").notNull(),
   criterionKey: varchar("criterionKey", { length: 80 }).notNull(),
@@ -679,7 +680,7 @@ var bestValuePolicyCriteria = pgTable("best_value_policy_criteria", {
   uniqueIndex("best_value_policy_criterion_unique").on(table.policyId, table.criterionKey),
   index("best_value_policy_criteria_policy_order_idx").on(table.policyId, table.sortOrder)
 ]);
-var historicalPrices = pgTable("historical_prices", {
+var historicalPrices = procurewiseSchema.table("historical_prices", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   itemDescription: varchar("itemDescription", { length: 220 }).notNull(),
   unit: varchar("unit", { length: 40 }).notNull(),
@@ -689,7 +690,7 @@ var historicalPrices = pgTable("historical_prices", {
   observedAt: timestamp("observedAt").defaultNow().notNull(),
   recordedById: integer("recordedById").notNull()
 }, (table) => [index("historical_price_item_observed_idx").on(table.itemDescription, table.observedAt)]);
-var auditTrails = pgTable("audit_trails", {
+var auditTrails = procurewiseSchema.table("audit_trails", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
@@ -931,8 +932,6 @@ async function getDb() {
   if (!_db && (configuredConnectionString || password)) {
     try {
       const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
-      const source = configuredConnectionString ? process.env.SUPABASE_DATABASE_URL ? "SUPABASE_DATABASE_URL" : "DATABASE_URL" : "SUPABASE_DB_PASSWORD (built-in template)";
-      console.log(`[Database] Connecting via ${source} \u2026`);
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
       _pool.on("connect", (client) => {
         void client.query("SET search_path TO procurewise, public").catch((error) => {
@@ -942,12 +941,9 @@ async function getDb() {
       await _pool.query("SET search_path TO procurewise, public");
       _db = drizzle(_pool);
     } catch (error) {
-      console.error("[Database] Failed to initialise pool:", error instanceof Error ? error.message : error);
+      console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
-  }
-  if (!_db && !configuredConnectionString && !password) {
-    console.error("[Database] No DB env var found. Set SUPABASE_DATABASE_URL, DATABASE_URL, or SUPABASE_DB_PASSWORD in Vercel.");
   }
   return _db;
 }
@@ -2059,15 +2055,7 @@ function assertRole(role, permittedRoles) {
 var appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => {
-      if (opts.ctx.dbError) {
-        throw new TRPCError3({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration."
-        });
-      }
-      return opts.ctx.user;
-    }),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(() => ({ success: true }))
   }),
   procurement: router({
@@ -2393,7 +2381,11 @@ function getAuthClient() {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    console.error("[SupabaseAuth] Missing env vars \u2014 VITE_SUPABASE_URL:", Boolean(url), "key (service role or anon):", Boolean(key));
+    console.warn("[Supabase Auth] Missing server Supabase configuration", {
+      hasUrl: Boolean(url),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY)
+    });
     return null;
   }
   return createClient2(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -2401,55 +2393,52 @@ function getAuthClient() {
 async function authenticateSupabaseRequest(req) {
   const token = getBearerToken(req);
   const client = getAuthClient();
-  if (!token || !client) return null;
-  const { data, error } = await client.auth.getUser(token);
-  if (error) {
-    console.error("[SupabaseAuth] getUser error:", error.message);
-    throw new Error(`Supabase API error: ${error.message}. Check SUPABASE_SERVICE_ROLE_KEY in Vercel environment variables.`);
+  if (!token) {
+    console.warn("[Supabase Auth] Request did not include a bearer token");
+    return null;
   }
-  if (!data.user) return null;
+  if (!client) return null;
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) {
+    console.warn("[Supabase Auth] Access token verification failed", {
+      message: error?.message ?? "Supabase returned no user"
+    });
+    return null;
+  }
   const fullName = typeof data.user.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : typeof data.user.user_metadata?.name === "string" ? data.user.user_metadata.name : null;
-  return upsertSupabaseAuthUser({
-    openId: data.user.id,
-    email: data.user.email ?? null,
-    name: fullName
-  });
+  try {
+    return await upsertSupabaseAuthUser({
+      openId: data.user.id,
+      email: data.user.email ?? null,
+      name: fullName
+    });
+  } catch (error2) {
+    console.error("[Supabase Auth] Profile bridge failed", {
+      message: error2 instanceof Error ? error2.message : "Unknown profile bridge error",
+      userId: data.user.id,
+      email: data.user.email ?? null
+    });
+    return null;
+  }
 }
 
 // server/_core/context.ts
 async function createContext(opts) {
   let user = null;
-  let dbError = null;
   try {
     user = await authenticateSupabaseRequest(
       opts.req
     );
   } catch (error) {
-    const authHeader = opts.req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      const message = error instanceof Error ? error.message : "Database is unavailable.";
-      dbError = message;
-      console.error("[Auth] DB error during Supabase auth bridge:", message);
-      console.error(
-        "[Auth] Env check \u2014 SUPABASE_DATABASE_URL:",
-        Boolean(process.env.SUPABASE_DATABASE_URL),
-        "DATABASE_URL:",
-        Boolean(process.env.DATABASE_URL),
-        "SUPABASE_DB_PASSWORD:",
-        Boolean(process.env.SUPABASE_DB_PASSWORD),
-        "SUPABASE_SERVICE_ROLE_KEY:",
-        Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-        "VITE_SUPABASE_URL:",
-        Boolean(process.env.VITE_SUPABASE_URL)
-      );
-    }
+    console.error("[Auth Context] Unexpected authentication failure", {
+      message: error instanceof Error ? error.message : "Unknown authentication error"
+    });
     user = null;
   }
   return {
     req: opts.req,
     res: opts.res,
-    user,
-    dbError
+    user
   };
 }
 

@@ -30,8 +30,16 @@ const content: Record<WorkspaceKind, { eyebrow: string; title: string; descripti
 
 export function PurchaseRequestsPage() {
   const search = useSearch();
-  const catalogItemId = Number(new URLSearchParams(search).get("catalogItemId") || 0);
-  const [isCreating, setIsCreating] = useState(() => new URLSearchParams(window.location.search).get("create") === "1");
+  const searchParams = new URLSearchParams(search);
+  const [catalogSelection] = useState<Array<{ id: number; quantity: string }>>(() => { try { return JSON.parse(sessionStorage.getItem("procurewise.catalogSelection") || "[]") as Array<{ id: number; quantity: string }>; } catch { return []; } });
+  const catalogItemIds = useMemo(() => catalogSelection.map((item) => item.id), [catalogSelection]);
+  const [isCreating, setIsCreating] = useState(() => searchParams.get("create") === "1");
+  useEffect(() => {
+    const count = Number(sessionStorage.getItem("procurewise.catalogSelectionNotice") || 0);
+    if (!count) return;
+    sessionStorage.removeItem("procurewise.catalogSelectionNotice");
+    toast.success(`${count} catalog item${count === 1 ? "" : "s"} loaded into this new Purchase Request.`);
+  }, []);
   const utils = trpc.useUtils();
   const purchaseRequests = trpc.procurement.purchaseRequests.list.useQuery(undefined, { retry: false });
   const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
@@ -53,7 +61,7 @@ export function PurchaseRequestsPage() {
 
   return <div className="mx-auto max-w-[1240px]">
     <PageHeader eyebrow="End-User package" title="PPMP-linked Purchase Requests" description="Create an itemized Purchase Request, link it to PPMP planning, attach a three-supplier Pre-Canvass, and forward the complete package to Procurement." action={{ label: "New Purchase Request", onClick: () => setIsCreating(!isCreating) }} />
-    {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemId={catalogItemId || undefined} isSaving={createRequest.isPending} onCancel={() => setIsCreating(false)} onCreate={(input) => createRequest.mutate(input)} /> : (
+    {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={createRequest.isPending} onCancel={() => setIsCreating(false)} onCreate={(input) => createRequest.mutate(input)} /> : (
       <div className="mt-7">
         {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <><PurchaseRequestTable records={purchaseRequests.data} onSubmit={(purchaseRequestId) => submitRequest.mutate({ purchaseRequestId })} submittingId={submitRequest.isPending ? submitRequest.variables?.purchaseRequestId : undefined} /><WorkflowTimeline status={purchaseRequests.data[0]?.status ?? "draft"} /></> : <EmptyWorkspace eyebrow="Purchase Request register" title="No PPMP-linked Purchase Requests have been submitted." description="Start with PPMP planning, add the Purchase Request, create a three-supplier Pre-Canvass, then forward the complete package to Procurement." actionLabel="Create your first PR" actionOnClick={() => setIsCreating(true)} />}
       </div>
@@ -66,7 +74,7 @@ function PurchaseRequestTable({ records, onSubmit, submittingId }: { records: Ar
   return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{records.map((record) => <tr key={record.id} className="hover:bg-[#fdfcf9]"><td className="px-4 py-3 font-semibold text-[#7b1e1e]">{record.prNumber}</td><td className="max-w-[350px] px-4 py-3 text-[#3e4855]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{record.status.replaceAll("_", " ").toUpperCase()}</StatusBadge></td><td className="px-4 py-3 text-[#74808c]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{record.status === "draft" ? <Button size="sm" onClick={() => onSubmit(record.id)} disabled={submittingId === record.id} className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[10px] hover:bg-[#641818]">{submittingId === record.id && <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />}Submit</Button> : <span className="text-[11px] text-[#87909b]">Awaiting assigned role</span>}</td></tr>)}</tbody></RecordTable>;
 }
 
-function PurchaseRequestForm({ setup, ppmpEntries, catalogItemId, isSaving, onCancel, onCreate }: { setup?: { offices: Array<{ id: number; code: string; name: string }>; objectsOfExpenditure: Array<{ id: number; code: string; name: string }> }; ppmpEntries?: Array<{ id: number; description: string; fiscalYear: number }>; catalogItemId?: number; isSaving: boolean; onCancel: () => void; onCreate: (input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }) => void }) {
+function PurchaseRequestForm({ setup, ppmpEntries, catalogItemIds, catalogSelection, isSaving, onCancel, onCreate }: { setup?: { offices: Array<{ id: number; code: string; name: string }>; objectsOfExpenditure: Array<{ id: number; code: string; name: string }> }; ppmpEntries?: Array<{ id: number; description: string; fiscalYear: number }>; catalogItemIds: number[]; catalogSelection: Array<{ id: number; quantity: string }>; isSaving: boolean; onCancel: () => void; onCreate: (input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }) => void }) {
   const utils = trpc.useUtils();
   const [purpose, setPurpose] = useState("");
   const [fundSource, setFundSource] = useState("");
@@ -94,10 +102,12 @@ function PurchaseRequestForm({ setup, ppmpEntries, catalogItemId, isSaving, onCa
   }, [catalog.data?.items, catalogCodeFamily, catalogSearch, favorites.data, favoritesOnly]);
   const toggleFavorite = trpc.procurement.catalog.setFavorite.useMutation({ onSuccess: () => { void utils.procurement.catalog.favorites.invalidate(); }, onError: (error) => toast.error(error.message) });
   useEffect(() => {
-    const selected = catalogItemId ? (catalog.data?.items ?? []).find((item) => item.id === catalogItemId) : undefined;
-    if (!selected) return;
-    setItems((current) => current.length === 1 && !current[0].description && !current[0].catalogItemId ? [{ catalogItemId: String(selected.id), stockPropertyNo: selected.productCode, description: selected.description, specification: selected.remarks || "", quantity: "1", unit: selected.unit || "", estimatedUnitCost: selected.referencePrice }] : current);
-  }, [catalog.data?.items, catalogItemId]);
+    const selectedItems = (catalog.data?.items ?? []).filter((item) => catalogItemIds.includes(item.id));
+    if (!selectedItems.length) return;
+    const quantityById = new Map(catalogSelection.map((selection) => [selection.id, selection.quantity]));
+    setItems((current) => current.length === 1 && !current[0].description && !current[0].catalogItemId ? selectedItems.map((selected) => ({ catalogItemId: String(selected.id), stockPropertyNo: selected.productCode, description: selected.description, specification: selected.remarks || "", quantity: quantityById.get(selected.id) || "1", unit: selected.unit || "", estimatedUnitCost: selected.referencePrice })) : current);
+    sessionStorage.removeItem("procurewise.catalogSelection");
+  }, [catalog.data?.items, catalogItemIds, catalogSelection]);
   const configurationReady = Boolean(setup?.offices.length && setup.objectsOfExpenditure.length);
   const requesterSignatories = useMemo(() => (signatories.data ?? []).filter((signatory) => Boolean(signatory.mayRequest)), [signatories.data]);
   const approverSignatories = useMemo(() => (signatories.data ?? []).filter((signatory) => Boolean(signatory.mayApprove)), [signatories.data]);
@@ -121,7 +131,7 @@ function PurchaseRequestForm({ setup, ppmpEntries, catalogItemId, isSaving, onCa
     <form onSubmit={submit} className="min-w-0 space-y-6">
       <OfficialPurchaseRequestCanvas entityName="Batanes State College" fundCluster={fundCluster} officeSection={selectedOffice ? `${selectedOffice.code} — ${selectedOffice.name}` : ""} responsibilityCenterCode={responsibilityCenterCode} purpose={purpose} requestedByName={selectedRequestedSignatory?.fullName} requestedByDesignation={selectedRequestedSignatory?.designation} approvedByName={selectedApprovedSignatory?.fullName} approvedByDesignation={selectedApprovedSignatory?.designation} items={items} />
 
-      <section aria-labelledby="pr-system-controls" className="border border-[#ded8cc] bg-[#fffdfa] p-4 sm:p-5">{catalogItemId && items.some((item) => item.catalogItemId === String(catalogItemId)) && <div className="mb-4 border-l-2 border-[#7b1e1e] bg-[#f8f1e0] px-3 py-2.5"><p className="text-[11px] font-semibold text-[#6f1a1a]">Catalog item added</p><p className="mt-1 text-[10px] leading-4 text-[#75643e]">The selected catalog item is prefilled below. Review and edit the quantity, unit, and estimated cost before saving.</p></div>}
+      <section aria-labelledby="pr-system-controls" className="border border-[#ded8cc] bg-[#fffdfa] p-4 sm:p-5">{catalogItemIds.length > 0 && items.some((item) => catalogItemIds.includes(Number(item.catalogItemId))) && <div className="mb-4 border-l-2 border-[#7b1e1e] bg-[#f8f1e0] px-3 py-2.5"><p className="text-[11px] font-semibold text-[#6f1a1a]">{catalogItemIds.length} catalog item{catalogItemIds.length === 1 ? "" : "s"} added</p><p className="mt-1 text-[10px] leading-4 text-[#75643e]">The selected catalog items and saved quantities are prefilled below. Review and edit each quantity, unit, and estimated cost before saving.</p></div>}
         <div className="mt-4 border-l-2 border-[#9a6d19] bg-[#fffaf0] px-3 py-2.5"><p className="text-[11px] font-semibold text-[#72561d]">Item details — system entry workspace</p><p className="mt-1 text-[10px] leading-4 text-[#75643e]">This part is used to choose a catalog item or enter a recorded item, quantity, unit, and authorized estimated cost. Those values populate the blank rows in the official Appendix 60 item grid above; this workspace is not part of the government form itself.</p></div>
         <div className="border-b border-[#e8e2d7] pb-4">
           <p id="pr-system-controls" className="text-xs font-semibold text-[#34404e]">System controls — not part of Appendix 60</p>

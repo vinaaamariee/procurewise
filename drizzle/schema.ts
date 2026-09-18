@@ -1,8 +1,10 @@
 // Generated from drizzle/schema.ts for Supabase PostgreSQL. Do not edit manually; rerun scripts/generate-postgres-schema.mjs.
-import { decimal, index, integer, json, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { decimal, index, integer, json, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { PR_STATUSES, USER_ROLES } from "../shared/procurementRules";
 
-export const users = pgTable("users", {
+const procurewiseSchema = pgSchema("procurewise");
+
+export const users = procurewiseSchema.table("users", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
@@ -14,7 +16,7 @@ export const users = pgTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
-export const offices = pgTable("offices", {
+export const offices = procurewiseSchema.table("offices", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   code: varchar("code", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 160 }).notNull(),
@@ -22,7 +24,7 @@ export const offices = pgTable("offices", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const objectsOfExpenditure = pgTable("objects_of_expenditure", {
+export const objectsOfExpenditure = procurewiseSchema.table("objects_of_expenditure", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   code: varchar("code", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 180 }).notNull(),
@@ -30,7 +32,7 @@ export const objectsOfExpenditure = pgTable("objects_of_expenditure", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const budgetAllotments = pgTable("budget_allotments", {
+export const budgetAllotments = procurewiseSchema.table("budget_allotments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   officeId: integer("officeId").notNull(),
   objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
@@ -45,7 +47,7 @@ export const budgetAllotments = pgTable("budget_allotments", {
   index("budget_allotment_office_year_idx").on(table.officeId, table.fiscalYear),
 ]);
 
-export const suppliers = pgTable("suppliers", {
+export const suppliers = procurewiseSchema.table("suppliers", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierCode: varchar("supplierCode", { length: 40 }).notNull().unique(),
   companyName: varchar("companyName", { length: 180 }).notNull(),
@@ -61,7 +63,7 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("supplier_company_idx").on(table.companyName)]);
 
-export const supplierTags = pgTable("supplier_tags", {
+export const supplierTags = procurewiseSchema.table("supplier_tags", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   name: varchar("name", { length: 120 }).notNull().unique(),
   description: varchar("description", { length: 320 }),
@@ -70,7 +72,7 @@ export const supplierTags = pgTable("supplier_tags", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("supplier_tag_active_idx").on(table.isActive)]);
 
-export const supplierTagAssignments = pgTable("supplier_tag_assignments", {
+export const supplierTagAssignments = procurewiseSchema.table("supplier_tag_assignments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierId: integer("supplierId").notNull(),
   supplierTagId: integer("supplierTagId").notNull(),
@@ -82,7 +84,7 @@ export const supplierTagAssignments = pgTable("supplier_tag_assignments", {
   index("supplier_tag_assignment_tag_idx").on(table.supplierTagId),
 ]);
 
-export const procurementCatalogItems = pgTable("procurement_catalog_items", {
+export const procurementCatalogItems = procurewiseSchema.table("procurement_catalog_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   source: varchar("source", { length: 80 }).default("Common-use supplies and equipment catalog").notNull(),
   productCode: varchar("productCode", { length: 80 }).notNull().unique(),
@@ -97,7 +99,7 @@ export const procurementCatalogItems = pgTable("procurement_catalog_items", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => [index("procurement_catalog_active_idx").on(table.isActive)]);
 
-export const procurementCatalogFavorites = pgTable("procurement_catalog_favorites", {
+export const procurementCatalogFavorites = procurewiseSchema.table("procurement_catalog_favorites", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   userId: integer("userId").notNull(),
   catalogItemId: integer("catalogItemId").notNull(),
@@ -108,7 +110,7 @@ export const procurementCatalogFavorites = pgTable("procurement_catalog_favorite
   index("procurement_catalog_favorite_item_idx").on(table.catalogItemId),
 ]);
 
-export const procurementCatalogSavedItems = pgTable("procurement_catalog_saved_items", {
+export const procurementCatalogSavedItems = procurewiseSchema.table("procurement_catalog_saved_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   userId: integer("userId").notNull(),
   catalogItemId: integer("catalogItemId").notNull(),
@@ -121,7 +123,7 @@ export const procurementCatalogSavedItems = pgTable("procurement_catalog_saved_i
   index("procurement_catalog_saved_item_idx").on(table.catalogItemId),
 ]);
 
-export const appPpmpEntries = pgTable("app_ppmp_entries", {
+export const appPpmpEntries = procurewiseSchema.table("app_ppmp_entries", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fiscalYear: integer("fiscalYear").notNull(),
   officeId: integer("officeId").notNull(),
@@ -142,7 +144,7 @@ export const appPpmpEntries = pgTable("app_ppmp_entries", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => [index("app_ppmp_office_year_idx").on(table.officeId, table.fiscalYear)]);
 
-export const testRecordArchives = pgTable("test_record_archives", {
+export const testRecordArchives = procurewiseSchema.table("test_record_archives", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   ppmpEntryId: integer("ppmpEntryId").notNull().unique(),
   archivedById: integer("archivedById").notNull(),
@@ -151,7 +153,7 @@ export const testRecordArchives = pgTable("test_record_archives", {
   cleanedAt: timestamp("cleanedAt"),
 }, (table) => [index("test_record_archive_status_idx").on(table.cleanedAt, table.archivedAt)]);
 
-export const purchaseRequests = pgTable("purchase_requests", {
+export const purchaseRequests = procurewiseSchema.table("purchase_requests", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   prNumber: varchar("prNumber", { length: 40 }).notNull().unique(),
   purpose: text("purpose").notNull(),
@@ -185,7 +187,7 @@ export const purchaseRequests = pgTable("purchase_requests", {
   index("pr_office_status_idx").on(table.officeId, table.status),
 ]);
 
-export const purchaseRequestItems = pgTable("purchase_request_items", {
+export const purchaseRequestItems = procurewiseSchema.table("purchase_request_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseRequestId: integer("purchaseRequestId").notNull(),
   catalogItemId: integer("catalogItemId"),
@@ -198,7 +200,7 @@ export const purchaseRequestItems = pgTable("purchase_request_items", {
   totalCost: decimal("totalCost", { precision: 14, scale: 2 }).notNull(),
 }, (table) => [index("pr_item_pr_idx").on(table.purchaseRequestId), index("pr_item_catalog_idx").on(table.catalogItemId)]);
 
-export const preCanvasses = pgTable("pre_canvasses", {
+export const preCanvasses = procurewiseSchema.table("pre_canvasses", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassNumber: varchar("preCanvassNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -212,7 +214,7 @@ export const preCanvasses = pgTable("pre_canvasses", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const preCanvassQuotes = pgTable("pre_canvass_quotes", {
+export const preCanvassQuotes = procurewiseSchema.table("pre_canvass_quotes", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassId: integer("preCanvassId").notNull(),
   supplierId: integer("supplierId").notNull(),
@@ -227,7 +229,7 @@ export const preCanvassQuotes = pgTable("pre_canvass_quotes", {
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("pre_canvass_quote_supplier_unique").on(table.preCanvassId, table.supplierId)]);
 
-export const abstractsOfCanvass = pgTable("abstracts_of_canvass", {
+export const abstractsOfCanvass = procurewiseSchema.table("abstracts_of_canvass", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   abstractNumber: varchar("abstractNumber", { length: 40 }).notNull().unique(),
   preCanvassId: integer("preCanvassId").notNull().unique(),
@@ -244,7 +246,7 @@ export const abstractsOfCanvass = pgTable("abstracts_of_canvass", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const rfqs = pgTable("rfqs", {
+export const rfqs = procurewiseSchema.table("rfqs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqNumber: varchar("rfqNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -254,7 +256,7 @@ export const rfqs = pgTable("rfqs", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const supplierQuotations = pgTable("supplier_quotations", {
+export const supplierQuotations = procurewiseSchema.table("supplier_quotations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqId: integer("rfqId").notNull(),
   supplierId: integer("supplierId").notNull(),
@@ -265,7 +267,7 @@ export const supplierQuotations = pgTable("supplier_quotations", {
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("supplier_quote_rfq_supplier_unique").on(table.rfqId, table.supplierId)]);
 
-export const quotationAbstracts = pgTable("quotation_abstracts", {
+export const quotationAbstracts = procurewiseSchema.table("quotation_abstracts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqId: integer("rfqId").notNull().unique(),
   recommendedSupplierId: integer("recommendedSupplierId").notNull(),
@@ -277,7 +279,7 @@ export const quotationAbstracts = pgTable("quotation_abstracts", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const purchaseOrders = pgTable("purchase_orders", {
+export const purchaseOrders = procurewiseSchema.table("purchase_orders", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   poNumber: varchar("poNumber", { length: 40 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
@@ -303,7 +305,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const deliveryReceipts = pgTable("delivery_receipts", {
+export const deliveryReceipts = procurewiseSchema.table("delivery_receipts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
   receiptNumber: varchar("receiptNumber", { length: 40 }).notNull().unique(),
@@ -316,7 +318,7 @@ export const deliveryReceipts = pgTable("delivery_receipts", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const pmrLogs = pgTable("pmr_logs", {
+export const pmrLogs = procurewiseSchema.table("pmr_logs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
   pmrNumber: varchar("pmrNumber", { length: 40 }).notNull().unique(),
@@ -325,7 +327,7 @@ export const pmrLogs = pgTable("pmr_logs", {
   loggedAt: timestamp("loggedAt").defaultNow().notNull(),
 });
 
-export const procurementSettings = pgTable("procurement_settings", {
+export const procurementSettings = procurewiseSchema.table("procurement_settings", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityName: varchar("entityName", { length: 180 }).default("Batanes State College").notNull(),
   authorizedOfficialName: varchar("authorizedOfficialName", { length: 180 }),
@@ -339,7 +341,7 @@ export const procurementSettings = pgTable("procurement_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const procurementSignatories = pgTable("procurement_signatories", {
+export const procurementSignatories = procurewiseSchema.table("procurement_signatories", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fullName: varchar("fullName", { length: 180 }).notNull(),
   designation: varchar("designation", { length: 160 }).notNull(),
@@ -350,7 +352,7 @@ export const procurementSignatories = pgTable("procurement_signatories", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("procurement_signatory_active_idx").on(table.isActive, table.mayRequest, table.mayApprove)]);
 
-export const procurementDocuments = pgTable("procurement_documents", {
+export const procurementDocuments = procurewiseSchema.table("procurement_documents", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
@@ -364,7 +366,7 @@ export const procurementDocuments = pgTable("procurement_documents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("document_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("document_uploader_created_idx").on(table.uploadedById, table.createdAt)]);
 
-export const workflowCorrections = pgTable("workflow_corrections", {
+export const workflowCorrections = procurewiseSchema.table("workflow_corrections", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
@@ -376,7 +378,7 @@ export const workflowCorrections = pgTable("workflow_corrections", {
   resolvedAt: timestamp("resolvedAt"),
 }, (table) => [index("correction_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("correction_assignee_status_idx").on(table.assignedToId, table.status)]);
 
-export const workflowNotifications = pgTable("workflow_notifications", {
+export const workflowNotifications = procurewiseSchema.table("workflow_notifications", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   recipientUserId: integer("recipientUserId").notNull(),
   kind: varchar("kind", { length: 64 }).notNull(),
@@ -388,7 +390,7 @@ export const workflowNotifications = pgTable("workflow_notifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("notification_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt)]);
 
-export const lettersOfNotice = pgTable("letters_of_notice", {
+export const lettersOfNotice = procurewiseSchema.table("letters_of_notice", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   noticeNumber: varchar("noticeNumber", { length: 48 }).notNull().unique(),
   noticeType: varchar("noticeType", { length: 64 }).default("other").notNull(),
@@ -403,7 +405,7 @@ export const lettersOfNotice = pgTable("letters_of_notice", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => [index("notice_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
 
-export const bacTransmittals = pgTable("bac_transmittals", {
+export const bacTransmittals = procurewiseSchema.table("bac_transmittals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   transmittalNumber: varchar("transmittalNumber", { length: 48 }).notNull().unique(),
   purchaseRequestId: integer("purchaseRequestId"),
@@ -420,7 +422,7 @@ export const bacTransmittals = pgTable("bac_transmittals", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (table) => [index("transmittal_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
 
-export const supplierEvaluations = pgTable("supplier_evaluations", {
+export const supplierEvaluations = procurewiseSchema.table("supplier_evaluations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierId: integer("supplierId").notNull(),
   purchaseOrderId: integer("purchaseOrderId"),
@@ -447,7 +449,7 @@ export const supplierEvaluations = pgTable("supplier_evaluations", {
   evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
 }, (table) => [index("supplier_evaluation_supplier_date_idx").on(table.supplierId, table.evaluatedAt)]);
 
-export const supplierEvaluationApprovals = pgTable("supplier_evaluation_approvals", {
+export const supplierEvaluationApprovals = procurewiseSchema.table("supplier_evaluation_approvals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   supplierEvaluationId: integer("supplierEvaluationId").notNull().unique(),
   approvedById: integer("approvedById").notNull(),
@@ -458,7 +460,7 @@ export const supplierEvaluationApprovals = pgTable("supplier_evaluation_approval
   approvedAt: timestamp("approvedAt").defaultNow().notNull(),
 }, (table) => [index("supplier_evaluation_approval_approver_date_idx").on(table.approvedById, table.approvedAt)]);
 
-export const mcdmRecommendations = pgTable("mcdm_recommendations", {
+export const mcdmRecommendations = procurewiseSchema.table("mcdm_recommendations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassId: integer("preCanvassId").notNull().unique(),
   recommendedSupplierId: integer("recommendedSupplierId").notNull(),
@@ -471,7 +473,7 @@ export const mcdmRecommendations = pgTable("mcdm_recommendations", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const bestValuePolicies = pgTable("best_value_policies", {
+export const bestValuePolicies = procurewiseSchema.table("best_value_policies", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   policyCode: varchar("policyCode", { length: 64 }).notNull(),
   name: varchar("name", { length: 180 }).notNull(),
@@ -486,7 +488,7 @@ export const bestValuePolicies = pgTable("best_value_policies", {
   index("best_value_policy_active_created_idx").on(table.isActive, table.createdAt),
 ]);
 
-export const bestValuePolicyCriteria = pgTable("best_value_policy_criteria", {
+export const bestValuePolicyCriteria = procurewiseSchema.table("best_value_policy_criteria", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   policyId: integer("policyId").notNull(),
   criterionKey: varchar("criterionKey", { length: 80 }).notNull(),
@@ -500,7 +502,7 @@ export const bestValuePolicyCriteria = pgTable("best_value_policy_criteria", {
   index("best_value_policy_criteria_policy_order_idx").on(table.policyId, table.sortOrder),
 ]);
 
-export const historicalPrices = pgTable("historical_prices", {
+export const historicalPrices = procurewiseSchema.table("historical_prices", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   itemDescription: varchar("itemDescription", { length: 220 }).notNull(),
   unit: varchar("unit", { length: 40 }).notNull(),
@@ -511,7 +513,7 @@ export const historicalPrices = pgTable("historical_prices", {
   recordedById: integer("recordedById").notNull(),
 }, (table) => [index("historical_price_item_observed_idx").on(table.itemDescription, table.observedAt)]);
 
-export const auditTrails = pgTable("audit_trails", {
+export const auditTrails = procurewiseSchema.table("audit_trails", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),

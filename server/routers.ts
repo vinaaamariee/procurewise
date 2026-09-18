@@ -14,15 +14,7 @@ function assertRole(role: ProcurementRole, permittedRoles: ProcurementRole[]) {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => {
-      if (opts.ctx.dbError) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.",
-        });
-      }
-      return opts.ctx.user;
-    }),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
   procurement: router({
