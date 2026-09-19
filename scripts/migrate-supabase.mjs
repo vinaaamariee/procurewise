@@ -2,9 +2,8 @@ import { Client } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-if (!password) throw new Error("SUPABASE_DB_PASSWORD is required.");
-const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+const connectionString = process.env.SUPABASE_DATABASE_URL;
+if (!connectionString) throw new Error("SUPABASE_DATABASE_URL is required.");
 const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
 
 try {

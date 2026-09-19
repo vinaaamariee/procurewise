@@ -1,9 +1,8 @@
 import { defineConfig } from "drizzle-kit";
+import "dotenv/config";
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-if (!password) throw new Error("SUPABASE_DB_PASSWORD is required for Supabase Drizzle migrations.");
-
-const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+const connectionString = process.env.SUPABASE_DATABASE_URL;
+if (!connectionString) throw new Error("SUPABASE_DATABASE_URL is required for Supabase Drizzle migrations.");
 
 export default defineConfig({
   schema: "./drizzle/schema.pg.ts",

@@ -43,6 +43,13 @@
       "when": 1788530903129,
       "tag": "0005_adorable_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789793691161,
+      "tag": "0006_adorable_dracula",
+      "breakpoints": true
     }
   ]
 }
