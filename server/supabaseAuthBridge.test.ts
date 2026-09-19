@@ -12,6 +12,8 @@ describe("Supabase Auth identity bridge", () => {
     expect(bridgeSource).toContain(".getUser(token)");
     expect(bridgeSource).toContain("upsertSupabaseAuthUser");
     expect(databaseSource).toContain("existingByEmail");
+    expect(databaseSource).toContain("input.email?.trim().toLowerCase()");
+    expect(databaseSource).toContain("lower(trim(${users.email}))");
     expect(databaseSource).toContain("where(eq(users.id, existing.id))");
     expect(databaseSource).toContain('role: "end_user"');
   });

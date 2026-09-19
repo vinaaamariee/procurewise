@@ -949,10 +949,11 @@ async function getDb() {
 }
 async function upsertSupabaseAuthUser(input) {
   const db = await requireDb();
+  const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
   const existingByOpenId = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
-  const existingByEmail = !existingByOpenId[0] && input.email ? await db.select().from(users).where(eq(users.email, input.email)).limit(1) : [];
+  const existingByEmail = !existingByOpenId[0] && normalizedEmail ? await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1) : [];
   const existing = existingByOpenId[0] ?? existingByEmail[0];
-  const values = { openId: input.openId, email: input.email, name: input.name, loginMethod: "supabase", lastSignedIn: /* @__PURE__ */ new Date() };
+  const values = { openId: input.openId, email: normalizedEmail, name: input.name, loginMethod: "supabase", lastSignedIn: /* @__PURE__ */ new Date() };
   if (existing) {
     const [updated] = await db.update(users).set(values).where(eq(users.id, existing.id)).returning();
     if (!updated) throw new Error("The existing ProcureWise user could not be updated.");
