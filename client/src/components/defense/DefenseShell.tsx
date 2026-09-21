@@ -79,18 +79,18 @@ export default function DefenseShell({ children, pageTitle }: { children: React.
                 letterSpacing: "-0.01em",
               }}
             >
-              <span
+              <img
+                src="/bsc-logo.jpg"
+                alt="Batanes State College"
                 style={{
-                  width: 28,
-                  height: 28,
-                  background: "var(--pw-brand-900)",
-                  borderRadius: "var(--pw-radius-sm)",
-                  display: "grid",
-                  placeItems: "center",
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  objectFit: "contain",
+                  border: "1.5px solid var(--pw-brand-500)",
+                  backgroundColor: "#fff",
                 }}
-              >
-                <span style={{ color: "var(--pw-brand-500)", fontSize: 11, fontWeight: 800 }}>PW</span>
-              </span>
+              />
               Procwise
             </span>
           </Link>

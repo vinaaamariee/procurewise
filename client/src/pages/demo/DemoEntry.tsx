@@ -20,28 +20,44 @@ export default function DemoEntryPage() {
       <div style={{ maxWidth: 560, width: "100%" }}>
         {/* Logo mark */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--pw-space-3)", marginBottom: "var(--pw-space-8)" }}>
-          <div
+          <img
+            src="/bsc-logo.jpg"
+            alt="Batanes State College"
             style={{
-              width: 40,
-              height: 40,
-              background: "var(--pw-brand-900)",
-              borderRadius: "var(--pw-radius-md)",
-              display: "grid",
-              placeItems: "center",
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              objectFit: "contain",
+              border: "2px solid var(--pw-brand-500)",
+              backgroundColor: "#fff",
             }}
-          >
-            <span style={{ color: "var(--pw-brand-500)", fontSize: 14, fontWeight: 800 }}>PW</span>
+          />
+          <div>
+            <span
+              style={{
+                display: "block",
+                fontSize: "var(--pw-font-size-lg)",
+                fontWeight: "var(--pw-font-bold)" as React.CSSProperties["fontWeight"],
+                color: "var(--pw-text)",
+                letterSpacing: "-0.01em",
+                lineHeight: 1.2,
+              }}
+            >
+              Procwise
+            </span>
+            <span
+              style={{
+                display: "block",
+                fontSize: "10px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "var(--pw-brand-600)",
+              }}
+            >
+              Batanes State College
+            </span>
           </div>
-          <span
-            style={{
-              fontSize: "var(--pw-font-size-lg)",
-              fontWeight: "var(--pw-font-bold)" as React.CSSProperties["fontWeight"],
-              color: "var(--pw-text)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Procwise
-          </span>
         </div>
 
         {/* Heading */}
