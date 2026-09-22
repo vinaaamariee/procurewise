@@ -21,6 +21,7 @@ export type ValidationFinding = {
 export type QuoteEvaluation = {
   quote: Quote;
   eligible: boolean;
+  reviewState: "eligible" | "pending_evidence" | "over_budget";
   score: number;
   findings: ValidationFinding[];
   factors: {
@@ -46,6 +47,7 @@ export type AuditEvent = {
 export type GovernanceSnapshot = {
   status: GovernanceStatus;
   recommendedSupplierId: string | null;
+  evidenceDeadline: string | null;
   decision: { action: GovernanceDecision; reason: string; actor: string; timestamp: string } | null;
   evaluations: QuoteEvaluation[];
   audit: AuditEvent[];
@@ -72,9 +74,9 @@ export function validateQuote(request: PurchaseRequest, quote: Quote): Validatio
     findings.push({
       id: `${quote.id}-${check.id}`,
       supplierId: quote.supplierId,
-      severity: "error",
-      title: `${check.label} is incomplete`,
-      message: `${quote.supplierName} cannot be recommended until the mandatory ${check.label.toLowerCase()} check passes.`,
+        severity: "warning",
+        title: `${check.label} needs evidence`,
+        message: `${quote.supplierName} is pending evidence submission for the mandatory ${check.label.toLowerCase()} check.`,
       evidenceIds: check.evidenceRefIds,
     });
   }
@@ -82,9 +84,9 @@ export function validateQuote(request: PurchaseRequest, quote: Quote): Validatio
     findings.push({
       id: `${quote.id}-${evidence.id}`,
       supplierId: quote.supplierId,
-      severity: "error",
+      severity: "warning",
       title: `${evidence.label} is missing`,
-      message: `Required evidence is missing for ${quote.supplierName}. The quote is blocked regardless of price or score.`,
+      message: `Required evidence is missing for ${quote.supplierName}. The quote is flagged for submission before it can be recommended.`,
       evidenceIds: [evidence.id],
     });
   }
@@ -131,14 +133,17 @@ export function evaluateQuotes(request: PurchaseRequest): QuoteEvaluation[] {
 
   return request.quotes.map((quote) => {
     const findings = validateQuote(request, quote);
+    const hasMissingEvidence = findings.some((finding) => finding.severity === "warning" && finding.title.toLowerCase().includes("evidence"));
+    const overBudget = quote.total > request.budget;
     const factors = {
       price: normalizeLowerBetter(quote.total, lowestTotal),
-      compliance: findings.some((finding) => finding.severity === "error") ? 0 : 100,
+      compliance: hasMissingEvidence || findings.some((finding) => finding.severity === "error") ? 0 : 100,
       delivery: normalizeLowerBetter(quote.deliveryDays, lowestDelivery),
       warranty: normalizeHigherBetter(quote.warrantyYears, highestWarranty),
     };
     const score = Number((factors.price * DECISION_WEIGHTS.price + factors.compliance * DECISION_WEIGHTS.compliance + factors.delivery * DECISION_WEIGHTS.delivery + factors.warranty * DECISION_WEIGHTS.warranty).toFixed(1));
-    return { quote, eligible: factors.compliance === 100 && quote.total <= request.budget, score, findings, factors };
+    const reviewState = overBudget ? "over_budget" : hasMissingEvidence ? "pending_evidence" : "eligible";
+    return { quote, eligible: reviewState === "eligible", reviewState, score, findings, factors };
   });
 }
 
@@ -153,6 +158,7 @@ export function buildInitialGovernance(request: PurchaseRequest): GovernanceSnap
   return {
     status: "pending",
     recommendedSupplierId: recommendation?.quote.supplierId ?? null,
+    evidenceDeadline: null,
     decision: null,
     evaluations,
     audit: [
@@ -169,7 +175,8 @@ export function applyDecision(snapshot: GovernanceSnapshot, action: GovernanceDe
   if (action === "approve" && !snapshot.recommendedSupplierId) throw new Error("Approval is blocked because no eligible supplier recommendation exists.");
   const timestamp = "2026-09-22T09:30:00Z";
   const status: GovernanceStatus = action === "approve" ? "approved" : action === "modify" ? "modified" : action === "reject" ? "rejected" : "evidence_requested";
-  const detail = action === "approve" ? `Approved recommendation for ${snapshot.recommendedSupplierId}.` : `${action.replace("_", " ")} recorded: ${trimmedReason}`;
+  const evidenceDeadline = action === "request_evidence" ? "2026-09-25T17:00:00Z" : snapshot.evidenceDeadline;
+  const detail = action === "approve" ? `Approved recommendation for ${snapshot.recommendedSupplierId}.` : action === "request_evidence" ? `Evidence requested from ${snapshot.evaluations.find((evaluation) => evaluation.reviewState === "pending_evidence")?.quote.supplierName ?? "supplier"}; submission due by ${evidenceDeadline}.` : `${action.replace("_", " ")} recorded: ${trimmedReason}`;
   const event: AuditEvent = { id: `AUD-${snapshot.audit.length + 1}`.padStart(7, "0"), timestamp, actor: actor as AuditEvent["actor"], action: `human_${action}`, detail, immutable: true };
-  return { ...snapshot, status, decision: { action, reason: trimmedReason, actor, timestamp }, audit: [...snapshot.audit, event] };
+  return { ...snapshot, status, evidenceDeadline, decision: { action, reason: trimmedReason, actor, timestamp }, audit: [...snapshot.audit, event] };
 }
