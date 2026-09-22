@@ -26,7 +26,8 @@ import DemoEntryPage from "./pages/demo/DemoEntry";
 import DemoOverviewPage from "./pages/demo/DemoOverview";
 import DemoRequestsPage from "./pages/demo/DemoRequests";
 import DemoRequestDetailPage from "./pages/demo/DemoRequestDetail";
-import { DemoApprovalsPage, DemoAuditPage, DemoGovernancePage, DemoUiKitPage, DemoValidationPage } from "./pages/demo/DemoRouteShells";
+import { DemoUiKitPage } from "./pages/demo/DemoRouteShells";
+import { DemoApprovalsPage, DemoAuditPage, DemoGovernancePage, DemoValidationPage } from "./pages/demo/DemoDay2";
 
 function Router() {
   const protectedPage = (page: React.ReactNode) => <DashboardLayout>{page}</DashboardLayout>;
