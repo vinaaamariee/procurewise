@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { trpc } from "@/lib/trpc";
-import { normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
+import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
 import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, PackageSearch, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -33,14 +33,12 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Test records", path: "/test-records", icon: Archive, roles: ["admin"] },
 ];
 
-const roleLabels: Record<ProcurementRole, string> = { end_user: "End-User", procurement_officer: "Procurement Officer", administrative_approver: "Administrative Approver", admin: "Admin" };
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const procurementRole = user ? normalizeProcurementRole(user.role) : "end_user";
-  const roleLabel = roleLabels[procurementRole];
+  const roleLabel = user ? OFFICIAL_ROLE_LABELS[user.role as ProcurementRole] ?? OFFICIAL_ROLE_LABELS[procurementRole] : OFFICIAL_ROLE_LABELS.end_user;
   const visibleNavigation = navigation.filter((item) => item.roles.includes(procurementRole));
   const notifications = trpc.procurement.notifications.list.useQuery(undefined, { retry: false, enabled: Boolean(user), refetchInterval: 15_000, refetchIntervalInBackground: true });
   const unreadCount = notifications.data?.filter((notification) => !notification.readAt).length ?? 0;
