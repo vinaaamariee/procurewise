@@ -16,12 +16,12 @@ The End-User submits one procurement package containing these three files:
 
 1. **Purchase Request (PR)**
 2. **Project Procurement Management Plan (PPMP)**
-3. **Abstract of Quotations**
+3. **Preliminary quotation/abstract document from the completed pre-canvass**
 
-The package is received under Procedure 5.1. The Procurement Officer II verifies the PR and PPMP, while the Abstract of Quotations remains part of the submitted package and is forwarded through the official BAC process under Procedure 5.7. No additional generic approver stage is inserted into the procedure.
+The third file is **not yet treated as the final official Abstract of Quotations**. It documents the End-User's completed pre-canvass and initial supplier quotation information. Procurement Staff and BAC validate the preliminary document, conduct or complete the final canvassing steps required by the procedure, revise the comparison when necessary, and formally prepare the official Abstract of Quotations under Procedure 5.7. No additional generic approver stage is inserted into the procedure.
 
 ```text
-End-User submits PR + PPMP + Abstract of Quotations
+End-User submits PR + PPMP + preliminary quotation/abstract from completed pre-canvass
 → Receive and verify PR & PPMP
 → Record PR to PMR
 → Prepare resolution and endorsement for BAC/HoPE signatures
@@ -53,7 +53,7 @@ The system also supports document retrieval, notifications, audit events, public
 | **5.4** | Prepare RFQ and recommend HoPE approval | **Procurement Staff** | Request for Quotation | RFQ preparation |
 | **5.5** | Distribute and retrieve RFQ and transmit to BAC | **Procurement Officer I** | Request for Quotation | RFQ distribution/retrieval and BAC transmittal |
 | **5.6** | PhilGEPS posting | **Procurement Officer I** | Request for Quotation | Posting milestone and evidence record |
-| **5.7** | Forward to BAC for preparation of Abstract of Quotations | **Procurement Staff** | Abstract of Quotations | BAC abstract handoff |
+| **5.7** | Forward to BAC for final validation and preparation of the official Abstract of Quotations | **Procurement Staff** | Preliminary quotation package and official Abstract of Quotations | Final canvass and BAC abstract handoff |
 | **5.8** | Recommendation on the Award of Contract | **BAC/HoPE** | Letter of Notice | Award recommendation and decision |
 | **5.9** | Prepare Letter of Notice | **Procurement Staff** | Letter of Notice | Notice drafting and controlled print |
 | **5.10** | Serve Letter of Notice | **Procurement Officer I** | Letter of Notice | Notice service milestone |
@@ -129,7 +129,7 @@ The Procurement Officer I posts the RFQ through PhilGEPS when required. The syst
 **Responsible:** Procurement Staff  
 **Reference:** Abstract of Quotations
 
-The Procurement Staff forwards the complete quotation package to the BAC for preparation of the Abstract of Quotations. ProcureWise supports comparison of supplier quotations, compliance classification, delivery information, supporting evidence, and recommendation calculations. The Abstract remains linked to the original PR, PPMP, RFQ, and quotation set.
+The Procurement Staff forwards the completed pre-canvass and preliminary quotation package to the BAC. Procurement Staff/BAC validate the preliminary quotation information, complete or revise the final canvassing work required by the procedure, and formally prepare the official Abstract of Quotations. ProcureWise supports comparison of supplier quotations, compliance classification, delivery information, supporting evidence, and recommendation calculations. The official Abstract remains linked to the original PR, PPMP, RFQ, and final quotation set.
 
 ### 3.9 Procedure 5.8 — Recommendation on the Award of Contract
 

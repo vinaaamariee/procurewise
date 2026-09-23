@@ -32,7 +32,7 @@ The official institutional procedure uses the following responsibility assignmen
 | 5.4 | Prepare RFQ and recommend HoPE approval | **Procurement Staff** | Request for Quotation |
 | 5.5 | Distribute/retrieve RFQ and transmit to BAC | **Procurement Officer I** | Request for Quotation |
 | 5.6 | PhilGEPS posting | **Procurement Officer I** | Request for Quotation |
-| 5.7 | Forward to BAC for Abstract of Quotations | **Procurement Staff** | Abstract of Quotations |
+| 5.7 | Forward to BAC for validation and preparation of the official Abstract of Quotations | **Procurement Staff** | Preliminary quotation package and official Abstract of Quotations |
 | 5.8 | Recommendation on Award of Contract | **BAC/HoPE** | Letter of Notice |
 | 5.9 | Prepare Letter of Notice | **Procurement Staff** | Letter of Notice |
 | 5.10 | Serve Letter of Notice | **Procurement Officer I** | Letter of Notice |
@@ -54,10 +54,10 @@ The normal operational sequence is:
 2. An End-User signs in or creates an End-User account.
 3. The End-User creates or selects an APP/PPMP planning entry.
 4. The End-User selects catalog items or enters item details.
-5. The End-User prepares the three-file submission package: **PR, PPMP, and Abstract of Quotations**.
+5. The End-User prepares the three-file submission package: **PR, PPMP, and a preliminary quotation/abstract document from the completed pre-canvass**.
 6. Procurement Officer II receives and verifies the PR and PPMP under Procedure 5.1.
 7. Procurement Staff records the PR to PMR and the Procurement Tracking Slip under Procedure 5.2.
-8. The package proceeds through the official BAC, RFQ, PhilGEPS, Letter of Notice, PO, signing, release, delivery, and monitoring procedures 5.3–5.15.
+8. Procurement Staff and BAC validate, revise, and formally prepare the official Abstract of Quotations from the preliminary quotation document; the package then proceeds through the official BAC, RFQ, PhilGEPS, Letter of Notice, PO, signing, release, delivery, and monitoring procedures 5.3–5.15.
 9. Authorized users retrieve documents, export official PDFs or CSV files, review notifications, and inspect the audit trail.
 
 The application enforces role permissions both in the visible navigation and on the server. Seeing a route in a URL does not grant permission to perform its actions.
