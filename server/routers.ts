@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listAdminTestRecordPackages, listBacTransmittals, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listPendingSupplierEvaluationApprovals, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordPreCanvassResubmission, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, saveBestValuePolicy, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signSupplierEvaluation, submitPreCanvass, updateProcurementSettings, updateSupplierEvaluation, updateUserProcurementRole } from "./db";
+import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getPurchaseRequestHistory, getSupplierTagData, getWorkspaceSetup, listAdminTestRecordPackages, listBacTransmittals, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listPendingSupplierEvaluationApprovals, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordPreCanvassResubmission, rejectPreCanvass, rejectPurchaseRequest, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, saveBestValuePolicy, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signSupplierEvaluation, submitPreCanvass, updateProcurementSettings, updateSupplierEvaluation, updateUserProcurementRole } from "./db";
 import { getSupabaseRealtimePublicConfig, publishProcurementRealtimeUpdate } from "./supabaseRealtime";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole } from "../shared/procurementRules";
 import { BEST_VALUE_CRITERION_KEYS } from "../shared/bestValuePolicy";
@@ -66,6 +66,7 @@ export const appRouter = router({
     purchaseRequests: router({
       list: protectedProcedure.query(({ ctx }) => listPurchaseRequests(ctx.user)),
       detail: protectedProcedure.input(z.object({ purchaseRequestId: z.number().int().positive() })).query(({ ctx, input }) => getPurchaseRequestDetail(input.purchaseRequestId, ctx.user)),
+      history: protectedProcedure.input(z.object({ purchaseRequestId: z.number().int().positive() })).query(({ ctx, input }) => getPurchaseRequestHistory(input.purchaseRequestId, ctx.user)),
       signatories: protectedProcedure.query(() => listPurchaseRequestSignatories()),
       create: protectedProcedure.input(z.object({ purpose: z.string().min(10), fundSource: z.string().max(160).optional(), fundCluster: z.string().max(80).optional(), responsibilityCenterCode: z.string().max(80).optional(), requesterDesignation: z.string().max(160).optional(), requestedSignatoryId: z.number().int().positive().optional(), approvedSignatoryId: z.number().int().positive().optional(), ppmpEntryId: z.number().int().positive().optional(), officeId: z.number().int().positive(), objectOfExpenditureId: z.number().int().positive(), items: z.array(z.object({ catalogItemId: z.number().int().positive().optional(), stockPropertyNo: z.string().max(80).optional(), description: z.string().min(2), specification: z.string().optional(), quantity: z.number().positive(), unit: z.string().min(1), estimatedUnitCost: z.number().positive() })).min(1) })).mutation(({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["end_user"]);
@@ -80,6 +81,10 @@ export const appRouter = router({
         const nextStatus = getNextPrStatus(pr.status, role);
         if (!nextStatus) throw new TRPCError({ code: "CONFLICT", message: "The Purchase Request cannot advance at your role or its current workflow stage." });
         return advancePurchaseRequest({ purchaseRequestId: pr.id, nextStatus }, ctx.user);
+      }),
+      reject: protectedProcedure.input(z.object({ purchaseRequestId: z.number().int().positive(), reason: z.string().min(10).max(2000), remarks: z.string().max(2000).optional() })).mutation(({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "administrative_approver", "admin"]);
+        return rejectPurchaseRequest(input, ctx.user);
       }),
     }),
     preCanvasses: router({
@@ -105,6 +110,12 @@ export const appRouter = router({
       requestCorrection: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive(), reason: z.string().min(10).max(1000) })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer"]);
         const result = await requestPreCanvassCorrection(input, ctx.user);
+        void publishProcurementRealtimeUpdate("pre_canvass");
+        return result;
+      }),
+      reject: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive(), reason: z.string().min(10).max(2000), remarks: z.string().max(2000).optional() })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "administrative_approver", "admin"]);
+        const result = await rejectPreCanvass(input, ctx.user);
         void publishProcurementRealtimeUpdate("pre_canvass");
         return result;
       }),

@@ -1,4 +1,6 @@
 import { EmptyWorkspace } from "@/components/EmptyWorkspace";
+import { PurchaseRequestHistory } from "@/components/PurchaseRequestHistory";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { OfficialPurchaseRequestCanvas } from "@/components/OfficialPurchaseRequestCanvas";
 import { PageHeader } from "@/components/PageHeader";
 import { RecordTable, RecordTableHeader } from "@/components/RecordTable";
@@ -10,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import { CircleAlert, Info, LoaderCircle, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
@@ -29,6 +32,7 @@ const content: Record<WorkspaceKind, { eyebrow: string; title: string; descripti
 };
 
 export function PurchaseRequestsPage() {
+  const { user } = useAuth();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
   const [catalogSelection] = useState<Array<{ id: number; quantity: string }>>(() => { try { return JSON.parse(sessionStorage.getItem("procurewise.catalogSelection") || "[]") as Array<{ id: number; quantity: string }>; } catch { return []; } });
@@ -48,6 +52,10 @@ export function PurchaseRequestsPage() {
     onSuccess: () => { toast.success("Complete procurement package forwarded to the Procurement Officer."); void utils.procurement.purchaseRequests.list.invalidate(); void utils.procurement.dashboard.invalidate(); },
     onError: (error) => toast.error(error.message),
   });
+  const rejectRequest = trpc.procurement.purchaseRequests.reject.useMutation({
+    onSuccess: () => { toast.success("Purchase Request rejected and the employee was notified."); void utils.procurement.purchaseRequests.list.invalidate(); void utils.procurement.dashboard.invalidate(); },
+    onError: (error) => toast.error(error.message),
+  });
   const createRequest = trpc.procurement.purchaseRequests.create.useMutation({
     onSuccess: (created) => {
       void navigator.clipboard?.writeText(created.trackingToken);
@@ -60,18 +68,21 @@ export function PurchaseRequestsPage() {
   });
 
   return <div className="mx-auto max-w-[1240px]">
-    <PageHeader eyebrow="End-User package" title="PPMP-linked Purchase Requests" description="Create an itemized Purchase Request, link it to PPMP planning, and prepare the three-file package: PR, PPMP, and preliminary quotations from the completed pre-canvass." action={{ label: "New Purchase Request", onClick: () => setIsCreating(!isCreating) }} />
+    <PageHeader eyebrow="End-User package" title="PPMP-linked Purchase Requests" description="Create an itemized Purchase Request with a Linked PPMP entry, then prepare the three-file package: PR, PPMP, and preliminary quotations from the completed pre-canvass." action={{ label: "New Purchase Request", onClick: () => setIsCreating(!isCreating) }} />
     {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={createRequest.isPending} onCancel={() => setIsCreating(false)} onCreate={(input) => createRequest.mutate(input)} /> : (
       <div className="mt-7">
-        {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <><PurchaseRequestTable records={purchaseRequests.data} onSubmit={(purchaseRequestId) => submitRequest.mutate({ purchaseRequestId })} submittingId={submitRequest.isPending ? submitRequest.variables?.purchaseRequestId : undefined} /><WorkflowTimeline status={purchaseRequests.data[0]?.status ?? "draft"} /></> : <EmptyWorkspace eyebrow="Purchase Request register" title="No PPMP-linked Purchase Requests have been submitted." description="Start with PPMP planning, prepare the PR and PPMP, complete the preliminary pre-canvass quotations, then submit the three-file package to Procurement." actionLabel="Create your first PR" actionOnClick={() => setIsCreating(true)} />}
+        {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <><PurchaseRequestTable records={purchaseRequests.data} canReject={Boolean(user && ["procurement_officer", "administrative_approver", "admin"].includes(normalizeProcurementRole(user.role)))} onSubmit={(purchaseRequestId) => submitRequest.mutate({ purchaseRequestId })} onReject={(purchaseRequestId, reason) => rejectRequest.mutate({ purchaseRequestId, reason })} submittingId={submitRequest.isPending ? submitRequest.variables?.purchaseRequestId : undefined} /><WorkflowTimeline status={purchaseRequests.data[0]?.status ?? "draft"} /></> : <EmptyWorkspace eyebrow="Purchase Request register" title="No PPMP-linked Purchase Requests have been submitted." description="Start with PPMP planning, prepare the PR and PPMP, complete the preliminary pre-canvass quotations, then submit the three-file package to Procurement." actionLabel="Create your first PR" actionOnClick={() => setIsCreating(true)} />}
       </div>
     )}
   </div>;
 }
 
-function PurchaseRequestTable({ records, onSubmit, submittingId }: { records: Array<{ id: number; prNumber: string; purpose: string; totalEstimate: string; status: string; createdAt: Date }>; onSubmit: (purchaseRequestId: number) => void; submittingId?: number }) {
-  const tone = (status: string) => status === "approved" ? "approved" : status.includes("review") ? "pending" : "draft";
-  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{records.map((record) => <tr key={record.id} className="hover:bg-[#fdfcf9]"><td className="px-4 py-3 font-semibold text-[#7b1e1e]">{record.prNumber}</td><td className="max-w-[350px] px-4 py-3 text-[#3e4855]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{record.status.replaceAll("_", " ").toUpperCase()}</StatusBadge></td><td className="px-4 py-3 text-[#74808c]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{record.status === "draft" ? <Button size="sm" onClick={() => onSubmit(record.id)} disabled={submittingId === record.id} className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[10px] hover:bg-[#641818]">{submittingId === record.id && <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />}Submit</Button> : <span className="text-[11px] text-[#87909b]">Awaiting assigned role</span>}</td></tr>)}</tbody></RecordTable>;
+function PurchaseRequestTable({ records, canReject, onSubmit, onReject, submittingId }: { records: Array<{ id: number; prNumber: string; purpose: string; totalEstimate: string; status: string; createdAt: Date; rejectionCount?: number; rejectionReason?: string | null }>; canReject: boolean; onSubmit: (purchaseRequestId: number) => void; onReject: (purchaseRequestId: number, reason: string) => void; submittingId?: number }) {
+  const [rejectingId, setRejectingId] = useState<number | null>(null);
+  const [reason, setReason] = useState("");
+  const tone = (status: string) => status === "approved" ? "approved" : status === "rejected" ? "returned" : status.includes("review") || ["rfq", "po", "po_issued"].includes(status) ? "pending" : "draft";
+  const label = (status: string) => status === "approved" ? "APPROVED" : status === "rejected" ? "REJECTED" : ["draft", "procurement_review", "approval_review", "budget_review", "supply_review", "bac_review", "rfq", "po", "po_issued"].includes(status) ? "IN PROGRESS" : status.replaceAll("_", " ").toUpperCase();
+  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status / history</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{records.map((record) => <tr key={record.id} className="hover:bg-[#fdfcf9]"><td className="px-4 py-3 font-semibold text-[#7b1e1e]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{label(record.status)}</StatusBadge>{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && <Button size="sm" onClick={() => onSubmit(record.id)} disabled={submittingId === record.id} className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[10px] hover:bg-[#641818]">{submittingId === record.id && <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />}Submit</Button>}{canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && <Button size="sm" variant="outline" onClick={() => setRejectingId(record.id)} className="h-7 border-[#d8a7a7] px-2.5 text-[10px] text-[#9c2525]">Reject</Button>}{record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b]">In progress</span>}</div>}</td></tr>)}</tbody></RecordTable>;
 }
 
 function PurchaseRequestForm({ setup, ppmpEntries, catalogItemIds, catalogSelection, isSaving, onCancel, onCreate }: { setup?: { offices: Array<{ id: number; code: string; name: string }>; objectsOfExpenditure: Array<{ id: number; code: string; name: string }> }; ppmpEntries?: Array<{ id: number; description: string; fiscalYear: number }>; catalogItemIds: number[]; catalogSelection: Array<{ id: number; quantity: string }>; isSaving: boolean; onCancel: () => void; onCreate: (input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }) => void }) {
