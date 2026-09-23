@@ -12,8 +12,17 @@
 
 ## 1. Official process at a glance
 
+The End-User submits one procurement package containing these three files:
+
+1. **Purchase Request (PR)**
+2. **Project Procurement Management Plan (PPMP)**
+3. **Abstract of Quotations**
+
+The package is received under Procedure 5.1. The Procurement Officer II verifies the PR and PPMP, while the Abstract of Quotations remains part of the submitted package and is forwarded through the official BAC process under Procedure 5.7. No additional generic approver stage is inserted into the procedure.
+
 ```text
-Receive and verify PR & PPMP
+End-User submits PR + PPMP + Abstract of Quotations
+→ Receive and verify PR & PPMP
 → Record PR to PMR
 → Prepare resolution and endorsement for BAC/HoPE signatures
 → Prepare RFQ and recommend HoPE approval
@@ -60,14 +69,14 @@ The system also supports document retrieval, notifications, audit events, public
 
 ### 3.1 Preparation and access
 
-The Administrator configures offices, objects of expenditure, budgets, signatories, suppliers, entity defaults, user accounts, and official roles. The End-User then signs in and prepares the PPMP/APP planning record and Purchase Request. These preparation activities support Procedure 5.1; they are not substitutes for the official receiving and verification step.
+The Administrator configures offices, objects of expenditure, budgets, signatories, suppliers, entity defaults, user accounts, and official roles. The End-User then signs in and prepares the three-file submission package: the Purchase Request, PPMP, and Abstract of Quotations. These preparation activities support Procedure 5.1; they are not substitutes for the official receiving and verification step.
 
 ### 3.2 Procedure 5.1 — Receive and verify PR & PPMP
 
 **Responsible:** Procurement Officer II  
 **Reference:** Purchase Request and Project Procurement Management Plan
 
-The Procurement Officer II receives the submitted PR/PPMP package and verifies:
+The Procurement Officer II receives the submitted three-file package and verifies the PR and PPMP. The Abstract of Quotations remains attached to the package for the subsequent BAC process. The officer verifies:
 
 - The requesting office and requester are authorized.
 - The PR is linked to the correct PPMP.

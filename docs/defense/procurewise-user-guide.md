@@ -54,17 +54,11 @@ The normal operational sequence is:
 2. An End-User signs in or creates an End-User account.
 3. The End-User creates or selects an APP/PPMP planning entry.
 4. The End-User selects catalog items or enters item details.
-5. The End-User creates a PPMP-linked Purchase Request.
-6. The End-User opens a Pre-Canvass for the Purchase Request.
-7. The End-User records at least three supplier quotations.
-8. The End-User forwards the complete package to Procurement.
-9. A Procurement Officer reviews the package and creates the Abstract of Canvass.
-10. The Procurement Officer may calculate the MCDM recommendation and create the official RFQ record when the workflow requires it.
-11. An Administrative Approver approves, rejects, or returns the Abstract for correction.
-12. After approval, the Procurement Officer issues the Purchase Order.
-13. The Procurement Officer records delivery.
-14. The Procurement Officer logs the PMR, closing the Purchase Order.
-15. Authorized users retrieve documents, export official PDFs or CSV files, review notifications, and inspect the audit trail.
+5. The End-User prepares the three-file submission package: **PR, PPMP, and Abstract of Quotations**.
+6. Procurement Officer II receives and verifies the PR and PPMP under Procedure 5.1.
+7. Procurement Staff records the PR to PMR and the Procurement Tracking Slip under Procedure 5.2.
+8. The package proceeds through the official BAC, RFQ, PhilGEPS, Letter of Notice, PO, signing, release, delivery, and monitoring procedures 5.3–5.15.
+9. Authorized users retrieve documents, export official PDFs or CSV files, review notifications, and inspect the audit trail.
 
 The application enforces role permissions both in the visible navigation and on the server. Seeing a route in a URL does not grant permission to perform its actions.
 
