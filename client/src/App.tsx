@@ -21,6 +21,12 @@ import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
 import CatalogPage from "./pages/Catalog";
+// Defense workspace — no authentication required
+import DemoEntryPage from "./pages/demo/DemoEntry";
+import DemoOverviewPage from "./pages/demo/DemoOverview";
+import DemoRequestsPage from "./pages/demo/DemoRequests";
+import DemoRequestDetailPage from "./pages/demo/DemoRequestDetail";
+import { DemoApprovalsPage, DemoAuditPage, DemoGovernancePage, DemoUiKitPage, DemoValidationPage } from "./pages/demo/DemoRouteShells";
 
 function Router() {
   const protectedPage = (page: React.ReactNode) => <DashboardLayout>{page}</DashboardLayout>;
@@ -53,6 +59,16 @@ function Router() {
       <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
       <Route path={"/test-records"}>{protectedPage(<TestRecordManagementPage />)}</Route>
       <Route path={"/best-value-policy"}>{protectedPage(<BestValuePolicySettingsPage />)}</Route>
+      {/* Defense workspace — no auth required */}
+      <Route path={"/demo"} component={DemoEntryPage} />
+      <Route path={"/demo/overview"} component={DemoOverviewPage} />
+      <Route path={"/demo/requests"} component={DemoRequestsPage} />
+      <Route path={"/demo/requests/:id"} component={DemoRequestDetailPage} />
+      <Route path={"/demo/approvals"} component={DemoApprovalsPage} />
+      <Route path={"/demo/audit"} component={DemoAuditPage} />
+      <Route path={"/demo/validation"} component={DemoValidationPage} />
+      <Route path={"/demo/governance"} component={DemoGovernancePage} />
+      <Route path={"/demo/ui-kit"} component={DemoUiKitPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -81,3 +97,4 @@ function App() {
 }
 
 export default App;
+
