@@ -182,7 +182,7 @@ export async function getWorkspaceSetup() {
   };
 }
 
-export async function updateProcurementSettings(input: { entityName: string; authorizedOfficialName?: string; authorizedOfficialDesignation?: string; chiefAccountantName?: string; defaultNoticeSignatory?: string; sessionTimeoutMinutes?: number; enableInAppNotifications?: boolean; notificationRefreshSeconds?: number; appearanceTheme?: "light" | "dark" | "high_contrast"; appearanceFont?: "system" | "serif" | "mono" | "humanist"; appearanceFontScale?: "90" | "100" | "110" | "120"; appearanceDensity?: "compact" | "comfortable" | "spacious"; appearanceAccent?: "maroon" | "teal" | "blue" | "forest"; appearanceCorners?: "sharp" | "soft" | "round"; appearanceReducedMotion?: boolean }, user: User) {
+export async function updateProcurementSettings(input: { entityName: string; authorizedOfficialName?: string; authorizedOfficialDesignation?: string; chiefAccountantName?: string; defaultNoticeSignatory?: string; sessionTimeoutMinutes?: number; enableInAppNotifications?: boolean; notificationRefreshSeconds?: number; appearanceTheme?: "light" | "dark" | "high_contrast"; appearanceFont?: "public_sans" | "system" | "serif" | "mono" | "humanist"; appearanceFontScale?: "90" | "100" | "110" | "120"; appearanceDensity?: "compact" | "comfortable" | "spacious"; appearanceAccent?: "maroon" | "teal" | "blue" | "forest"; appearanceCorners?: "sharp" | "soft" | "round"; appearanceReducedMotion?: boolean }, user: User) {
   const db = await requireDb();
   const values = {
     entityName: input.entityName.trim() || "Batanes State College",
@@ -194,7 +194,7 @@ export async function updateProcurementSettings(input: { entityName: string; aut
     enableInAppNotifications: input.enableInAppNotifications === false ? 0 : 1,
     notificationRefreshSeconds: Math.min(120, Math.max(10, input.notificationRefreshSeconds ?? 15)),
     appearanceTheme: input.appearanceTheme ?? "light",
-    appearanceFont: input.appearanceFont ?? "system",
+    appearanceFont: input.appearanceFont ?? "public_sans",
     appearanceFontScale: input.appearanceFontScale ?? "100",
     appearanceDensity: input.appearanceDensity ?? "comfortable",
     appearanceAccent: input.appearanceAccent ?? "maroon",

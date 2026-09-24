@@ -71,6 +71,13 @@
       "when": 1790290000000,
       "tag": "0009_appearance_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790291000000,
+      "tag": "0010_public_sans_default",
+      "breakpoints": true
     }
   ]
 }

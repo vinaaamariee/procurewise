@@ -8,7 +8,7 @@ export function AppearanceRuntime() {
     if (!settings) return;
     const root = document.documentElement;
     root.dataset.appearanceTheme = settings.appearanceTheme || "light";
-    root.dataset.appearanceFont = settings.appearanceFont || "system";
+    root.dataset.appearanceFont = settings.appearanceFont || "public_sans";
     root.dataset.appearanceDensity = settings.appearanceDensity || "comfortable";
     root.dataset.appearanceAccent = settings.appearanceAccent || "maroon";
     root.dataset.appearanceCorners = settings.appearanceCorners || "sharp";
