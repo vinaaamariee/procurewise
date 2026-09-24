@@ -12,7 +12,9 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "seed:demo": "node scripts/seed-demo-accounts.mjs"
+    "seed:demo": "node scripts/seed-demo-accounts.mjs",
+    "pmr:normalize": "python3 scripts/normalize-pmr-2025.py",
+    "pmr:import": "node scripts/import-pmr-2025.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

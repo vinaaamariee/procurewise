@@ -205,3 +205,33 @@ export function AuditTrailPage() {
 function Metric({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: typeof BarChart3 }) { return <div className="flat-panel p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">{label}</p><p className="mt-4 font-display text-2xl font-semibold text-[#202833]">{value}</p></div><Icon className="h-4 w-4 text-[#7b1e1e]" /></div><p className="mt-3 text-[11px] leading-5 text-[#73808b]">{detail}</p></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="text-[11px] font-semibold text-[#4c5664]">{label}</Label><div className="mt-1.5">{children}</div></div>; }
 function LoadingPanel({ label }: { label: string }) { return <div className="flat-panel grid min-h-72 place-items-center text-center"><div><LoaderCircle className="mx-auto h-5 w-5 animate-spin text-[#7b1e1e]" /><p className="mt-3 text-xs text-[#6e7885]">{label}</p></div></div>; }
+
+export function HistoricalPmrPage() {
+  const [search, setSearch] = useState("");
+  const [office, setOffice] = useState("");
+  const [status, setStatus] = useState("");
+  const summary = trpc.procurement.historicalPmr.summary.useQuery({ fiscalYear: 2025 }, { retry: false });
+  const records = trpc.procurement.historicalPmr.list.useQuery({ fiscalYear: 2025, search: search || undefined, office: office || undefined, status: status || undefined, limit: 500 }, { retry: false });
+  const offices = useMemo(() => Array.from(new Set((records.data ?? []).map((record) => record.office).filter((value): value is string => Boolean(value)))).sort(), [records.data]);
+  const statuses = useMemo(() => Array.from(new Set((records.data ?? []).map((record) => record.status).filter((value): value is string => Boolean(value)))).sort(), [records.data]);
+  return <div className="mx-auto max-w-[1560px]">
+    <PageHeader eyebrow="Historical records" title="2025 Procurement Monitoring Report" description="Searchable historical PMR data imported from the official 2025 DATA sheets. End-Users do not have access to this internal monitoring view." />
+    <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Metric label="Item records" value={String(summary.data?.records ?? 0)} detail="Normalized PMR line items" icon={FileCheck2} />
+      <Metric label="Purchase Requests" value={String(summary.data?.purchaseRequests ?? 0)} detail="Distinct PR numbers" icon={FileSearch} />
+      <Metric label="Suppliers" value={String(summary.data?.suppliers ?? 0)} detail="Historical supplier records" icon={UsersRound} />
+      <Metric label="Actual total" value={formatMoney(summary.data?.actualTotal ?? 0)} detail="Imported 2025 total" icon={BarChart3} />
+    </div>
+    <div className="mt-6 flat-panel p-5">
+      <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto]">
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search PR, item, end-user, or supplier" aria-label="Search historical PMR" />
+        <Select value={office || "all"} onValueChange={(value) => setOffice(value === "all" ? "" : value)}><SelectTrigger><SelectValue placeholder="All offices" /></SelectTrigger><SelectContent><SelectItem value="all">All offices</SelectItem>{offices.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
+        <Select value={status || "all"} onValueChange={(value) => setStatus(value === "all" ? "" : value)}><SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{statuses.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
+        <Button variant="outline" onClick={() => { setSearch(""); setOffice(""); setStatus(""); }}>Clear</Button>
+      </div>
+    </div>
+    <div className="mt-6 overflow-x-auto flat-panel">
+      {records.isLoading ? <div className="p-8"><LoadingPanel label="Loading historical PMR" /></div> : records.data?.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR#</th><th className="px-4 py-3 font-semibold">End-User / Office</th><th className="px-4 py-3 font-semibold">Item</th><th className="px-4 py-3 font-semibold">Supplier</th><th className="px-4 py-3 text-right font-semibold">Estimated</th><th className="px-4 py-3 text-right font-semibold">Actual</th><th className="px-4 py-3 font-semibold">Delivery</th><th className="px-4 py-3 font-semibold">Status</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{records.data.map((record) => <tr key={record.recordKey} className="align-top"><td className="whitespace-nowrap px-4 py-3 font-semibold text-[#3e4855]">{record.prNumber}<p className="mt-1 text-[10px] font-normal text-[#89929c]">{record.month || "—"}</p></td><td className="min-w-[180px] px-4 py-3 text-[#65717e]"><p>{record.endUser || "—"}</p><p className="mt-1 text-[10px] text-[#89929c]">{record.office || "Office not recorded"}</p></td><td className="min-w-[260px] max-w-[420px] px-4 py-3 text-[#65717e]"><p>{record.item || "—"}</p><p className="mt-1 text-[10px] text-[#89929c]">{record.quantity || "—"} {record.unitOfIssue || ""}</p></td><td className="min-w-[180px] px-4 py-3 text-[#65717e]">{record.supplier || "—"}</td><td className="whitespace-nowrap px-4 py-3 text-right text-[#65717e]">{formatMoney(record.estimatedTotal || 0)}</td><td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-[#3e4855]">{formatMoney(record.total || 0)}</td><td className="whitespace-nowrap px-4 py-3 text-[#65717e]">{record.deliveryDate || "—"}</td><td className="px-4 py-3"><StatusBadge tone={record.status?.toLowerCase() === "complete" ? "approved" : "pending"}>{record.status || "—"}</StatusBadge><p className="mt-1 max-w-[180px] text-[10px] text-[#89929c]">{record.remarks || ""}</p></td></tr>)}</tbody></RecordTable> : <div className="p-8"><EmptyWorkspace eyebrow="Historical PMR" title="No PMR records found." description="Run the 2025 PMR import after applying the historical PMR database migration." /></div>}
+    </div>
+  </div>;
+}

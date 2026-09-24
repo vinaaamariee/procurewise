@@ -27,6 +27,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Procurement Forecast", path: "/officer/forecast", icon: LineChart, roles: ["procurement_officer", "admin"] },
   { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
+  { label: "Historical PMR", path: "/pmr-history", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "supplier_contractor", "admin"] },
   { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, formTemplates, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestDecisions, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqNumberAssignments, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, formTemplates, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrHistoricalRecords, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestDecisions, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqNumberAssignments, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
 import { areUnitsCompatible, getEmployeePrStatus, hasRequiredSupplierQuotations, normalizeProcurementRole, OFFICIAL_ROLE_LABELS, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
@@ -1559,6 +1559,44 @@ export async function recordHistoricalPrice(input: { itemDescription: string; un
   const [price] = await db.select().from(historicalPrices).where(and(eq(historicalPrices.itemDescription, input.itemDescription.trim()), eq(historicalPrices.recordedById, user.id))).orderBy(desc(historicalPrices.id)).limit(1);
   if (!price) throw new Error("Historical price could not be recorded.");
   return price;
+}
+
+export type HistoricalPmrImportRow = Omit<typeof pmrHistoricalRecords.$inferInsert, "id" | "importedAt">;
+
+export async function importHistoricalPmrRecords(rows: HistoricalPmrImportRow[]) {
+  const db = await requireDb();
+  const validRows = rows.filter((row) => row.fiscalYear === 2025 && row.prNumber.trim().length > 0 && row.recordKey.trim().length > 0);
+  if (!validRows.length) return { imported: 0, skipped: rows.length };
+  for (let offset = 0; offset < validRows.length; offset += 250) {
+    await db.insert(pmrHistoricalRecords).values(validRows.slice(offset, offset + 250)).onConflictDoNothing({ target: pmrHistoricalRecords.recordKey });
+  }
+  return { imported: validRows.length, skipped: rows.length - validRows.length };
+}
+
+export async function listHistoricalPmrRecords(filters: { fiscalYear?: number; month?: string; office?: string; supplier?: string; status?: string; search?: string; limit?: number } = {}) {
+  const db = await requireDb();
+  const conditions = [];
+  if (filters.fiscalYear) conditions.push(eq(pmrHistoricalRecords.fiscalYear, filters.fiscalYear));
+  if (filters.month) conditions.push(eq(pmrHistoricalRecords.month, filters.month));
+  if (filters.office) conditions.push(eq(pmrHistoricalRecords.office, filters.office));
+  if (filters.supplier) conditions.push(eq(pmrHistoricalRecords.supplier, filters.supplier));
+  if (filters.status) conditions.push(eq(pmrHistoricalRecords.status, filters.status));
+  if (filters.search) {
+    const term = `%${filters.search.trim()}%`;
+    conditions.push(or(like(pmrHistoricalRecords.prNumber, term), like(pmrHistoricalRecords.item, term), like(pmrHistoricalRecords.endUser, term), like(pmrHistoricalRecords.supplier, term)));
+  }
+  return db.select().from(pmrHistoricalRecords).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(pmrHistoricalRecords.prNumber), pmrHistoricalRecords.id).limit(Math.min(filters.limit ?? 500, 2000));
+}
+
+export async function getHistoricalPmrSummary(fiscalYear = 2025) {
+  const db = await requireDb();
+  const rows = await db.select().from(pmrHistoricalRecords).where(eq(pmrHistoricalRecords.fiscalYear, fiscalYear));
+  const offices = new Set(rows.map((row) => row.office).filter(Boolean));
+  const suppliers = new Set(rows.map((row) => row.supplier).filter(Boolean));
+  const prs = new Set(rows.map((row) => row.prNumber));
+  const total = rows.reduce((sum, row) => sum + Number(row.total ?? 0), 0);
+  const estimated = rows.reduce((sum, row) => sum + Number(row.estimatedTotal ?? 0), 0);
+  return { fiscalYear, records: rows.length, purchaseRequests: prs.size, offices: offices.size, suppliers: suppliers.size, estimatedTotal: estimated, actualTotal: total };
 }
 
 export async function getProcurementForecast() {

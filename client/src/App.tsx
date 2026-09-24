@@ -13,7 +13,7 @@ import { ForecastPage, NoticesPage, OfficerSettingsPage, SupplierEvaluationsPage
 import { PrintNoticePage, PrintPreCanvassAbstractPage, PrintTransmittalPage } from "./pages/PrintPages";
 import PublicTrackingPage from "./pages/PublicTracking";
 import Landing from "./pages/Landing";
-import { AnalyticsPage, AuditTrailPage, BudgetPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
+import { AnalyticsPage, AuditTrailPage, BudgetPage, HistoricalPmrPage, PlansPage, SupplierRegistryPage } from "./pages/ManagementPages";
 import { BestValuePolicySettingsPage } from "./pages/BestValuePolicySettingsPage";
 import { SupplierEvaluationFormPage } from "./pages/SupplierEvaluationFormPage";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
@@ -57,6 +57,7 @@ function Router() {
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>
       <Route path={"/analytics"}>{protectedPage(<AnalyticsPage />)}</Route>
       <Route path={"/audit"}>{protectedPage(<AuditTrailPage />)}</Route>
+      <Route path={"/pmr-history"}>{protectedPage(<HistoricalPmrPage />)}</Route>
       <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
       <Route path={"/form-templates"}>{protectedPage(<FormTemplatesPage />)}</Route>
       <Route path={"/test-records"}>{protectedPage(<TestRecordManagementPage />)}</Route>

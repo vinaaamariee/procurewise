@@ -78,6 +78,13 @@
       "when": 1790291000000,
       "tag": "0010_public_sans_default",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790292000000,
+      "tag": "0011_historical_pmr_records",
+      "breakpoints": true
     }
   ]
 }
