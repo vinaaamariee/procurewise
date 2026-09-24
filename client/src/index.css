@@ -412,3 +412,19 @@ html[data-appearance-density="spacious"] .flat-panel { padding: 1.75rem !importa
 html[data-appearance-corners="round"] .rounded-\[4px\], html[data-appearance-corners="round"] .rounded-\[3px\] { border-radius: 0.75rem !important; }
 html[data-appearance-corners="soft"] .rounded-\[4px\], html[data-appearance-corners="soft"] .rounded-\[3px\] { border-radius: 0.5rem !important; }
 html[data-appearance-reduced-motion="true"] *, html[data-appearance-reduced-motion="true"] *::before, html[data-appearance-reduced-motion="true"] *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.001ms !important; }
+
+
+/* Global administrator appearance settings. The application uses several legacy flat-ui utility colors; these overrides keep them readable when dark mode is selected. */
+html[data-appearance-theme="dark"] body { background: var(--background); color: var(--foreground); }
+html[data-appearance-theme="dark"] .bg-white { background-color: var(--card) !important; }
+html[data-appearance-theme="dark"] .bg-\[\#f8f7f3\] { background-color: var(--background) !important; }
+html[data-appearance-theme="dark"] .bg-\[\#fbfaf7\] { background-color: var(--muted) !important; }
+html[data-appearance-theme="dark"] .bg-\[\#fcfaf4\] { background-color: var(--accent) !important; }
+html[data-appearance-theme="dark"] .text-\[\#202833\], html[data-appearance-theme="dark"] .text-\[\#303946\], html[data-appearance-theme="dark"] .text-\[\#34404e\], html[data-appearance-theme="dark"] .text-\[\#3f4a57\], html[data-appearance-theme="dark"] .text-\[\#566171\], html[data-appearance-theme="dark"] .text-\[\#677281\], html[data-appearance-theme="dark"] .text-\[\#77818d\] { color: var(--foreground) !important; }
+html[data-appearance-theme="dark"] .border-\[\#e4e1da\], html[data-appearance-theme="dark"] .border-\[\#ece8df\], html[data-appearance-theme="dark"] .border-\[\#ece9e2\] { border-color: var(--border) !important; }
+html[data-appearance-theme="dark"] .flat-panel { background: var(--card); border-color: var(--border); }
+html[data-appearance-theme="dark"] input, html[data-appearance-theme="dark"] textarea, html[data-appearance-theme="dark"] [role="combobox"] { color: var(--foreground); }
+html[data-appearance-theme="dark"] input::placeholder, html[data-appearance-theme="dark"] textarea::placeholder { color: var(--muted-foreground); }
+html[data-appearance-theme="dark"] [data-radix-popper-content-wrapper] [role="listbox"] { background: var(--popover); color: var(--popover-foreground); border-color: var(--border); }
+html[data-appearance-theme="dark"] .shadow-\[0_1px_0_rgba\(33\,43\,54\,0\.03\)\] { box-shadow: 0 1px 0 rgb(255 255 255 / 6%); }
+html[data-appearance-reduced-motion="true"] *, html[data-appearance-reduced-motion="true"] *::before, html[data-appearance-reduced-motion="true"] *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }

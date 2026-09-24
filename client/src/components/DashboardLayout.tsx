@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { AppearanceRuntime } from "@/components/AppearanceRuntime";
+import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
 import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
@@ -28,7 +29,6 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
   { label: "Historical PMR", path: "/pmr-history", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "supplier_contractor", "admin"] },
-  { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
   { label: "Editable forms", path: "/form-templates", icon: FileText, roles: ["admin"] },
@@ -85,6 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Bell className="h-4 w-4 text-[#566171]" />
               {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-white bg-[#7b1e1e] px-1 text-[8px] font-bold leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
             </Button>
+            <GlobalAppearanceControls />
             <div className="hidden items-center gap-2 border-l border-[#e4e1da] pl-3 sm:flex">
               <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
                 <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
