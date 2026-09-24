@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <GlobalAppearanceControls />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="hidden h-9 items-center gap-2 rounded-[4px] px-2 sm:flex" aria-label="Open account menu">
+                <Button variant="ghost" className="flex h-9 items-center gap-2 rounded-[4px] px-2" aria-label="Open account menu">
                   <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
                     <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
                   </Avatar>
