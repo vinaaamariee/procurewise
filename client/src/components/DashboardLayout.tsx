@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
+import { AppearanceRuntime } from "@/components/AppearanceRuntime";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
 import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
@@ -64,6 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[#f8f7f3] text-[#202833]">
+      <AppearanceRuntime />
       <NotificationToastListener />
       <div className="border-b border-[#e4e1da] bg-white">
         <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">

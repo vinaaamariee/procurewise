@@ -342,6 +342,13 @@ export const procurementSettings = procurewiseSchema.table("procurement_settings
   sessionTimeoutMinutes: integer("sessionTimeoutMinutes").default(30).notNull(),
   enableInAppNotifications: integer("enableInAppNotifications").default(1).notNull(),
   notificationRefreshSeconds: integer("notificationRefreshSeconds").default(15).notNull(),
+  appearanceTheme: varchar("appearanceTheme", { length: 32 }).default("light").notNull(),
+  appearanceFont: varchar("appearanceFont", { length: 40 }).default("system").notNull(),
+  appearanceFontScale: varchar("appearanceFontScale", { length: 16 }).default("100").notNull(),
+  appearanceDensity: varchar("appearanceDensity", { length: 16 }).default("comfortable").notNull(),
+  appearanceAccent: varchar("appearanceAccent", { length: 16 }).default("maroon").notNull(),
+  appearanceCorners: varchar("appearanceCorners", { length: 16 }).default("sharp").notNull(),
+  appearanceReducedMotion: integer("appearanceReducedMotion").default(0).notNull(),
   updatedById: integer("updatedById"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
