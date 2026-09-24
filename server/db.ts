@@ -117,7 +117,7 @@ export async function upsertUser(user: InsertUser, options?: UserUpsertOptions):
  * existing matching email keeps its user ID and role, so its procurement
  * records stay connected after the external-auth conversion.
  */
-export async function upsertSupabaseAuthUser(input: { openId: string; email: string | null; name: string | null }): Promise<User> {
+export async function upsertSupabaseAuthUser(input: { openId: string; email: string | null; name: string | null; officeName?: string | null }): Promise<User> {
   const db = await requireDb();
   const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
   const existingByOpenId = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
@@ -125,7 +125,7 @@ export async function upsertSupabaseAuthUser(input: { openId: string; email: str
     ? await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1)
     : [];
   const existing = existingByOpenId[0] ?? existingByEmail[0];
-  const values = { openId: input.openId, email: normalizedEmail, name: input.name, loginMethod: "supabase", lastSignedIn: new Date() };
+  const values = { openId: input.openId, email: normalizedEmail, name: input.name, ...(input.officeName !== undefined ? { officeName: input.officeName?.trim() || null } : {}), loginMethod: "supabase", lastSignedIn: new Date() };
 
   if (existing) {
     const [updated] = await db.update(users).set(values).where(eq(users.id, existing.id)).returning();
@@ -327,7 +327,7 @@ export async function createBudgetAllotment(input: { officeId: number; objectOfE
   return allotment;
 }
 
-export async function createSupplier(input: { supplierCode: string; companyName: string; tin?: string; contactPerson?: string; email?: string; phone?: string; address?: string; offerings?: string; accreditationStatus: "pending" | "accredited" | "suspended" }, user: User) {
+export async function createSupplier(input: { supplierCode: string; companyName: string; tin?: string; contactPerson?: string; email?: string; phone?: string; address?: string; offerings?: string; philgepsRegistrationNumber?: string; philgepsRegistrationDate?: Date; philgepsExpirationDate?: Date; accreditationStatus: "pending" | "accredited" | "suspended" }, user: User) {
   const db = await requireDb();
   await db.insert(suppliers).values({ ...input, tin: input.tin || null, contactPerson: input.contactPerson || null, email: input.email || null, phone: input.phone || null, address: input.address || null, offerings: input.offerings || null, createdById: user.id });
   const [supplier] = await db.select().from(suppliers).where(eq(suppliers.supplierCode, input.supplierCode)).limit(1);
@@ -597,11 +597,12 @@ export async function listEligibleSupplierEvaluationOrders(user: User) {
   return orders.map((order) => ({ order, request: requests.find((request) => request.id === order.purchaseRequestId) ?? null }));
 }
 
-export async function createLetterOfNotice(input: { noticeType: "award" | "disqualification" | "clarification" | "other"; purchaseRequestId?: number; supplierId?: number; subject: string; body: string; issueNow?: boolean }, user: User) {
+export async function createLetterOfNotice(input: { noticeType: "award" | "disqualification" | "clarification" | "demand" | "other"; purchaseRequestId?: number; supplierId?: number; subject: string; body: string; demandDueDate?: Date; issueNow?: boolean }, user: User) {
   const db = await requireDb();
   const noticeNumber = `LON-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   const status = input.issueNow ? "issued" : "draft" as const;
-  await db.insert(lettersOfNotice).values({ noticeNumber, noticeType: input.noticeType, purchaseRequestId: input.purchaseRequestId ?? null, supplierId: input.supplierId ?? null, subject: input.subject.trim(), body: input.body.trim(), status, issuedById: user.id, issuedAt: input.issueNow ? new Date() : null });
+  const reminderDate = input.demandDueDate ? new Date(input.demandDueDate.getTime() - 3 * 24 * 60 * 60 * 1000) : null;
+  await db.insert(lettersOfNotice).values({ noticeNumber, noticeType: input.noticeType, purchaseRequestId: input.purchaseRequestId ?? null, supplierId: input.supplierId ?? null, subject: input.subject.trim(), body: input.body.trim(), status, issuedById: user.id, issuedAt: input.issueNow ? new Date() : null, demandDueDate: input.demandDueDate ?? null, demandReminderDate: reminderDate });
   const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.noticeNumber, noticeNumber)).limit(1);
   if (!notice) throw new Error("Letter of Notice could not be saved.");
   await writeAuditEvent({ entityType: "letter_of_notice", entityId: notice.id, action: input.issueNow ? "issued" : "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { noticeNumber } });
@@ -797,6 +798,24 @@ export async function rejectPreCanvass(input: { preCanvassId: number; reason: st
   return { ...preCanvass, status: "rejected" };
 }
 
+export async function rejectRfq(input: { rfqId: number; reason: string; remarks?: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const reason = input.reason.trim();
+  if (reason.length < 10) throw new Error("An RFQ rejection reason of at least 10 characters is required.");
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq || ["rejected", "closed"].includes(rfq.status)) throw new Error("Only an active RFQ can be rejected.");
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, rfq.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("The linked Purchase Request could not be found.");
+  await db.update(rfqs).set({ status: "rejected", updatedAt: new Date() }).where(eq(rfqs.id, rfq.id));
+  await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+  await recordAudit({ entityType: "rfq", entityId: rfq.id, action: "rejected", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { rfqNumber: rfq.rfqNumber, purchaseRequestId: pr.id, reason, remarks: input.remarks?.trim() || null } });
+  await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: "rejected", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber, source: "rfq", reason, remarks: input.remarks?.trim() || null } });
+  await notifyUser({ recipientUserId: pr.requestedById, kind: "status_change", title: `RFQ ${rfq.rfqNumber} rejected`, body: input.remarks?.trim() ? `${reason} — ${input.remarks.trim()}` : reason, entityType: "rfq", entityId: rfq.id });
+  return { ...rfq, status: "rejected" };
+}
+
 export async function recordPreCanvassResubmission(preCanvassId: number, user: User, options?: OperationalServiceOptions) {
   const db = options?.db ?? await requireDb();
   const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
@@ -885,6 +904,7 @@ export async function listPurchaseRequests(user: User) {
       latestDecisionDate,
     };
   });
+}
 
 export async function getPurchaseRequestDetail(purchaseRequestId: number, user: User) {
   const db = await requireDb();
@@ -969,6 +989,8 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
     await db.update(budgetAllotments).set({ committedAmount: sql`${budgetAllotments.committedAmount} + ${pr.totalEstimate}` }).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear())));
   }
   await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: `status:${input.nextStatus}`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber } });
+}
+
 export async function rejectPurchaseRequest(
   input: { purchaseRequestId: number; reason: string; remarks?: string },
   user: User,
@@ -1322,6 +1344,9 @@ export async function getPurchaseRequestHistory(
     requester: requester ? { id: requester.id, name: requester.name, email: requester.email } : null,
     timeline,
   };
+}
+
+export async function createPreCanvass(input: { purchaseRequestId: number; approvedBudget?: number; quotationDeadline?: Date; deliveryPeriodDays?: number; priceEvaluationMode?: "lot_basis" | "per_item" }, user: User) {
   const db = await requireDb();
   const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
   if (!pr || pr.requestedById !== user.id) throw new Error("End-Users may prepare a Pre-Canvass only for their own Purchase Request.");

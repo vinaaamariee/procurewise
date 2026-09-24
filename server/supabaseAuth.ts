@@ -55,12 +55,16 @@ export async function authenticateSupabaseRequest(req: AuthRequest): Promise<Use
     : typeof data.user.user_metadata?.name === "string"
       ? data.user.user_metadata.name
       : null;
+  const officeName = typeof data.user.user_metadata?.office_name === "string"
+    ? data.user.user_metadata.office_name
+    : null;
 
   try {
     return await upsertSupabaseAuthUser({
       openId: data.user.id,
       email: data.user.email ?? null,
       name: fullName,
+      officeName,
     });
   } catch (error) {
     console.error("[Supabase Auth] Profile bridge failed", {

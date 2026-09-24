@@ -19,8 +19,8 @@ import { SupplierEvaluationFormPage } from "./pages/SupplierEvaluationFormPage";
 import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
+import FormTemplatesPage from "./pages/FormTemplates";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
-import CatalogPage from "./pages/Catalog";
 // Defense workspace — no authentication required
 import DemoEntryPage from "./pages/demo/DemoEntry";
 import DemoOverviewPage from "./pages/demo/DemoOverview";
@@ -53,12 +53,12 @@ function Router() {
       <Route path={"/print/transmittal"}>{protectedPage(<PrintTransmittalPage />)}</Route>
       <Route path={"/print/pre-canvass-abstract"}>{protectedPage(<PrintPreCanvassAbstractPage />)}</Route>
       <Route path={"/plans"}>{protectedPage(<PlansPage />)}</Route>
-      <Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>
       <Route path={"/suppliers"}>{protectedPage(<SupplierRegistryPage />)}</Route>
       <Route path={"/budgets"}>{protectedPage(<BudgetPage />)}</Route>
       <Route path={"/analytics"}>{protectedPage(<AnalyticsPage />)}</Route>
       <Route path={"/audit"}>{protectedPage(<AuditTrailPage />)}</Route>
       <Route path={"/setup"}>{protectedPage(<SetupPage />)}</Route>
+      <Route path={"/form-templates"}>{protectedPage(<FormTemplatesPage />)}</Route>
       <Route path={"/test-records"}>{protectedPage(<TestRecordManagementPage />)}</Route>
       <Route path={"/best-value-policy"}>{protectedPage(<BestValuePolicySettingsPage />)}</Route>
       {/* Defense workspace — no auth required */}

@@ -7,14 +7,13 @@ import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, PackageSearch, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
+import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
 const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashboard; roles: ProcurementRole[] }> = [
   { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["end_user", "admin"] },
-  { label: "Catalog", path: "/catalog", icon: PackageSearch, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
   { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user", "procurement_officer", "admin"] },
@@ -30,6 +29,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Officer settings", path: "/officer/settings", icon: Settings2, roles: ["admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
+  { label: "Editable forms", path: "/form-templates", icon: FileText, roles: ["admin"] },
   { label: "Test records", path: "/test-records", icon: Archive, roles: ["admin"] },
 ];
 
