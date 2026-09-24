@@ -34,10 +34,12 @@ def number(value):
     value = clean(value)
     if value is None:
         return None
+    if re.fullmatch(r"\d{1,2}:\d{2}(:\d{2})?", value):
+        return None
     try:
         return float(value.replace(",", ""))
     except ValueError:
-        return value
+        return None
 
 def choose_monthly_files(extracted):
     grouped = defaultdict(list)
