@@ -1,0 +1,42 @@
+flowchart TD
+    A([Start]) --> B[End-User submits PR + PPMP + preliminary quotation/abstract from completed pre-canvass]
+    B --> C[5.1 Procurement Officer II receives and verifies PR & PPMP]
+    C --> D{PR & PPMP complete?}
+    D -- No --> E[Return to End-User for correction]
+    E --> B
+    D -- Yes --> F[5.2 Procurement Staff records PR to PMR and Tracking Slip]
+    F --> G[5.3 BAC Secretariat/BAC prepares resolution and endorsement]
+    G --> H[ BAC members and HoPE signature handoff ]
+    H --> I[5.4 Procurement Staff prepares RFQ and recommends HoPE approval]
+    I --> J[5.5 Procurement Officer I distributes and retrieves RFQ]
+    J --> K[Procurement Officer I transmits RFQ package to BAC]
+    K --> L[5.6 Procurement Officer I records PhilGEPS posting]
+    L --> M[5.7 Procurement Staff forwards package to BAC]
+    M --> N[Procurement Staff/BAC validates, revises, and prepares official Abstract of Quotations]
+    N --> O{Quotes compliant and evidence complete?}
+    O -- Missing evidence --> P[Procurement Officer requests evidence]
+    P --> Q[Evidence received and reviewed]
+    Q --> R{Evidence accepted?}
+    R -- No --> S[Return evidence for correction]
+    S --> P
+    R -- Yes --> T[Recalculate eligibility and recommendation]
+    O -- Yes --> T
+    T --> U[5.8 BAC/HoPE recommends award of contract]
+    U --> V[5.9 Procurement Staff prepares Letter of Notice]
+    V --> W[5.10 Procurement Officer I serves Letter of Notice]
+    W --> X[5.11 Procurement Staff prepares Purchase Order]
+    X --> Y[5.12 Budget Officer/HoPE signs contract]
+    Y --> Z[5.13 Procurement Officer I releases PO/Contract]
+    Z --> AA[5.14 Supplier/Contractor delivers goods]
+    AA --> AB[5.15 Procurement Officer II monitors delivery]
+    AB --> AC{Delivery complete and verified?}
+    AC -- No / partial --> AA
+    AC -- Yes --> AD[Record receipt and complete PMR]
+    AD --> AE[Audit, documents, notifications, reporting, and public milestone]
+    AE --> AF([End])
+
+    classDef gate fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef action fill:#ecfeff,stroke:#0f766e,color:#134e4a;
+    classDef terminal fill:#f0fdf4,stroke:#15803d,color:#14532d,stroke-width:2px;
+    class D,O,R,AC gate;
+    class A,AF terminal;

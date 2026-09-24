@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 type EntityType = "app_ppmp_entry" | "purchase_request" | "pre_canvass" | "abstract_of_canvass" | "purchase_order";
 
-const documentTypeOptions = ["Supporting document", "Signed Purchase Request", "Supplier quotation", "Canvass acknowledgement", "Abstract of Canvass", "Purchase Order", "Delivery receipt", "PMR attachment"];
+const documentTypeOptions = ["Supporting document", "Signed Purchase Request", "PPMP", "Preliminary quotation / completed pre-canvass", "Supplier quotation", "Canvass acknowledgement", "Official Abstract of Quotations", "Purchase Order", "Delivery receipt", "PMR attachment"];
 
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -107,7 +107,7 @@ export default function DocumentsPage() {
   const previewOfficialForm = () => downloadOfficialForm(true);
   const previewAcknowledgement = () => downloadAcknowledgement(true);
   return <div className="mx-auto max-w-[1240px]">
-    <PageHeader eyebrow="Controlled records" title="Procurement document register" description="Attach and retrieve authorised supporting documents without storing file contents in the procurement database." />
+    <PageHeader eyebrow="Controlled records" title="Procurement document register" description="Attach and retrieve authorised supporting documents, including the End-User's three-file submission package and Procurement Staff/BAC's official Abstract of Quotations." />
     <div className="mt-7 grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
       <FormShell title="Attach supporting document" description="PDF, JPG, PNG, DOC, DOCX, XLS, and XLSX files up to 10 MB are stored securely against the selected procurement record." icon={<FolderUp className="h-4 w-4" />} onSubmit={submit}>
         <div className="mt-5 grid gap-4">

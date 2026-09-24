@@ -779,6 +779,24 @@ export async function requestPreCanvassCorrection(input: { preCanvassId: number;
   return correction;
 }
 
+export async function rejectPreCanvass(input: { preCanvassId: number; reason: string; remarks?: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const reason = input.reason.trim();
+  if (reason.length < 10) throw new Error("An RFQ rejection reason of at least 10 characters is required.");
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
+  if (!preCanvass || !["submitted", "draft"].includes(preCanvass.status)) throw new Error("Only an active Pre-Canvass package can be rejected.");
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, preCanvass.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("The linked Purchase Request could not be found.");
+  await db.update(preCanvasses).set({ status: "rejected", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
+  await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+  await recordAudit({ entityType: "pre_canvass", entityId: preCanvass.id, action: "rejected", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassNumber: preCanvass.preCanvassNumber, purchaseRequestId: pr.id, reason, remarks: input.remarks?.trim() || null } });
+  await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: "rejected", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber, source: "rfq", reason, remarks: input.remarks?.trim() || null } });
+  await notifyUser({ recipientUserId: pr.requestedById, kind: "status_change", title: `RFQ ${preCanvass.preCanvassNumber} rejected`, body: input.remarks?.trim() ? `${reason} — ${input.remarks.trim()}` : reason, entityType: "pre_canvass", entityId: preCanvass.id });
+  return { ...preCanvass, status: "rejected" };
+}
+
 export async function recordPreCanvassResubmission(preCanvassId: number, user: User, options?: OperationalServiceOptions) {
   const db = options?.db ?? await requireDb();
   const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
@@ -843,7 +861,36 @@ export async function listPurchaseRequests(user: User) {
     ? db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id))
     : db.select().from(purchaseRequests);
   const archivedPpmpEntryIds = new Set((await db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt))).map((archive) => archive.ppmpEntryId));
-  return (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
+  const visible = (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
+  if (!visible.length) return visible;
+  const events = await db.select().from(auditTrails).where(and(eq(auditTrails.entityType, "purchase_request"), inArray(auditTrails.entityId, visible.map((record) => record.id)))).orderBy(desc(auditTrails.createdAt));
+  return visible.map((record) => {
+    const rejectionEvents = events.filter((event) => event.entityId === record.id && event.action === "rejected");
+    const latestRejection = rejectionEvents[0];
+    const details = latestRejection?.details && typeof latestRejection.details === "object" ? latestRejection.details as Record<string, unknown> : {};
+    return { ...record, rejectionCount: rejectionEvents.length, rejectionReason: typeof details.reason === "string" ? details.reason : null, lastDecisionAt: latestRejection?.createdAt ?? null };
+  });
+}
+
+export async function getPurchaseRequestHistory(purchaseRequestId: number, user: User) {
+  const db = await requireDb();
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+  const role = normalizeProcurementRole(user.role);
+  if (role === "end_user" && pr.requestedById !== user.id) throw new Error("End-Users may access only their own Purchase Request history.");
+  const [events, corrections, actorRows] = await Promise.all([
+    db.select().from(auditTrails).where(and(eq(auditTrails.entityType, "purchase_request"), eq(auditTrails.entityId, purchaseRequestId))).orderBy(auditTrails.createdAt),
+    db.select().from(workflowCorrections).where(or(and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, purchaseRequestId)), and(eq(workflowCorrections.entityType, "pre_canvass"), eq(workflowCorrections.entityId, purchaseRequestId)))),
+    db.select({ id: users.id, name: users.name, email: users.email }).from(users),
+  ]);
+  const actors = new Map(actorRows.map((actor) => [actor.id, actor]));
+  return {
+    purchaseRequest: pr,
+    rejectionCount: events.filter((event) => event.action === "rejected").length,
+    correctionCount: corrections.length,
+    events: events.map((event) => ({ ...event, actor: actors.get(event.performedById) ?? null })),
+    corrections: corrections.map((correction) => ({ ...correction, requestedBy: actors.get(correction.requestedById) ?? null })),
+  };
 }
 
 export async function getPurchaseRequestDetail(purchaseRequestId: number, user: User) {
@@ -930,6 +977,25 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   }
   await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: `status:${input.nextStatus}`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber } });
   return { ...pr, ...update };
+}
+
+export async function rejectPurchaseRequest(input: { purchaseRequestId: number; reason: string; remarks?: string }, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyUser = options?.notifyUser ?? createWorkflowNotification;
+  const reason = input.reason.trim();
+  if (reason.length < 10) throw new Error("A rejection reason of at least 10 characters is required.");
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+  if (["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(pr.status)) throw new Error("This Purchase Request cannot be rejected at its current workflow stage.");
+  const previousStatus = pr.status;
+  if (["procurement_review", "approval_review", "budget_review", "supply_review", "bac_review"].includes(previousStatus)) {
+    await db.update(budgetAllotments).set({ committedAmount: sql`GREATEST(${budgetAllotments.committedAmount} - ${pr.totalEstimate}, 0)` }).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear())));
+  }
+  await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+  await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: "rejected", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber, previousStatus, newStatus: "rejected", reason, remarks: input.remarks?.trim() || null } });
+  await notifyUser({ recipientUserId: pr.requestedById, kind: "status_change", title: `Purchase Request ${pr.prNumber} rejected`, body: input.remarks?.trim() ? `${reason} — ${input.remarks.trim()}` : reason, entityType: "purchase_request", entityId: pr.id });
+  return { ...pr, status: "rejected" as const, rejectionReason: reason };
 }
 
 export async function createPreCanvass(input: { purchaseRequestId: number; approvedBudget?: number; quotationDeadline?: Date; deliveryPeriodDays?: number; priceEvaluationMode?: "lot_basis" | "per_item" }, user: User) {
