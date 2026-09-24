@@ -175,6 +175,7 @@ export const purchaseRequests = procurewiseSchema.table("purchase_requests", {
   trackingToken: varchar("trackingToken", { length: 48 }).notNull().unique(),
   ppmpEntryId: integer("ppmpEntryId"),
   procurementReviewedById: integer("procurementReviewedById"),
+  assignedOfficerId: integer("assignedOfficerId"),
   administrativeApprovedById: integer("administrativeApprovedById"),
   budgetReviewedById: integer("budgetReviewedById"),
   supplyReviewedById: integer("supplyReviewedById"),
@@ -524,6 +525,60 @@ export const auditTrails = procurewiseSchema.table("audit_trails", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("audit_entity_created_idx").on(table.entityType, table.entityId, table.createdAt)]);
 
+export const purchaseRequestDecisions = procurewiseSchema.table("purchase_request_decisions", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  purchaseRequestId: integer("purchaseRequestId").notNull(),
+  decisionType: varchar("decisionType", { length: 64 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 64 }).notNull(),
+  toStatus: varchar("toStatus", { length: 64 }).notNull(),
+  reason: text("reason").notNull(),
+  remarks: text("remarks"),
+  performedById: integer("performedById").notNull(),
+  performedByRole: varchar("performedByRole", { length: 64 }).notNull(),
+  documentId: integer("documentId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("pr_decision_pr_idx").on(table.purchaseRequestId, table.createdAt),
+]);
+
+export const rfqNumberAssignments = procurewiseSchema.table("rfq_number_assignments", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  fiscalYear: integer("fiscalYear").notNull(),
+  sequenceNumber: integer("sequenceNumber").notNull(),
+  formattedRfqNumber: varchar("formattedRfqNumber", { length: 48 }).notNull().unique(),
+  assignmentMode: varchar("assignmentMode", { length: 32 }).notNull(),
+  urgentReason: text("urgentReason"),
+  assignedById: integer("assignedById").notNull(),
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+  purchaseRequestId: integer("purchaseRequestId"),
+  rfqId: integer("rfqId"),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+}, (table) => [
+  index("rfq_num_year_seq_idx").on(table.fiscalYear, table.sequenceNumber),
+  index("rfq_num_pr_idx").on(table.purchaseRequestId),
+]);
+
+export const formTemplates = procurewiseSchema.table("form_templates", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  templateKey: varchar("templateKey", { length: 64 }).notNull(),
+  version: integer("version").notNull(),
+  displayName: varchar("displayName", { length: 180 }).notNull(),
+  status: varchar("status", { length: 32 }).$type<"draft" | "active" | "archived">().default("draft").notNull(),
+  configurationJson: json("configurationJson").$type<Record<string, unknown>>().notNull(),
+  createdById: integer("createdById").notNull(),
+  updatedById: integer("updatedById").notNull(),
+  approvedById: integer("approvedById"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  activatedAt: timestamp("activatedAt"),
+}, (table) => [
+  uniqueIndex("form_template_key_version_unique").on(table.templateKey, table.version),
+  index("form_template_key_status_idx").on(table.templateKey, table.status),
+]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
+export type PurchaseRequestDecision = typeof purchaseRequestDecisions.$inferSelect;
+export type RfqNumberAssignment = typeof rfqNumberAssignments.$inferSelect;
+export type FormTemplate = typeof formTemplates.$inferSelect;

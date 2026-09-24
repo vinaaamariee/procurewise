@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
-import { hasRequiredSupplierQuotations, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
+import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, formTemplates, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestDecisions, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqNumberAssignments, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
+import { areUnitsCompatible, getEmployeePrStatus, hasRequiredSupplierQuotations, normalizeProcurementRole, OFFICIAL_ROLE_LABELS, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
 import { storagePut } from "./storage";
@@ -151,7 +151,7 @@ async function requireDb() {
   return db;
 }
 
-async function writeAuditEvent(input: { entityType: string; entityId: number; action: string; performedById: number; performedByRole: ProcurementRole; details?: Record<string, unknown> }) {
+export async function writeAuditEvent(input: { entityType: string; entityId: number; action: string; performedById: number; performedByRole: ProcurementRole; details?: Record<string, unknown> }) {
   const db = await requireDb();
   await db.insert(auditTrails).values({ ...input, details: input.details ?? null });
 }
@@ -842,8 +842,31 @@ export async function listPurchaseRequests(user: User) {
   const records = normalizeProcurementRole(user.role) === "end_user"
     ? db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id))
     : db.select().from(purchaseRequests);
-  const archivedPpmpEntryIds = new Set((await db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt))).map((archive) => archive.ppmpEntryId));
-  return (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
+  const [archivedArchives, allDecisions, allAudits] = await Promise.all([
+    db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt)),
+    db.select().from(purchaseRequestDecisions),
+    db.select().from(auditTrails).where(eq(auditTrails.entityType, "purchase_request")),
+  ]);
+  const archivedPpmpEntryIds = new Set(archivedArchives.map((archive) => archive.ppmpEntryId));
+  const activeRecords = (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
+
+  return activeRecords.map((pr) => {
+    const prDecisions = allDecisions.filter((d) => d.purchaseRequestId === pr.id);
+    const prAudits = allAudits.filter((a) => a.entityId === pr.id);
+    const rejections = prDecisions.filter((d) => d.decisionType === "rejected");
+    const fallbackAuditRejections = prAudits.filter((a) => a.action === "rejected");
+    const rejectionCount = Math.max(rejections.length, fallbackAuditRejections.length);
+    const latestRejectionReason = rejections.at(-1)?.reason
+      || (fallbackAuditRejections.at(-1)?.details?.reason as string | undefined)
+      || null;
+    const latestDecisionDate = prDecisions.at(-1)?.createdAt || pr.updatedAt || pr.createdAt;
+    return {
+      ...pr,
+      rejectionCount,
+      latestRejectionReason,
+      latestDecisionDate,
+    };
+  });
 }
 
 export async function getPurchaseRequestDetail(purchaseRequestId: number, user: User) {
@@ -930,6 +953,497 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   }
   await recordAudit({ entityType: "purchase_request", entityId: pr.id, action: `status:${input.nextStatus}`, performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber: pr.prNumber } });
   return { ...pr, ...update };
+}
+
+export async function rejectPurchaseRequest(
+  input: { purchaseRequestId: number; reason: string; remarks?: string },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  if (!input.reason || input.reason.trim().length < 10) {
+    throw new Error("A specific rejection reason of at least 10 characters is required.");
+  }
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "administrative_approver", "admin"])) {
+    throw new Error("Your assigned role is not authorized to reject Purchase Requests.");
+  }
+
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+
+  const nonRejectable = new Set(["rejected", "delivered", "pmr_logged", "closed", "completed"]);
+  if (nonRejectable.has(pr.status)) {
+    throw new Error(`Purchase Request in status "${pr.status}" cannot be rejected.`);
+  }
+
+  const hasCommittedBudget = ["procurement_review", "approval_review", "approved", "rfq", "po", "po_issued", "budget_review", "supply_review", "bac_review"].includes(pr.status);
+  if (hasCommittedBudget) {
+    await db.update(budgetAllotments)
+      .set({ committedAmount: sql`GREATEST(0, ${budgetAllotments.committedAmount} - ${pr.totalEstimate})` })
+      .where(and(
+        eq(budgetAllotments.officeId, pr.officeId),
+        eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId),
+        eq(budgetAllotments.fiscalYear, new Date().getFullYear())
+      ));
+  }
+
+  await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+
+  await db.insert(purchaseRequestDecisions).values({
+    purchaseRequestId: pr.id,
+    decisionType: "rejected",
+    fromStatus: pr.status,
+    toStatus: "rejected",
+    reason: input.reason.trim(),
+    remarks: input.remarks?.trim() || null,
+    performedById: user.id,
+    performedByRole: actorRole,
+    createdAt: new Date(),
+  });
+
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: pr.id,
+    action: "rejected",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      prNumber: pr.prNumber,
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || null,
+      previousStatus: pr.status,
+      newStatus: "rejected",
+    },
+  });
+
+  try {
+    await createWorkflowNotification({
+      recipientUserId: pr.requestedById,
+      kind: "status_change",
+      title: `Purchase Request ${pr.prNumber} rejected`,
+      body: `Your Purchase Request was rejected: ${input.reason.trim()}`,
+      entityType: "purchase_request",
+      entityId: pr.id,
+    });
+  } catch {
+    // Notification failure should not block transaction
+  }
+
+  return { status: "rejected" as const, reason: input.reason.trim() };
+}
+
+export async function returnPurchaseRequestForCorrection(
+  input: { purchaseRequestId: number; reason: string; remarks?: string },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  if (!input.reason || input.reason.trim().length < 10) {
+    throw new Error("A specific correction reason of at least 10 characters is required.");
+  }
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "administrative_approver", "admin"])) {
+    throw new Error("Your assigned role is not authorized to return Purchase Requests for correction.");
+  }
+
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+
+  if (["rejected", "delivered", "pmr_logged", "closed"].includes(pr.status)) {
+    throw new Error(`Purchase Request in status "${pr.status}" cannot be returned for correction.`);
+  }
+
+  await db.update(purchaseRequests).set({ status: "returned", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+
+  await db.insert(workflowCorrections).values({
+    entityType: "purchase_request",
+    entityId: pr.id,
+    requestedById: user.id,
+    assignedToId: pr.requestedById,
+    reason: input.reason.trim(),
+    status: "open",
+    createdAt: new Date(),
+  });
+
+  await db.insert(purchaseRequestDecisions).values({
+    purchaseRequestId: pr.id,
+    decisionType: "returned",
+    fromStatus: pr.status,
+    toStatus: "returned",
+    reason: input.reason.trim(),
+    remarks: input.remarks?.trim() || null,
+    performedById: user.id,
+    performedByRole: actorRole,
+    createdAt: new Date(),
+  });
+
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: pr.id,
+    action: "returned",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      prNumber: pr.prNumber,
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || null,
+      previousStatus: pr.status,
+      newStatus: "returned",
+    },
+  });
+
+  try {
+    await createWorkflowNotification({
+      recipientUserId: pr.requestedById,
+      kind: "correction",
+      title: `Purchase Request ${pr.prNumber} returned for correction`,
+      body: `Correction required: ${input.reason.trim()}`,
+      entityType: "purchase_request",
+      entityId: pr.id,
+    });
+  } catch {
+    // Notification failure should not block transaction
+  }
+
+  return { status: "returned" as const, reason: input.reason.trim() };
+}
+
+export async function resubmitPurchaseRequest(
+  input: { purchaseRequestId: number; remarks?: string },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+  if (pr.requestedById !== user.id) {
+    throw new Error("You may only resubmit your own Purchase Requests.");
+  }
+  if (pr.status !== "returned") {
+    throw new Error("Only Purchase Requests in returned status can be resubmitted.");
+  }
+
+  await db.update(workflowCorrections)
+    .set({ status: "resolved", resolvedAt: new Date() })
+    .where(and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, pr.id), eq(workflowCorrections.status, "open")));
+
+  await db.update(purchaseRequests)
+    .set({ status: "procurement_review", submittedAt: new Date(), updatedAt: new Date() })
+    .where(eq(purchaseRequests.id, pr.id));
+
+  await db.insert(purchaseRequestDecisions).values({
+    purchaseRequestId: pr.id,
+    decisionType: "resubmitted",
+    fromStatus: "returned",
+    toStatus: "procurement_review",
+    reason: input.remarks?.trim() || "Employee corrected and resubmitted the package.",
+    remarks: input.remarks?.trim() || null,
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    createdAt: new Date(),
+  });
+
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: pr.id,
+    action: "resubmitted",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: { prNumber: pr.prNumber, remarks: input.remarks?.trim() || null },
+  });
+
+  try {
+    await notifyRoles(["procurement_officer"], {
+      kind: "action_required",
+      title: "Purchase Request resubmitted",
+      body: `PR ${pr.prNumber} has been corrected and resubmitted for verification.`,
+      entityType: "purchase_request",
+      entityId: pr.id,
+    });
+  } catch {}
+
+  return { status: "procurement_review" as const };
+}
+
+export async function assignPurchaseRequestOfficer(
+  input: { purchaseRequestId: number; officerId: number },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "admin"])) {
+    throw new Error("Your assigned role is not authorized to assign procurement officers.");
+  }
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+
+  await db.update(purchaseRequests).set({ assignedOfficerId: input.officerId, updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: pr.id,
+    action: "officer_assigned",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: { prNumber: pr.prNumber, assignedOfficerId: input.officerId },
+  });
+
+  return { success: true };
+}
+
+export async function getPurchaseRequestHistory(
+  purchaseRequestId: number,
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+
+  const actorRole = normalizeProcurementRole(user.role);
+  if (actorRole === "end_user" && pr.requestedById !== user.id) {
+    throw new Error("End-Users may access only their own Purchase Request history.");
+  }
+
+  const [decisions, audits, corrections, allUsers] = await Promise.all([
+    db.select().from(purchaseRequestDecisions).where(eq(purchaseRequestDecisions.purchaseRequestId, pr.id)),
+    db.select().from(auditTrails).where(and(eq(auditTrails.entityType, "purchase_request"), eq(auditTrails.entityId, pr.id))),
+    db.select().from(workflowCorrections).where(and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, pr.id))),
+    db.select().from(users),
+  ]);
+
+  const userMap = new Map(allUsers.map((u) => [u.id, u]));
+  const assignedOfficer = pr.assignedOfficerId ? userMap.get(pr.assignedOfficerId) : null;
+  const requester = userMap.get(pr.requestedById);
+
+  const rejections = decisions.filter((d) => d.decisionType === "rejected");
+  const fallbackAuditRejections = audits.filter((a) => a.action === "rejected");
+  const totalRejectionCount = Math.max(rejections.length, fallbackAuditRejections.length);
+
+  const returns = decisions.filter((d) => d.decisionType === "returned");
+  const totalCorrectionCount = Math.max(returns.length, corrections.length);
+
+  const latestRejectionReason = rejections.at(-1)?.reason
+    || (fallbackAuditRejections.at(-1)?.details?.reason as string | undefined)
+    || null;
+
+  const latestCorrectionReason = returns.at(-1)?.reason
+    || corrections.at(-1)?.reason
+    || null;
+
+  const statusMeta = getEmployeePrStatus(pr.status);
+
+  type TimelineItem = {
+    id: string;
+    timestamp: Date;
+    actorId: number;
+    actorName: string;
+    actorRole: string;
+    action: string;
+    fromStatus: string | null;
+    toStatus: string | null;
+    reason: string | null;
+    remarks: string | null;
+    documentId: number | null;
+  };
+
+  const timeline: TimelineItem[] = [];
+
+  for (const decision of decisions) {
+    const actor = userMap.get(decision.performedById);
+    timeline.push({
+      id: `decision-${decision.id}`,
+      timestamp: decision.createdAt,
+      actorId: decision.performedById,
+      actorName: actor?.name || `User #${decision.performedById}`,
+      actorRole: OFFICIAL_ROLE_LABELS[decision.performedByRole as ProcurementRole] ?? decision.performedByRole,
+      action: decision.decisionType,
+      fromStatus: decision.fromStatus,
+      toStatus: decision.toStatus,
+      reason: decision.reason,
+      remarks: decision.remarks,
+      documentId: decision.documentId,
+    });
+  }
+
+  for (const audit of audits) {
+    const isAlreadyRepresented = decisions.some((d) => d.createdAt.getTime() === audit.createdAt.getTime() && d.decisionType === audit.action);
+    if (!isAlreadyRepresented) {
+      const actor = userMap.get(audit.performedById);
+      const details = (audit.details || {}) as Record<string, unknown>;
+      timeline.push({
+        id: `audit-${audit.id}`,
+        timestamp: audit.createdAt,
+        actorId: audit.performedById,
+        actorName: actor?.name || `User #${audit.performedById}`,
+        actorRole: OFFICIAL_ROLE_LABELS[audit.performedByRole as ProcurementRole] ?? audit.performedByRole,
+        action: audit.action,
+        fromStatus: (details.previousStatus as string) || null,
+        toStatus: (details.newStatus as string) || null,
+        reason: (details.reason as string) || null,
+        remarks: (details.remarks as string) || null,
+        documentId: null,
+      });
+    }
+  }
+
+  timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  return {
+    purchaseRequest: pr,
+    internalStatus: pr.status,
+    employeeStatus: statusMeta.label,
+    employeeMeaning: statusMeta.meaning,
+    totalRejectionCount,
+    totalCorrectionCount,
+    latestRejectionReason,
+    latestCorrectionReason,
+    assignedOfficer: assignedOfficer ? { id: assignedOfficer.id, name: assignedOfficer.name, role: assignedOfficer.role } : null,
+    requester: requester ? { id: requester.id, name: requester.name, email: requester.email } : null,
+    timeline,
+  };
+}
+
+export async function rejectPreCanvass(
+  input: { preCanvassId: number; reason: string; remarks?: string },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  if (!input.reason || input.reason.trim().length < 10) {
+    throw new Error("A specific rejection reason of at least 10 characters is required.");
+  }
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "administrative_approver", "admin"])) {
+    throw new Error("Your assigned role is not authorized to reject Pre-Canvass packages.");
+  }
+
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
+  if (!preCanvass) throw new Error("Pre-Canvass not found.");
+
+  if (["rejected", "abstracted", "approved"].includes(preCanvass.status)) {
+    throw new Error(`Pre-Canvass in status "${preCanvass.status}" cannot be rejected.`);
+  }
+
+  await db.update(preCanvasses).set({ status: "rejected", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
+
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, preCanvass.purchaseRequestId)).limit(1);
+  if (pr && pr.status !== "rejected") {
+    await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+    await db.insert(purchaseRequestDecisions).values({
+      purchaseRequestId: pr.id,
+      decisionType: "rejected",
+      fromStatus: pr.status,
+      toStatus: "rejected",
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || `Pre-Canvass ${preCanvass.preCanvassNumber} rejected.`,
+      performedById: user.id,
+      performedByRole: actorRole,
+      createdAt: new Date(),
+    });
+  }
+
+  await recordAudit({
+    entityType: "pre_canvass",
+    entityId: preCanvass.id,
+    action: "rejected",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      preCanvassNumber: preCanvass.preCanvassNumber,
+      purchaseRequestId: preCanvass.purchaseRequestId,
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || null,
+    },
+  });
+
+  try {
+    await createWorkflowNotification({
+      recipientUserId: preCanvass.preparedById,
+      kind: "status_change",
+      title: `Pre-Canvass ${preCanvass.preCanvassNumber} rejected`,
+      body: `Your Pre-Canvass package was rejected: ${input.reason.trim()}`,
+      entityType: "pre_canvass",
+      entityId: preCanvass.id,
+    });
+  } catch {}
+
+  return { status: "rejected" as const, reason: input.reason.trim() };
+}
+
+export async function rejectRfq(
+  input: { rfqId: number; reason: string; remarks?: string },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  if (!input.reason || input.reason.trim().length < 10) {
+    throw new Error("A specific rejection reason of at least 10 characters is required.");
+  }
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "administrative_approver", "admin"])) {
+    throw new Error("Your assigned role is not authorized to reject RFQs.");
+  }
+
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+
+  if (["rejected", "completed"].includes(rfq.status)) {
+    throw new Error(`RFQ in status "${rfq.status}" cannot be rejected.`);
+  }
+
+  await db.update(rfqs).set({ status: "rejected", updatedAt: new Date() }).where(eq(rfqs.id, rfq.id));
+
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, rfq.purchaseRequestId)).limit(1);
+  if (pr && pr.status !== "rejected") {
+    await db.update(purchaseRequests).set({ status: "rejected", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+    await db.insert(purchaseRequestDecisions).values({
+      purchaseRequestId: pr.id,
+      decisionType: "rejected",
+      fromStatus: pr.status,
+      toStatus: "rejected",
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || `RFQ ${rfq.rfqNumber} rejected.`,
+      performedById: user.id,
+      performedByRole: actorRole,
+      createdAt: new Date(),
+    });
+  }
+
+  await recordAudit({
+    entityType: "rfq",
+    entityId: rfq.id,
+    action: "rejected",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      rfqNumber: rfq.rfqNumber,
+      purchaseRequestId: rfq.purchaseRequestId,
+      reason: input.reason.trim(),
+      remarks: input.remarks?.trim() || null,
+    },
+  });
+
+  try {
+    await createWorkflowNotification({
+      recipientUserId: rfq.createdById,
+      kind: "status_change",
+      title: `RFQ ${rfq.rfqNumber} rejected`,
+      body: `The RFQ was rejected: ${input.reason.trim()}`,
+      entityType: "rfq",
+      entityId: rfq.id,
+    });
+  } catch {}
+
+  return { status: "rejected" as const, reason: input.reason.trim() };
 }
 
 export async function createPreCanvass(input: { purchaseRequestId: number; approvedBudget?: number; quotationDeadline?: Date; deliveryPeriodDays?: number; priceEvaluationMode?: "lot_basis" | "per_item" }, user: User) {
@@ -1296,4 +1810,603 @@ export async function getProcurementDashboard(user: User) {
   }, {});
   const topCommodities = Object.entries(commodityTotals).sort(([, a], [, b]) => b - a).slice(0, 5).map(([description, amount]) => ({ description, amount: amount.toFixed(2) }));
   return { purchaseRequests: prRows, purchaseRequestItems: relatedItems, preCanvasses: preCanvassRows, preCanvassQuotes: preCanvassQuoteRows, abstractsOfCanvass: abstractOfCanvassRows, deliveryReceipts: deliveryRows, pmrLogs: pmrRows, rfqs: rfqRows, supplierQuotations: quotationRows, quotationAbstracts: abstractRows, purchaseOrders: poRows, auditEvents: auditRows, appPpmpEntries: planRows, documents, corrections, notifications, analytics: { averageCycleTimeDays: cycleTimes.length ? cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length : null, topCommodities } };
+}
+
+export async function assignRfqNumber(
+  input: {
+    fiscalYear?: number;
+    mode: "sequential" | "urgent_manual";
+    manualNumber?: string;
+    urgentReason?: string;
+    purchaseRequestId?: number;
+    rfqId?: number;
+  },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "admin"])) {
+    throw new Error("Your assigned role is not authorized to assign RFQ numbers.");
+  }
+
+  const fiscalYear = input.fiscalYear ?? new Date().getFullYear();
+  let formattedRfqNumber: string;
+  let sequenceNumber: number;
+
+  if (input.mode === "urgent_manual") {
+    if (!input.urgentReason || input.urgentReason.trim().length < 10) {
+      throw new Error("A specific urgent reason of at least 10 characters is required for manual RFQ numbering.");
+    }
+    if (!input.manualNumber || !input.manualNumber.trim()) {
+      throw new Error("A valid manual RFQ number must be provided.");
+    }
+    formattedRfqNumber = input.manualNumber.trim();
+    const [existingAssignment] = await db.select().from(rfqNumberAssignments).where(eq(rfqNumberAssignments.formattedRfqNumber, formattedRfqNumber)).limit(1);
+    if (existingAssignment) {
+      throw new Error(`RFQ number "${formattedRfqNumber}" has already been assigned.`);
+    }
+    const existingYear = await db.select().from(rfqNumberAssignments).where(eq(rfqNumberAssignments.fiscalYear, fiscalYear));
+    const maxSeq = existingYear.reduce((max, a) => Math.max(max, a.sequenceNumber), 0);
+    sequenceNumber = maxSeq + 1;
+  } else {
+    const existingYear = await db.select().from(rfqNumberAssignments).where(eq(rfqNumberAssignments.fiscalYear, fiscalYear));
+    let nextSeq = existingYear.reduce((max, a) => Math.max(max, a.sequenceNumber), 0) + 1;
+    let candidate = `RFQ-${fiscalYear}-${String(nextSeq).padStart(4, "0")}`;
+    while (existingYear.some((a) => a.formattedRfqNumber === candidate)) {
+      nextSeq += 1;
+      candidate = `RFQ-${fiscalYear}-${String(nextSeq).padStart(4, "0")}`;
+    }
+    sequenceNumber = nextSeq;
+    formattedRfqNumber = candidate;
+  }
+
+  const [created] = await db.insert(rfqNumberAssignments).values({
+    fiscalYear,
+    sequenceNumber,
+    formattedRfqNumber,
+    assignmentMode: input.mode,
+    urgentReason: input.urgentReason?.trim() || null,
+    assignedById: user.id,
+    assignedAt: new Date(),
+    purchaseRequestId: input.purchaseRequestId ?? null,
+    rfqId: input.rfqId ?? null,
+    status: "active",
+  }).returning();
+
+  if (input.rfqId) {
+    await db.update(rfqs).set({ rfqNumber: formattedRfqNumber, updatedAt: new Date() }).where(eq(rfqs.id, input.rfqId));
+  }
+
+  await recordAudit({
+    entityType: "rfq",
+    entityId: input.rfqId ?? created.id,
+    action: "rfq_number_assigned",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      fiscalYear,
+      sequenceNumber,
+      formattedRfqNumber,
+      assignmentMode: input.mode,
+      urgentReason: input.urgentReason?.trim() || null,
+      purchaseRequestId: input.purchaseRequestId,
+      rfqId: input.rfqId,
+    },
+  });
+
+  return created;
+}
+
+export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; configurationJson: Record<string, unknown> }> = {
+  purchase_request: {
+    displayName: "Purchase Request (Appendix 60)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "PURCHASE REQUEST",
+      instructionText: "State clearly the purpose, commodity specifications, quantities, and approved unit costs.",
+      signatoryLabels: { requester: "Requested By", approver: "Approved By" },
+      requiredFields: ["prNumber", "officeId", "fundSource", "purpose", "items"],
+    },
+  },
+  ppmp: {
+    displayName: "Project Procurement Management Plan (PPMP)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "PROJECT PROCUREMENT MANAGEMENT PLAN",
+      instructionText: "Plan procurement projects, schedules, and estimated budgets per object of expenditure.",
+      requiredFields: ["fiscalYear", "officeId", "objectOfExpenditureId", "description", "plannedAmount"],
+    },
+  },
+  pre_canvass: {
+    displayName: "Pre-Canvass / Preliminary Quotation (Annex D/E)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "PRE-CANVASS / MARKET SCOPING",
+      instructionText: "Collect three preliminary supplier quotations for market sounding prior to official RFQ.",
+      requiredFields: ["preCanvassNumber", "purchaseRequestId", "quotationDeadline", "deliveryPeriodDays"],
+    },
+  },
+  rfq: {
+    displayName: "Request for Quotation (Official Annex D)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "REQUEST FOR QUOTATION",
+      instructionText: "Suppliers must submit quotations within the standard 7 calendar days submission period.",
+      responsePeriodDays: 7,
+      requiredFields: ["rfqNumber", "purchaseRequestId", "quotationDeadline"],
+    },
+  },
+  abstract_of_quotations: {
+    displayName: "Abstract of Quotations (Annex F)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit / BAC",
+      headerText: "ABSTRACT OF QUOTATIONS",
+      instructionText: "Record lowest compliant quotation, supplier comparison, and BAC certification.",
+      requiredFields: ["abstractNumber", "rfqId", "recommendedSupplierId", "certificationText"],
+    },
+  },
+  letter_of_notice: {
+    displayName: "Letter of Notice / Canvass Letter",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "LETTER OF NOTICE",
+      instructionText: "Official transmittal and invitation to participate in price canvass.",
+      requiredFields: ["noticeNumber", "supplierId", "purchaseRequestId"],
+    },
+  },
+  purchase_order: {
+    displayName: "Purchase Order (Appendix 61)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Procurement Unit",
+      headerText: "PURCHASE ORDER",
+      instructionText: "Prescribed government contract for goods and services delivery under RA 9184.",
+      requiredFields: ["poNumber", "supplierId", "totalAmount", "placeOfDelivery", "deliveryTerm", "paymentTerm"],
+    },
+  },
+  pmr: {
+    displayName: "Procurement Monitoring Report (PMR)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Bids and Awards Committee / Procurement Office",
+      headerText: "PROCUREMENT MONITORING REPORT",
+      instructionText: "Comprehensive monitoring log of procurement lifecycle from PPMP to inspection.",
+      requiredFields: ["pmrNumber", "purchaseOrderId", "completionDate", "responsibleOfficer"],
+    },
+  },
+  supplier_evaluation_goods: {
+    displayName: "Supplier Evaluation Form (Goods)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "PROCUREMENT UNIT",
+      headerText: "SUPPLIER EVALUATION FORM (Goods)",
+      subtitle: "To be accomplished by Procurement Office",
+      instructions: "Please rate the supplier according to each criterion provided (1 to 4).",
+      requiredFields: ["supplierId", "purchaseOrderId", "respondentName", "criteriaScores"],
+    },
+  },
+};
+
+export async function listFormTemplates(options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  return db.select().from(formTemplates).orderBy(formTemplates.templateKey, desc(formTemplates.version));
+}
+
+export async function getActiveFormTemplate(templateKey: string, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const [active] = await db.select().from(formTemplates).where(and(eq(formTemplates.templateKey, templateKey), eq(formTemplates.status, "active"))).limit(1);
+  if (active) return active;
+  const fallback = DEFAULT_FORM_TEMPLATES[templateKey];
+  if (fallback) {
+    return {
+      id: 0,
+      templateKey,
+      version: 1,
+      displayName: fallback.displayName,
+      status: "active" as const,
+      configurationJson: fallback.configurationJson,
+      createdById: 1,
+      updatedById: 1,
+      approvedById: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      activatedAt: new Date(),
+    };
+  }
+  return null;
+}
+
+export async function saveFormTemplateDraft(
+  input: { templateKey: string; displayName: string; configurationJson: Record<string, unknown> },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (actorRole !== "admin") {
+    throw new Error("Only an Administrator can create or update form template drafts.");
+  }
+
+  const fallback = DEFAULT_FORM_TEMPLATES[input.templateKey];
+  if (fallback?.configurationJson.requiredFields && Array.isArray(fallback.configurationJson.requiredFields)) {
+    const required = fallback.configurationJson.requiredFields as string[];
+    const inputRequired = Array.isArray(input.configurationJson.requiredFields) ? input.configurationJson.requiredFields as string[] : [];
+    for (const req of required) {
+      if (!inputRequired.includes(req)) {
+        throw new Error(`Form template draft cannot omit mandatory workflow field "${req}".`);
+      }
+    }
+  }
+
+  const [existingDraft] = await db.select().from(formTemplates).where(and(eq(formTemplates.templateKey, input.templateKey), eq(formTemplates.status, "draft"))).limit(1);
+
+  let template: typeof formTemplates.$inferSelect;
+  if (existingDraft) {
+    await db.update(formTemplates).set({
+      displayName: input.displayName.trim(),
+      configurationJson: input.configurationJson,
+      updatedById: user.id,
+      updatedAt: new Date(),
+    }).where(eq(formTemplates.id, existingDraft.id));
+    const [updated] = await db.select().from(formTemplates).where(eq(formTemplates.id, existingDraft.id)).limit(1);
+    template = updated!;
+  } else {
+    const allVersions = await db.select().from(formTemplates).where(eq(formTemplates.templateKey, input.templateKey));
+    const maxVersion = allVersions.reduce((max, t) => Math.max(max, t.version), 0);
+    const newVersion = maxVersion + 1;
+    const [created] = await db.insert(formTemplates).values({
+      templateKey: input.templateKey,
+      version: newVersion,
+      displayName: input.displayName.trim(),
+      status: "draft",
+      configurationJson: input.configurationJson,
+      createdById: user.id,
+      updatedById: user.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+    template = created!;
+  }
+
+  await recordAudit({
+    entityType: "form_template",
+    entityId: template.id,
+    action: "draft_saved",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: { templateKey: input.templateKey, version: template.version, displayName: input.displayName },
+  });
+
+  return template;
+}
+
+export async function activateFormTemplate(
+  templateId: number,
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (actorRole !== "admin") {
+    throw new Error("Only an Administrator can activate procurement form templates.");
+  }
+
+  const [target] = await db.select().from(formTemplates).where(eq(formTemplates.id, templateId)).limit(1);
+  if (!target) throw new Error("Form template not found.");
+
+  await db.update(formTemplates).set({ status: "archived", updatedAt: new Date() }).where(and(eq(formTemplates.templateKey, target.templateKey), eq(formTemplates.status, "active")));
+
+  await db.update(formTemplates).set({
+    status: "active",
+    approvedById: user.id,
+    activatedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(formTemplates.id, target.id));
+
+  const [activated] = await db.select().from(formTemplates).where(eq(formTemplates.id, target.id)).limit(1);
+
+  await recordAudit({
+    entityType: "form_template",
+    entityId: activated!.id,
+    action: "activated",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: { templateKey: target.templateKey, version: target.version, displayName: target.displayName },
+  });
+
+  return activated!;
+}
+
+export async function restoreFormTemplateVersion(
+  templateId: number,
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const actorRole = normalizeProcurementRole(user.role);
+  if (actorRole !== "admin") {
+    throw new Error("Only an Administrator can restore previous form template versions.");
+  }
+
+  const [target] = await db.select().from(formTemplates).where(eq(formTemplates.id, templateId)).limit(1);
+  if (!target) throw new Error("Form template version not found.");
+
+  await db.update(formTemplates).set({ status: "archived", updatedAt: new Date() }).where(and(eq(formTemplates.templateKey, target.templateKey), eq(formTemplates.status, "active")));
+
+  await db.update(formTemplates).set({
+    status: "active",
+    approvedById: user.id,
+    activatedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(formTemplates.id, target.id));
+
+  const [restored] = await db.select().from(formTemplates).where(eq(formTemplates.id, target.id)).limit(1);
+
+  await recordAudit({
+    entityType: "form_template",
+    entityId: restored!.id,
+    action: "version_restored",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: { templateKey: target.templateKey, version: target.version },
+  });
+
+  return restored!;
+}
+
+const OPERATIONAL_AUDIT_ENTITY_TYPES = new Set([
+  "purchase_request",
+  "pre_canvass",
+  "pre_canvass_quote",
+  "abstract_of_canvass",
+  "rfq",
+  "supplier",
+  "supplier_quotation",
+  "quotation_abstract",
+  "purchase_order",
+  "delivery_receipt",
+  "pmr_log",
+  "supplier_evaluation",
+  "mcdm_recommendation",
+  "historical_price",
+  "budget_allotment",
+  "workflow_correction",
+]);
+
+export async function listAuditTrails(
+  filters: {
+    entityType?: string;
+    entityId?: number;
+    transactionNumber?: string;
+    performedById?: number;
+    action?: string;
+    fromDate?: Date;
+    toDate?: Date;
+    limit?: number;
+    offset?: number;
+  },
+  user: User,
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const actorRole = normalizeProcurementRole(user.role);
+
+  const [allAudits, allUsers, allPrs, allPreCanvasses] = await Promise.all([
+    db.select().from(auditTrails).orderBy(desc(auditTrails.createdAt)),
+    db.select().from(users),
+    db.select().from(purchaseRequests),
+    db.select().from(preCanvasses),
+  ]);
+
+  const userMap = new Map(allUsers.map((u) => [u.id, u]));
+  const userPrIds = new Set(allPrs.filter((pr) => pr.requestedById === user.id).map((pr) => pr.id));
+  const userPreCanvassIds = new Set(allPreCanvasses.filter((pc) => pc.preparedById === user.id).map((pc) => pc.id));
+
+  const filtered = allAudits.filter((audit) => {
+    if (actorRole === "admin") {
+      // Full access
+    } else if (roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "administrative_approver", "bac_secretariat", "bac", "hope", "budget_officer"])) {
+      if (!OPERATIONAL_AUDIT_ENTITY_TYPES.has(audit.entityType)) {
+        return false;
+      }
+    } else {
+      const isActor = audit.performedById === user.id;
+      const isOwnPr = audit.entityType === "purchase_request" && userPrIds.has(audit.entityId);
+      const isOwnPreCanvass = audit.entityType === "pre_canvass" && userPreCanvassIds.has(audit.entityId);
+      if (!isActor && !isOwnPr && !isOwnPreCanvass) {
+        return false;
+      }
+    }
+
+    if (filters.entityType && audit.entityType !== filters.entityType) return false;
+    if (filters.entityId && audit.entityId !== filters.entityId) return false;
+    if (filters.performedById && audit.performedById !== filters.performedById) return false;
+    if (filters.action && audit.action !== filters.action) return false;
+    if (filters.fromDate && audit.createdAt < filters.fromDate) return false;
+    if (filters.toDate && audit.createdAt > filters.toDate) return false;
+
+    if (filters.transactionNumber) {
+      const q = filters.transactionNumber.toLowerCase();
+      const detailsStr = JSON.stringify(audit.details || {}).toLowerCase();
+      if (!detailsStr.includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  const total = filtered.length;
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 100;
+  const paged = filtered.slice(offset, offset + limit);
+
+  const items = paged.map((audit) => {
+    const actor = userMap.get(audit.performedById);
+    return {
+      ...audit,
+      performerName: actor?.name || `User #${audit.performedById}`,
+      performerEmail: actor?.email || null,
+      officialRoleLabel: OFFICIAL_ROLE_LABELS[audit.performedByRole as ProcurementRole] ?? audit.performedByRole,
+    };
+  });
+
+  return { items, total };
+}
+
+export async function getHistoricalPriceAnalytics(
+  input: { itemDescription: string; unit?: string; evaluatedUnitPrice?: number; fromDate?: Date; toDate?: Date },
+  options?: ProcurementWorkflowOptions
+) {
+  const db = options?.db ?? await requireDb();
+  const search = input.itemDescription.trim().toLowerCase();
+  const allPrices = await db.select().from(historicalPrices).orderBy(historicalPrices.observedAt);
+  const matched = allPrices.filter((hp) => hp.itemDescription.trim().toLowerCase() === search || hp.itemDescription.toLowerCase().includes(search));
+
+  let filtered = matched;
+  if (input.fromDate) filtered = filtered.filter((hp) => hp.observedAt >= input.fromDate!);
+  if (input.toDate) filtered = filtered.filter((hp) => hp.observedAt <= input.toDate!);
+
+  const points = filtered.map((hp) => ({
+    id: hp.id,
+    observedAt: hp.observedAt,
+    unitPrice: Number(hp.unitPrice),
+    unit: hp.unit,
+    supplierId: hp.supplierId,
+    purchaseOrderId: hp.purchaseOrderId,
+  }));
+
+  const numericPrices = points.map((p) => p.unitPrice).sort((a, b) => a - b);
+  const count = numericPrices.length;
+
+  let lowestPrice: number | null = null;
+  let highestPrice: number | null = null;
+  let averagePrice: number | null = null;
+  let medianPrice: number | null = null;
+  let mostRecentPrice: number | null = null;
+  let trendDirection: "increasing" | "stable" | "decreasing" = "stable";
+  let trendPercent = 0;
+
+  if (count > 0) {
+    lowestPrice = numericPrices[0];
+    highestPrice = numericPrices[count - 1];
+    averagePrice = numericPrices.reduce((sum, p) => sum + p, 0) / count;
+    medianPrice = count % 2 === 1 ? numericPrices[Math.floor(count / 2)] : (numericPrices[count / 2 - 1] + numericPrices[count / 2]) / 2;
+    mostRecentPrice = points[points.length - 1].unitPrice;
+
+    if (points.length > 1) {
+      const first = points[0].unitPrice;
+      const last = points[points.length - 1].unitPrice;
+      const diff = last - first;
+      trendPercent = Math.round((diff / Math.max(first, 0.01)) * 100);
+      if (trendPercent > 3) trendDirection = "increasing";
+      else if (trendPercent < -3) trendDirection = "decreasing";
+      else trendDirection = "stable";
+    }
+  }
+
+  const warnings: string[] = [];
+
+  if (input.unit && points.length > 0) {
+    const incompatiblePoint = points.find((p) => !areUnitsCompatible(input.unit!, p.unit));
+    if (incompatiblePoint) {
+      warnings.push(`Unit discrepancy detected: historical prices are based on "${incompatiblePoint.unit}", but current request specifies "${input.unit}". Direct price comparison may be invalid.`);
+    }
+  }
+
+  if (input.evaluatedUnitPrice && averagePrice !== null && averagePrice > 0) {
+    const variance = (input.evaluatedUnitPrice - averagePrice) / averagePrice;
+    const variancePct = Math.round(variance * 100);
+    if (Math.abs(variancePct) > 25) {
+      warnings.push(`Caution: Proposed unit price (${input.evaluatedUnitPrice.toFixed(2)}) deviates significantly (${variancePct > 0 ? "+" : ""}${variancePct}%) from the historical average (${averagePrice.toFixed(2)}).`);
+    } else if (Math.abs(variancePct) > 15) {
+      warnings.push(`Variance notice: Proposed unit price differs by ${variancePct > 0 ? "+" : ""}${variancePct}% from historical average (${averagePrice.toFixed(2)}).`);
+    }
+  }
+
+  const decisionSupportDisclaimer = "Historical price analytics are provided as decision support only. Final quotation evaluation and supplier selection must be performed by authorized Procurement personnel in accordance with RA 9184 and BSC procurement guidelines.";
+
+  return {
+    itemDescription: input.itemDescription,
+    unit: input.unit || (points[0]?.unit ?? "unit"),
+    points,
+    metrics: {
+      count,
+      lowestPrice,
+      highestPrice,
+      averagePrice,
+      medianPrice,
+      mostRecentPrice,
+      trendDirection,
+      trendPercent,
+    },
+    warnings,
+    decisionSupportDisclaimer,
+  };
+}
+
+export async function getPmrStatus(purchaseRequestId: number, options?: ProcurementWorkflowOptions) {
+  const db = options?.db ?? await requireDb();
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, purchaseRequestId)).limit(1);
+  if (!pr) throw new Error("Purchase Request not found.");
+
+  const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.purchaseRequestId, pr.id)).orderBy(desc(purchaseOrders.id)).limit(1);
+  if (!po) {
+    return {
+      status: "not_applicable" as const,
+      label: "Not Applicable",
+      detail: "No Purchase Order has been awarded for this request yet.",
+      pmrNumber: null,
+      completionDate: null,
+    };
+  }
+
+  if (po.status === "issued" || po.status === "pending_approval" || po.status === "returned") {
+    return {
+      status: "pending_delivery" as const,
+      label: "Pending Delivery",
+      detail: `PO ${po.poNumber} is active and awaiting delivery receipt.`,
+      pmrNumber: null,
+      completionDate: null,
+    };
+  }
+
+  const [pmr] = await db.select().from(pmrLogs).where(eq(pmrLogs.purchaseOrderId, po.id)).limit(1);
+
+  if (po.status === "delivered" && !pmr) {
+    return {
+      status: "delivery_recorded_pmr_pending" as const,
+      label: "Delivery Recorded — PMR Pending",
+      detail: `Delivery has been logged for PO ${po.poNumber}. PMR log is required before closing.`,
+      pmrNumber: null,
+      completionDate: null,
+    };
+  }
+
+  if (pmr) {
+    return {
+      status: "pmr_logged" as const,
+      label: "PMR Logged",
+      detail: `Logged under PMR reference ${pmr.pmrNumber}.`,
+      pmrNumber: pmr.pmrNumber,
+      completionDate: pmr.loggedAt,
+    };
+  }
+
+  return {
+    status: "closed" as const,
+    label: "Closed",
+    detail: "Procurement package is completed and archived.",
+    pmrNumber: null,
+    completionDate: po.updatedAt,
+  };
 }
