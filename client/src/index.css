@@ -428,3 +428,31 @@ html[data-appearance-theme="dark"] input::placeholder, html[data-appearance-them
 html[data-appearance-theme="dark"] [data-radix-popper-content-wrapper] [role="listbox"] { background: var(--popover); color: var(--popover-foreground); border-color: var(--border); }
 html[data-appearance-theme="dark"] .shadow-\[0_1px_0_rgba\(33\,43\,54\,0\.03\)\] { box-shadow: 0 1px 0 rgb(255 255 255 / 6%); }
 html[data-appearance-reduced-motion="true"] *, html[data-appearance-reduced-motion="true"] *::before, html[data-appearance-reduced-motion="true"] *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+
+/* Dark mode coverage for content that relies on inherited browser colors or native controls. */
+html[data-appearance-theme="dark"] main,
+html[data-appearance-theme="dark"] main table,
+html[data-appearance-theme="dark"] main label,
+html[data-appearance-theme="dark"] main th,
+html[data-appearance-theme="dark"] main td { color: #edf0f2; }
+html[data-appearance-theme="dark"] main th,
+html[data-appearance-theme="dark"] main td,
+html[data-appearance-theme="dark"] main hr { border-color: #3a414a !important; }
+html[data-appearance-theme="dark"] .text-black,
+html[data-appearance-theme="dark"] .text-\[\#000000\],
+html[data-appearance-theme="dark"] .text-\[\#000\] { color: #edf0f2 !important; }
+html[data-appearance-theme="dark"] input,
+html[data-appearance-theme="dark"] textarea,
+html[data-appearance-theme="dark"] select,
+html[data-appearance-theme="dark"] button,
+html[data-appearance-theme="dark"] [role="combobox"] { color-scheme: dark; }
+html[data-appearance-theme="dark"] input[type="date"],
+html[data-appearance-theme="dark"] input[type="number"],
+html[data-appearance-theme="dark"] input[type="text"],
+html[data-appearance-theme="dark"] textarea,
+html[data-appearance-theme="dark"] select { background-color: #252b32 !important; border-color: #46505b !important; }
+html[data-appearance-theme="dark"] input[type="radio"],
+html[data-appearance-theme="dark"] input[type="checkbox"] { accent-color: #d98b75; }
+html[data-appearance-theme="dark"] .bg-\[\#f8f1e0\] { background-color: #4a3025 !important; }
+html[data-appearance-theme="dark"] .text-\[\#8a6a2e\] { color: #e3b86a !important; }
+html[data-appearance-theme="dark"] .hover\:bg-red-50:hover { background-color: #4a2525 !important; }

@@ -7,6 +7,7 @@ import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { AppearanceRuntime } from "@/components/AppearanceRuntime";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
 import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
@@ -86,15 +87,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-white bg-[#7b1e1e] px-1 text-[8px] font-bold leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
             </Button>
             <GlobalAppearanceControls />
-            <div className="hidden items-center gap-2 border-l border-[#e4e1da] pl-3 sm:flex">
-              <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
-                <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
-              </Avatar>
-              <div className="hidden xl:block">
-                <p className="max-w-[132px] truncate text-xs font-semibold text-[#303946]">{user.name || "Procurement User"}</p>
-                <p className="mt-0.5 text-[10px] font-medium text-[#8a6a2e]">{roleLabel}</p>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="hidden h-9 items-center gap-2 rounded-[4px] px-2 sm:flex" aria-label="Open account menu">
+                  <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
+                    <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-[132px] text-left xl:block"><span className="block truncate text-xs font-semibold text-[#303946]">{user.name || "Procurement User"}</span><span className="mt-0.5 block truncate text-[10px] font-medium text-[#8a6a2e]">{roleLabel}</span></span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="font-normal"><p className="truncate text-sm font-semibold">{user.name || "Procurement User"}</p><p className="mt-1 truncate text-xs text-muted-foreground">{user.email || "Signed-in account"}</p><p className="mt-1 text-[11px] font-medium text-[#8a6a2e]">{roleLabel}</p>{user.officeName && <p className="mt-1 truncate text-[11px] text-muted-foreground">{user.officeName}</p>}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleLogout()} className="text-destructive focus:text-destructive"><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="ghost" size="icon" onClick={() => void handleLogout()} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525]" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>
