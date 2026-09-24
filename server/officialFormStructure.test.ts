@@ -54,13 +54,27 @@ describe("official procurement form structure", () => {
     expect(migration).toContain("ADD `openingDate` timestamp DEFAULT (now()) NOT NULL");
   });
 
-  it("exposes Catalog in the authenticated sidebar and keeps the catalog route protected", () => {
+  it("keeps Catalog and shopping absent from navigation and route wiring while retaining appearance and typography controls", () => {
     const navigation = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
     const routes = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
     const catalog = readFileSync(new URL("../client/src/pages/Catalog.tsx", import.meta.url), "utf8");
-    expect(navigation).toContain('label: "Catalog"');
-    expect(navigation).toContain('path: "/catalog"');
-    expect(routes).toContain('<Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>');
+    const appearanceControls = readFileSync(new URL("../client/src/components/GlobalAppearanceControls.tsx", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    expect(navigation).not.toContain('label: "Catalog"');
+    expect(navigation).not.toContain('path: "/catalog"');
+    expect(routes).not.toContain('path={"/catalog"}');
+    expect(navigation).not.toContain("Officer settings");
+    expect(navigation).not.toContain("/officer/settings");
+    expect(routes).not.toContain("/officer/settings");
+    expect(appearanceControls).toContain("Light");
+    expect(appearanceControls).toContain("Dark");
+    expect(appearanceControls).not.toContain("Accent color");
+    expect(appearanceControls).not.toContain("Corner radius");
+    expect(appearanceControls).not.toContain("Font scale");
+    expect(appearanceControls).not.toContain("Reduced motion");
+    expect(css).toContain("Public Sans");
+    expect(css).toContain("--app-background");
+    expect(css).toContain("--app-surface");
     ["trpc.procurement.catalog.list", "trpc.procurement.catalog.codeFamilies", "trpc.procurement.catalog.favorites"].forEach((marker) => expect(catalog).toContain(marker));
     const documents = readFileSync(new URL("../client/src/pages/Documents.tsx", import.meta.url), "utf8");
     const workspace = readFileSync(new URL("../client/src/pages/Workspace.tsx", import.meta.url), "utf8");

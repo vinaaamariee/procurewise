@@ -45,80 +45,139 @@
 
 :root {
   --radius: 0.35rem;
-  --background: oklch(0.975 0.004 85);
-  --foreground: oklch(0.26 0.015 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.26 0.015 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.26 0.015 250);
-  --primary: oklch(0.37 0.13 27);
-  --primary-foreground: oklch(0.98 0.01 85);
-  --secondary: oklch(0.95 0.01 85);
-  --secondary-foreground: oklch(0.38 0.015 250);
-  --muted: oklch(0.95 0.006 85);
-  --muted-foreground: oklch(0.52 0.015 250);
-  --accent: oklch(0.94 0.012 75);
-  --accent-foreground: oklch(0.32 0.06 45);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.89 0.006 85);
-  --input: oklch(0.89 0.006 85);
-  --ring: oklch(0.44 0.13 27);
+
+  /* ProcureWise semantic tokens */
+  --app-background: #f7f8fa;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f1f3f5;
+  --app-surface-raised: #ffffff;
+  --app-border: #d8dde3;
+  --app-border-strong: #b9c1ca;
+  --app-text: #1f2933;
+  --app-text-muted: #52606d;
+  --app-text-subtle: #68737f;
+  --app-heading: #17202a;
+  --app-primary: #8f2424;
+  --app-primary-hover: #741c1c;
+  --app-primary-foreground: #ffffff;
+  --app-success: #087443;
+  --app-success-foreground: #ffffff;
+  --app-warning: #9a6500;
+  --app-warning-foreground: #1f1600;
+  --app-danger: #b42318;
+  --app-danger-foreground: #ffffff;
+  --app-focus: #d98b00;
+  --app-table-header: #eef1f4;
+  --app-table-row: #ffffff;
+  --app-table-row-alt: #f8fafb;
+
+  /* Tailwind theme variables aligned with app tokens */
+  --background: var(--app-background);
+  --foreground: var(--app-text);
+  --card: var(--app-surface);
+  --card-foreground: var(--app-text);
+  --popover: var(--app-surface-raised);
+  --popover-foreground: var(--app-text);
+  --primary: var(--app-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--app-surface-muted);
+  --secondary-foreground: var(--app-text);
+  --muted: var(--app-surface-muted);
+  --muted-foreground: var(--app-text-muted);
+  --accent: #f5f3ee;
+  --accent-foreground: var(--app-text);
+  --destructive: var(--app-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--app-border);
+  --input: var(--app-border);
+  --ring: var(--app-primary);
   --chart-1: oklch(0.61 0.13 70);
   --chart-2: oklch(0.45 0.12 27);
   --chart-3: oklch(0.42 0.11 252);
   --chart-4: oklch(0.64 0.12 151);
   --chart-5: oklch(0.66 0.11 38);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.27 0.015 250);
-  --sidebar-primary: oklch(0.37 0.13 27);
-  --sidebar-primary-foreground: oklch(0.98 0.01 85);
-  --sidebar-accent: oklch(0.95 0.012 75);
-  --sidebar-accent-foreground: oklch(0.32 0.06 45);
-  --sidebar-border: oklch(0.89 0.006 85);
-  --sidebar-ring: oklch(0.44 0.13 27);
+  --sidebar: var(--app-surface);
+  --sidebar-foreground: var(--app-text);
+  --sidebar-primary: var(--app-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f3ee;
+  --sidebar-accent-foreground: var(--app-text);
+  --sidebar-border: var(--app-border);
+  --sidebar-ring: var(--app-primary);
 }
 
-.dark {
-  --background: oklch(0.21 0.012 250);
-  --foreground: oklch(0.91 0.007 85);
-  --card: oklch(0.25 0.012 250);
-  --card-foreground: oklch(0.91 0.007 85);
-  --popover: oklch(0.25 0.012 250);
-  --popover-foreground: oklch(0.91 0.007 85);
-  --primary: oklch(0.67 0.15 28);
-  --primary-foreground: oklch(0.2 0.02 25);
-  --secondary: oklch(0.29 0.012 250);
-  --secondary-foreground: oklch(0.78 0.007 85);
-  --muted: oklch(0.29 0.012 250);
-  --muted-foreground: oklch(0.7 0.01 85);
-  --accent: oklch(0.3 0.024 60);
-  --accent-foreground: oklch(0.93 0.01 85);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.67 0.15 28);
+.dark,
+html[data-appearance-theme="dark"] {
+  /* ProcureWise semantic dark tokens */
+  --app-background: #11161b;
+  --app-surface: #1b2229;
+  --app-surface-muted: #232c35;
+  --app-surface-raised: #29333d;
+  --app-border: #46515c;
+  --app-border-strong: #64717d;
+  --app-text: #f1f5f8;
+  --app-text-muted: #d1dae2;
+  --app-text-subtle: #aeb9c4;
+  --app-heading: #ffffff;
+  --app-primary: #d65c50;
+  --app-primary-hover: #eb766a;
+  --app-primary-foreground: #ffffff;
+  --app-success: #55c98a;
+  --app-success-foreground: #071b10;
+  --app-warning: #f0c36a;
+  --app-warning-foreground: #251b05;
+  --app-danger: #ff837a;
+  --app-danger-foreground: #260a08;
+  --app-focus: #ffd166;
+  --app-table-header: #2b3540;
+  --app-table-row: #1b2229;
+  --app-table-row-alt: #222b34;
+
+  /* Tailwind theme variables aligned with app dark tokens */
+  --background: var(--app-background);
+  --foreground: var(--app-text);
+  --card: var(--app-surface);
+  --card-foreground: var(--app-text);
+  --popover: var(--app-surface-raised);
+  --popover-foreground: var(--app-text);
+  --primary: var(--app-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--app-surface-muted);
+  --secondary-foreground: var(--app-text);
+  --muted: var(--app-surface-muted);
+  --muted-foreground: var(--app-text-muted);
+  --accent: #29333d;
+  --accent-foreground: #ffffff;
+  --destructive: var(--app-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--app-border);
+  --input: var(--app-border);
+  --ring: var(--app-focus);
   --chart-1: oklch(0.71 0.12 70);
   --chart-2: oklch(0.68 0.15 28);
   --chart-3: oklch(0.68 0.12 252);
   --chart-4: oklch(0.73 0.12 151);
   --chart-5: oklch(0.74 0.12 38);
-  --sidebar: oklch(0.25 0.012 250);
-  --sidebar-foreground: oklch(0.91 0.007 85);
-  --sidebar-primary: oklch(0.67 0.15 28);
-  --sidebar-primary-foreground: oklch(0.2 0.02 25);
-  --sidebar-accent: oklch(0.3 0.024 60);
-  --sidebar-accent-foreground: oklch(0.93 0.01 85);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.67 0.15 28);
+  --sidebar: var(--app-surface);
+  --sidebar-foreground: var(--app-text);
+  --sidebar-primary: var(--app-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #29333d;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--app-border);
+  --sidebar-ring: var(--app-focus);
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
+  html {
+    font-size: 16px;
+    font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "Public Sans", Arial, sans-serif;
+    font-size: 1rem;
+    font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [type="button"]:not(:disabled), [type="submit"]:not(:disabled), [type="reset"]:not(:disabled), a[href], select:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled) { @apply cursor-pointer; }
 }
@@ -396,63 +455,394 @@
 }
 
 
-/* Administrator-controlled appearance preferences. */
-html[data-appearance-font="public_sans"] body, body { font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif; }
-html[data-appearance-font="system"] body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-html[data-appearance-font="humanist"] body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-html[data-appearance-font="serif"] body { font-family: Georgia, "Times New Roman", serif; }
-html[data-appearance-font="mono"] body { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
-html[data-appearance-theme="dark"] body { background: #17191c !important; color: #edf0f2 !important; }
-html[data-appearance-theme="dark"] .bg-white { background-color: #22262b !important; }
-html[data-appearance-theme="dark"] .text-\[\#202833\], html[data-appearance-theme="dark"] .text-\[\#303946\], html[data-appearance-theme="dark"] .text-\[\#34404e\] { color: #edf0f2 !important; }
-html[data-appearance-theme="high_contrast"] body { background: #ffffff !important; color: #000000 !important; }
-html[data-appearance-theme="high_contrast"] button, html[data-appearance-theme="high_contrast"] input, html[data-appearance-theme="high_contrast"] select, html[data-appearance-theme="high_contrast"] textarea { border-width: 2px !important; }
-html[data-appearance-density="compact"] .flat-panel { padding: 0.75rem !important; }
-html[data-appearance-density="spacious"] .flat-panel { padding: 1.75rem !important; }
-html[data-appearance-corners="round"] .rounded-\[4px\], html[data-appearance-corners="round"] .rounded-\[3px\] { border-radius: 0.75rem !important; }
-html[data-appearance-corners="soft"] .rounded-\[4px\], html[data-appearance-corners="soft"] .rounded-\[3px\] { border-radius: 0.5rem !important; }
-html[data-appearance-reduced-motion="true"] *, html[data-appearance-reduced-motion="true"] *::before, html[data-appearance-reduced-motion="true"] *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.001ms !important; }
+/* Administrator-controlled appearance preferences & font defaults */
+html,
+body {
+  font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
 
+/* Global button contrast fixes: maroon, red, and primary action buttons must have white text and icons */
+button.bg-\[\#7b1e1e\],
+button.bg-\[\#641818\],
+button.bg-\[\#8f2424\],
+button.bg-\[\#9c2525\],
+.bg-\[\#7b1e1e\],
+.bg-\[\#641818\],
+.bg-\[\#8f2424\],
+.bg-\[\#9c2525\] {
+  color: #ffffff !important;
+}
+button.bg-\[\#7b1e1e\] svg,
+button.bg-\[\#641818\] svg,
+button.bg-\[\#8f2424\] svg,
+button.bg-\[\#9c2525\] svg,
+.bg-\[\#7b1e1e\] svg,
+.bg-\[\#641818\] svg,
+.bg-\[\#8f2424\] svg,
+.bg-\[\#9c2525\] svg {
+  color: #ffffff !important;
+}
 
-/* Global administrator appearance settings. The application uses several legacy flat-ui utility colors; these overrides keep them readable when dark mode is selected. */
-html[data-appearance-theme="dark"] body { background: var(--background); color: var(--foreground); }
-html[data-appearance-theme="dark"] .bg-white { background-color: var(--card) !important; }
-html[data-appearance-theme="dark"] .bg-\[\#f8f7f3\] { background-color: var(--background) !important; }
-html[data-appearance-theme="dark"] .bg-\[\#fbfaf7\] { background-color: var(--muted) !important; }
-html[data-appearance-theme="dark"] .bg-\[\#fcfaf4\] { background-color: var(--accent) !important; }
-html[data-appearance-theme="dark"] .text-\[\#202833\], html[data-appearance-theme="dark"] .text-\[\#303946\], html[data-appearance-theme="dark"] .text-\[\#34404e\], html[data-appearance-theme="dark"] .text-\[\#3f4a57\], html[data-appearance-theme="dark"] .text-\[\#566171\], html[data-appearance-theme="dark"] .text-\[\#677281\], html[data-appearance-theme="dark"] .text-\[\#77818d\] { color: var(--foreground) !important; }
-html[data-appearance-theme="dark"] .border-\[\#e4e1da\], html[data-appearance-theme="dark"] .border-\[\#ece8df\], html[data-appearance-theme="dark"] .border-\[\#ece9e2\] { border-color: var(--border) !important; }
-html[data-appearance-theme="dark"] .flat-panel { background: var(--card); border-color: var(--border); }
-html[data-appearance-theme="dark"] input, html[data-appearance-theme="dark"] textarea, html[data-appearance-theme="dark"] [role="combobox"] { color: var(--foreground); }
-html[data-appearance-theme="dark"] input::placeholder, html[data-appearance-theme="dark"] textarea::placeholder { color: var(--muted-foreground); }
-html[data-appearance-theme="dark"] [data-radix-popper-content-wrapper] [role="listbox"] { background: var(--popover); color: var(--popover-foreground); border-color: var(--border); }
-html[data-appearance-theme="dark"] .shadow-\[0_1px_0_rgba\(33\,43\,54\,0\.03\)\] { box-shadow: 0 1px 0 rgb(255 255 255 / 6%); }
-html[data-appearance-reduced-motion="true"] *, html[data-appearance-reduced-motion="true"] *::before, html[data-appearance-reduced-motion="true"] *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+/* Document canvas isolation: printable forms remain white paper with dark text in both themes */
+.document-canvas,
+.official-purchase-request,
+.print-document {
+  background-color: #ffffff !important;
+  color: #161616 !important;
+  color-scheme: light !important;
+}
+.document-canvas *,
+.official-purchase-request *,
+.print-document * {
+  color: #161616 !important;
+  border-color: #000000 !important;
+}
+.document-canvas input,
+.official-purchase-request input,
+.document-canvas textarea,
+.official-purchase-request textarea,
+.print-document input,
+.print-document textarea {
+  background-color: #ffffff !important;
+  color: #161616 !important;
+  color-scheme: light !important;
+}
 
-/* Dark mode coverage for content that relies on inherited browser colors or native controls. */
-html[data-appearance-theme="dark"] main,
-html[data-appearance-theme="dark"] main table,
-html[data-appearance-theme="dark"] main label,
-html[data-appearance-theme="dark"] main th,
-html[data-appearance-theme="dark"] main td { color: #edf0f2; }
-html[data-appearance-theme="dark"] main th,
-html[data-appearance-theme="dark"] main td,
-html[data-appearance-theme="dark"] main hr { border-color: #3a414a !important; }
-html[data-appearance-theme="dark"] .text-black,
-html[data-appearance-theme="dark"] .text-\[\#000000\],
-html[data-appearance-theme="dark"] .text-\[\#000\] { color: #edf0f2 !important; }
-html[data-appearance-theme="dark"] input,
-html[data-appearance-theme="dark"] textarea,
-html[data-appearance-theme="dark"] select,
-html[data-appearance-theme="dark"] button,
-html[data-appearance-theme="dark"] [role="combobox"] { color-scheme: dark; }
-html[data-appearance-theme="dark"] input[type="date"],
-html[data-appearance-theme="dark"] input[type="number"],
-html[data-appearance-theme="dark"] input[type="text"],
-html[data-appearance-theme="dark"] textarea,
-html[data-appearance-theme="dark"] select { background-color: #252b32 !important; border-color: #46505b !important; }
+/* Print isolation */
+@media print {
+  html,
+  body,
+  #root {
+    background: #ffffff !important;
+    color: #000000 !important;
+    color-scheme: light !important;
+  }
+
+  .no-print,
+  .app-shell,
+  .sidebar,
+  .top-header,
+  .print-hide,
+  .print-hidden,
+  aside,
+  header:not(.print-include),
+  nav,
+  button:not(.print-include) {
+    display: none !important;
+  }
+
+  .print-document,
+  .document-canvas,
+  .official-purchase-request,
+  .print-document *,
+  .document-canvas *,
+  .official-purchase-request * {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+    box-shadow: none !important;
+    color-scheme: light !important;
+  }
+}
+
+/* Dark mode comprehensive coverage for authenticated workspace */
+html[data-appearance-theme="dark"],
+html.dark {
+  color-scheme: dark;
+}
+
+html[data-appearance-theme="dark"] body,
+html.dark body {
+  background-color: var(--app-background) !important;
+  color: var(--app-text) !important;
+}
+
+/* Panels and backgrounds */
+html[data-appearance-theme="dark"] .flat-panel,
+html.dark .flat-panel {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html[data-appearance-theme="dark"] .bg-white:not(.document-canvas):not(.document-canvas *):not(.official-purchase-request):not(.official-purchase-request *),
+html.dark .bg-white:not(.document-canvas):not(.document-canvas *):not(.official-purchase-request):not(.official-purchase-request *) {
+  background-color: var(--app-surface) !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#f8f7f3\],
+html.dark .bg-\[\#f8f7f3\] {
+  background-color: var(--app-background) !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#fbfaf7\],
+html[data-appearance-theme="dark"] .bg-\[\#f5f3ee\],
+html[data-appearance-theme="dark"] .bg-\[\#eeeae2\],
+html[data-appearance-theme="dark"] .bg-\[\#faf9f6\],
+html[data-appearance-theme="dark"] .bg-\[\#f0ede6\],
+html[data-appearance-theme="dark"] .bg-\[\#efebe4\],
+html.dark .bg-\[\#fbfaf7\],
+html.dark .bg-\[\#f5f3ee\],
+html.dark .bg-\[\#eeeae2\],
+html.dark .bg-\[\#faf9f6\],
+html.dark .bg-\[\#f0ede6\],
+html.dark .bg-\[\#efebe4\] {
+  background-color: var(--app-surface-muted) !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#fffdfa\],
+html[data-appearance-theme="dark"] .bg-\[\#fffefa\],
+html.dark .bg-\[\#fffdfa\],
+html.dark .bg-\[\#fffefa\] {
+  background-color: var(--app-surface) !important;
+}
+
+/* Colored notice panels in dark mode */
+html[data-appearance-theme="dark"] .bg-\[\#fcfaf4\],
+html[data-appearance-theme="dark"] .bg-\[\#fffaf0\],
+html[data-appearance-theme="dark"] .bg-\[\#fff8e8\],
+html[data-appearance-theme="dark"] .bg-\[\#f8f1e0\],
+html.dark .bg-\[\#fcfaf4\],
+html.dark .bg-\[\#fffaf0\],
+html.dark .bg-\[\#fff8e8\],
+html.dark .bg-\[\#f8f1e0\] {
+  background-color: #272118 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#fff4f1\],
+html.dark .bg-\[\#fff4f1\] {
+  background-color: #341f1f !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#f1f6fc\],
+html.dark .bg-\[\#f1f6fc\] {
+  background-color: #1a2736 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#f1f9f4\],
+html.dark .bg-\[\#f1f9f4\] {
+  background-color: #162c20 !important;
+}
+
+/* Borders in dark mode */
+html[data-appearance-theme="dark"] .border-\[\#e4e1da\],
+html[data-appearance-theme="dark"] .border-\[\#e5e1d9\],
+html[data-appearance-theme="dark"] .border-\[\#e1ddd3\],
+html[data-appearance-theme="dark"] .border-\[\#e1ddd5\],
+html[data-appearance-theme="dark"] .border-\[\#dedad2\],
+html[data-appearance-theme="dark"] .border-\[\#ded8cc\],
+html[data-appearance-theme="dark"] .border-\[\#dfd9ce\],
+html[data-appearance-theme="dark"] .border-\[\#dfdbd3\],
+html[data-appearance-theme="dark"] .border-\[\#d8dde3\],
+html[data-appearance-theme="dark"] .border-\[\#d8d3ca\],
+html[data-appearance-theme="dark"] .border-\[\#d8d1c4\],
+html[data-appearance-theme="dark"] .border-\[\#ece8df\],
+html[data-appearance-theme="dark"] .border-\[\#ece9e2\],
+html[data-appearance-theme="dark"] .border-\[\#efebe4\],
+html[data-appearance-theme="dark"] .border-\[\#f0ede6\],
+html[data-appearance-theme="dark"] .border-\[\#ddd6ca\],
+html.dark .border-\[\#e4e1da\],
+html.dark .border-\[\#e5e1d9\],
+html.dark .border-\[\#e1ddd3\],
+html.dark .border-\[\#e1ddd5\],
+html.dark .border-\[\#dedad2\],
+html.dark .border-\[\#ded8cc\],
+html.dark .border-\[\#dfd9ce\],
+html.dark .border-\[\#dfdbd3\],
+html.dark .border-\[\#d8dde3\],
+html.dark .border-\[\#d8d3ca\],
+html.dark .border-\[\#d8d1c4\],
+html.dark .border-\[\#ece8df\],
+html.dark .border-\[\#ece9e2\],
+html.dark .border-\[\#efebe4\],
+html.dark .border-\[\#f0ede6\],
+html.dark .border-\[\#ddd6ca\] {
+  border-color: var(--app-border) !important;
+}
+
+html[data-appearance-theme="dark"] .border-\[\#e4d4ae\],
+html[data-appearance-theme="dark"] .border-\[\#d9c28f\],
+html[data-appearance-theme="dark"] .border-\[\#d8c88c\],
+html[data-appearance-theme="dark"] .border-\[\#dec99b\],
+html[data-appearance-theme="dark"] .border-\[\#eddfbe\],
+html[data-appearance-theme="dark"] .border-\[\#d6c6a2\],
+html.dark .border-\[\#e4d4ae\],
+html.dark .border-\[\#d9c28f\],
+html.dark .border-\[\#d8c88c\],
+html.dark .border-\[\#dec99b\],
+html.dark .border-\[\#eddfbe\],
+html.dark .border-\[\#d6c6a2\] {
+  border-color: #635028 !important;
+}
+
+/* Headings and primary texts in dark mode */
+html[data-appearance-theme="dark"] .text-\[\#17202a\],
+html[data-appearance-theme="dark"] .text-\[\#1f2933\],
+html[data-appearance-theme="dark"] .text-\[\#202833\],
+html[data-appearance-theme="dark"] .text-\[\#303946\],
+html[data-appearance-theme="dark"] .text-\[\#34404e\],
+html[data-appearance-theme="dark"] .text-\[\#3b4654\],
+html[data-appearance-theme="dark"] .text-\[\#3e4855\],
+html[data-appearance-theme="dark"] .text-\[\#3f4a57\],
+html[data-appearance-theme="dark"] .text-\[\#4b5563\],
+html[data-appearance-theme="dark"] .text-\[\#4c5664\],
+html[data-appearance-theme="dark"] .text-\[\#566171\],
+html.dark .text-\[\#17202a\],
+html.dark .text-\[\#1f2933\],
+html.dark .text-\[\#202833\],
+html.dark .text-\[\#303946\],
+html.dark .text-\[\#34404e\],
+html.dark .text-\[\#3b4654\],
+html.dark .text-\[\#3e4855\],
+html.dark .text-\[\#3f4a57\],
+html.dark .text-\[\#4b5563\],
+html.dark .text-\[\#4c5664\],
+html.dark .text-\[\#566171\] {
+  color: var(--app-text) !important;
+}
+
+html[data-appearance-theme="dark"] .text-black:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] .text-\[\#000\]:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] .text-\[\#000000\]:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] .text-\[\#222\]:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] .text-\[\#222222\]:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-black:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-\[\#000\]:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-\[\#000000\]:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-\[\#222\]:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-\[\#222222\]:not(.document-canvas *):not(.official-purchase-request *) {
+  color: var(--app-text) !important;
+}
+
+/* Muted / secondary texts in dark mode */
+html[data-appearance-theme="dark"] .text-\[\#65707e\],
+html[data-appearance-theme="dark"] .text-\[\#65717e\],
+html[data-appearance-theme="dark"] .text-\[\#677281\],
+html[data-appearance-theme="dark"] .text-\[\#6a7280\],
+html[data-appearance-theme="dark"] .text-\[\#6e7885\],
+html[data-appearance-theme="dark"] .text-\[\#718\],
+html[data-appearance-theme="dark"] .text-\[\#74808c\],
+html[data-appearance-theme="dark"] .text-\[\#77818d\],
+html[data-appearance-theme="dark"] .text-\[\#7a8490\],
+html[data-appearance-theme="dark"] .text-\[\#7b8490\],
+html[data-appearance-theme="dark"] .text-\[\#7c8795\],
+html[data-appearance-theme="dark"] .text-\[\#7d8793\],
+html[data-appearance-theme="dark"] .text-\[\#87909b\],
+html[data-appearance-theme="dark"] .text-\[\#8b949e\],
+html[data-appearance-theme="dark"] .text-\[\#9098a2\],
+html[data-appearance-theme="dark"] .text-\[\#9198a1\],
+html[data-appearance-theme="dark"] .text-\[\#9aa1aa\],
+html[data-appearance-theme="dark"] .text-\[\#a1a7ae\],
+html.dark .text-\[\#65707e\],
+html.dark .text-\[\#65717e\],
+html.dark .text-\[\#677281\],
+html.dark .text-\[\#6a7280\],
+html.dark .text-\[\#6e7885\],
+html.dark .text-\[\#718\],
+html.dark .text-\[\#74808c\],
+html.dark .text-\[\#77818d\],
+html.dark .text-\[\#7a8490\],
+html.dark .text-\[\#7b8490\],
+html.dark .text-\[\#7c8795\],
+html.dark .text-\[\#7d8793\],
+html.dark .text-\[\#87909b\],
+html.dark .text-\[\#8b949e\],
+html.dark .text-\[\#9098a2\],
+html.dark .text-\[\#9198a1\],
+html.dark .text-\[\#9aa1aa\],
+html.dark .text-\[\#a1a7ae\] {
+  color: var(--app-text-muted) !important;
+}
+
+/* Amber/yellow text in notices in dark mode */
+html[data-appearance-theme="dark"] .text-\[\#4d3711\],
+html[data-appearance-theme="dark"] .text-\[\#634b1d\],
+html[data-appearance-theme="dark"] .text-\[\#705e35\],
+html[data-appearance-theme="dark"] .text-\[\#72561d\],
+html[data-appearance-theme="dark"] .text-\[\#75643e\],
+html[data-appearance-theme="dark"] .text-\[\#7b5c20\],
+html[data-appearance-theme="dark"] .text-\[\#8a6520\],
+html[data-appearance-theme="dark"] .text-\[\#8a6a2e\],
+html[data-appearance-theme="dark"] .text-\[\#9a6d19\],
+html.dark .text-\[\#4d3711\],
+html.dark .text-\[\#634b1d\],
+html.dark .text-\[\#705e35\],
+html.dark .text-\[\#72561d\],
+html.dark .text-\[\#75643e\],
+html.dark .text-\[\#7b5c20\],
+html.dark .text-\[\#8a6520\],
+html.dark .text-\[\#8a6a2e\],
+html.dark .text-\[\#9a6d19\] {
+  color: #f0c36a !important;
+}
+
+/* Red/maroon accent text in dark mode */
+html[data-appearance-theme="dark"] .text-\[\#6f1a1a\],
+html[data-appearance-theme="dark"] .text-\[\#7b1e1e\],
+html[data-appearance-theme="dark"] .text-\[\#9c2525\],
+html.dark .text-\[\#6f1a1a\],
+html.dark .text-\[\#7b1e1e\],
+html.dark .text-\[\#9c2525\] {
+  color: #ff837a !important;
+}
+
+/* Hover background states in dark mode */
+html[data-appearance-theme="dark"] .hover\:bg-\[\#f5f3ee\]:hover,
+html[data-appearance-theme="dark"] .hover\:bg-\[\#fdfcf9\]:hover,
+html.dark .hover\:bg-\[\#f5f3ee\]:hover,
+html.dark .hover\:bg-\[\#fdfcf9\]:hover {
+  background-color: var(--app-surface-muted) !important;
+}
+
+html[data-appearance-theme="dark"] .hover\:bg-red-50:hover,
+html.dark .hover\:bg-red-50:hover {
+  background-color: #3b1919 !important;
+}
+
+/* Table headers and rows in dark mode */
+html[data-appearance-theme="dark"] thead:not(.document-canvas *):not(.official-purchase-request *),
+html.dark thead:not(.document-canvas *):not(.official-purchase-request *) {
+  background-color: var(--app-table-header) !important;
+}
+
+html[data-appearance-theme="dark"] thead th:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] th:not(.document-canvas *):not(.official-purchase-request *),
+html.dark thead th:not(.document-canvas *):not(.official-purchase-request *),
+html.dark th:not(.document-canvas *):not(.official-purchase-request *) {
+  color: #ffffff !important;
+  border-color: var(--app-border) !important;
+}
+
+html[data-appearance-theme="dark"] td:not(.document-canvas *):not(.official-purchase-request *),
+html.dark td:not(.document-canvas *):not(.official-purchase-request *) {
+  border-color: var(--app-border) !important;
+}
+
+/* Form controls in dark mode */
+html[data-appearance-theme="dark"] input:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] textarea:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] select:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] [role="combobox"],
+html.dark input:not(.document-canvas *):not(.official-purchase-request *),
+html.dark textarea:not(.document-canvas *):not(.official-purchase-request *),
+html.dark select:not(.document-canvas *):not(.official-purchase-request *),
+html.dark [role="combobox"] {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+  color-scheme: dark;
+}
+
+html[data-appearance-theme="dark"] input::placeholder,
+html[data-appearance-theme="dark"] textarea::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--app-text-subtle) !important;
+}
+
 html[data-appearance-theme="dark"] input[type="radio"],
-html[data-appearance-theme="dark"] input[type="checkbox"] { accent-color: #d98b75; }
-html[data-appearance-theme="dark"] .bg-\[\#f8f1e0\] { background-color: #4a3025 !important; }
-html[data-appearance-theme="dark"] .text-\[\#8a6a2e\] { color: #e3b86a !important; }
-html[data-appearance-theme="dark"] .hover\:bg-red-50:hover { background-color: #4a2525 !important; }
+html[data-appearance-theme="dark"] input[type="checkbox"],
+html.dark input[type="radio"],
+html.dark input[type="checkbox"] {
+  accent-color: var(--app-primary);
+}

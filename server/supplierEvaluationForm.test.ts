@@ -50,12 +50,13 @@ describe("Supplier Evaluation Form authorization and rendering", () => {
 
   it("orders the sidebar from planning through procurement close-out before performance and governance tools", () => {
     const navigation = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
-    const requiredOrder = ["PPMP Planning", "PPMP & Purchase Requests", "Suppliers", "Pre-Canvass", "Letters of Notice", "BAC Transmittals", "Abstracts, PO & PMR", "Supplier Evaluation Form", "Documents", "Budget Control", "Procurement Forecast", "Analytics", "Audit Trail", "Officer settings", "Best Value Policy", "System setup"];
+    const requiredOrder = ["PPMP Planning", "PPMP & Purchase Requests", "Suppliers", "Pre-Canvass", "Letters of Notice", "BAC Transmittals", "Abstracts, PO & PMR", "Supplier Evaluation Form", "Documents", "Budget Control", "Procurement Forecast", "Analytics", "Audit Trail", "Historical PMR", "Best Value Policy", "System setup"];
     requiredOrder.reduce((previousIndex, label) => {
       const nextIndex = navigation.indexOf(`label: \"${label}\"`);
       expect(nextIndex).toBeGreaterThan(previousIndex);
       return nextIndex;
     }, -1);
+    expect(navigation).not.toContain("Officer settings");
     expect(navigation).toContain('aria-current={active ? "page" : undefined}');
     expect(navigation).toContain('before:bg-[#d5ab55]');
     const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

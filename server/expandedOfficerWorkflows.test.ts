@@ -36,10 +36,14 @@ describe("ProcureWise expanded officer workflows", () => {
     expect(execution).toContain("Correction and resubmission controls");
   });
 
-  it("registers notices, transmittals, forecasting, public tracking, and all requested print routes", () => {
+  it("registers notices, transmittals, forecasting, public tracking, and all requested print routes while keeping officer settings absent", () => {
     const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
     const pdf = readFileSync(new URL("../client/src/lib/procurementPdf.ts", import.meta.url), "utf8");
-    ["/officer/notices", "/officer/transmittals", "/officer/forecast", "/officer/settings", "/track", "/print/notice", "/print/transmittal", "/print/pre-canvass-abstract"].forEach((route) => expect(app).toContain(route));
+    const appearanceControls = readFileSync(new URL("../client/src/components/GlobalAppearanceControls.tsx", import.meta.url), "utf8");
+    ["/officer/notices", "/officer/transmittals", "/officer/forecast", "/track", "/print/notice", "/print/transmittal", "/print/pre-canvass-abstract"].forEach((route) => expect(app).toContain(route));
+    expect(app).not.toContain("/officer/settings");
+    expect(appearanceControls).toContain("Light");
+    expect(appearanceControls).toContain("Dark");
     ["downloadPurchaseRequestPdf", "downloadPreCanvassPdf", "downloadAbstractPdf", "downloadPurchaseOrderPdf"].forEach((name) => expect(pdf).toContain(name));
   });
 

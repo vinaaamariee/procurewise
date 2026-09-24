@@ -1,36 +1,60 @@
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Moon, Settings2, Sun, Type } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function GlobalAppearanceControls() {
   const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const settings = setup.data?.settings;
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [fontScale, setFontScale] = useState<"110" | "120">("110");
+
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("procurewise.appearanceTheme");
+      if (stored === "dark" || stored === "light") return stored;
+      if (document.documentElement.dataset.appearanceTheme === "dark") return "dark";
+    }
+    return "light";
+  });
+
   const update = trpc.procurement.setup.updateSettings.useMutation({
     onSuccess: () => {
       void utils.procurement.setup.details.invalidate();
-      toast.success("Appearance updated for the entire system.");
+      toast.success("Theme preference updated.");
     },
     onError: (error) => toast.error(error.message),
   });
 
   useEffect(() => {
     if (!settings) return;
-    setTheme(settings.appearanceTheme === "dark" ? "dark" : "light");
-    setFontScale(settings.appearanceFontScale === "120" ? "120" : "110");
+    const resolvedTheme = settings.appearanceTheme === "dark" ? "dark" : "light";
+    setTheme(resolvedTheme);
   }, [settings]);
 
-  const save = (next: { theme?: "light" | "dark"; fontScale?: "110" | "120" }) => {
-    const nextTheme = next.theme ?? theme;
-    const nextScale = next.fontScale ?? fontScale;
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const applyTheme = (nextTheme: "light" | "dark") => {
     setTheme(nextTheme);
-    setFontScale(nextScale);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("procurewise.appearanceTheme", nextTheme);
+    }
+    const root = document.documentElement;
+    root.dataset.appearanceTheme = nextTheme;
+    root.classList.toggle("dark", nextTheme === "dark");
+
     update.mutate({
       entityName: settings?.entityName || "Batanes State College",
       authorizedOfficialName: settings?.authorizedOfficialName || undefined,
@@ -42,7 +66,7 @@ export function GlobalAppearanceControls() {
       notificationRefreshSeconds: settings?.notificationRefreshSeconds || 15,
       appearanceTheme: nextTheme,
       appearanceFont: "public_sans",
-      appearanceFontScale: nextScale,
+      appearanceFontScale: "110", // backward compatibility value only; not user-editable
       appearanceDensity: "comfortable",
       appearanceAccent: "maroon",
       appearanceCorners: "sharp",
@@ -50,17 +74,56 @@ export function GlobalAppearanceControls() {
     });
   };
 
-  return <div className="relative">
-    <Button type="button" variant="ghost" size="icon" onClick={() => setOpen((current) => !current)} className="h-9 w-9 rounded-[4px]" aria-label="System appearance settings" aria-expanded={open}>
-      <Settings2 className="h-4 w-4 text-[#566171]" />
-    </Button>
-    {open && <div className="absolute right-0 top-11 z-50 w-72 rounded-md border border-[#e4e1da] bg-white p-4 shadow-lg dark:border-white/15 dark:bg-[#252a32]">
-      <div className="mb-4 flex items-start gap-2"><Settings2 className="mt-0.5 h-4 w-4 text-[#7b1e1e] dark:text-[#f0a38c]" /><div><p className="text-sm font-semibold text-[#202833] dark:text-[#f1f3f5]">System appearance</p><p className="mt-1 text-[11px] leading-4 text-[#77818d] dark:text-[#bac2cc]">These preferences apply across the entire ProcureWise system.</p></div></div>
-      <div className="grid gap-3">
-        <div><p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#566171] dark:text-[#d4d9df]"><Sun className="h-3.5 w-3.5" />Theme</p><Select value={theme} onValueChange={(value) => save({ theme: value as "light" | "dark" })}><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="light">Light theme</SelectItem><SelectItem value="dark">Dark theme</SelectItem></SelectContent></Select></div>
-        <div><p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#566171] dark:text-[#d4d9df]"><Type className="h-3.5 w-3.5" />Font and text size</p><div className="rounded border border-[#e4e1da] bg-[#fbfaf7] px-3 py-2 text-xs text-[#3f4a57] dark:border-white/15 dark:bg-white/5 dark:text-[#f1f3f5]">Public Sans · larger text</div><Select value={fontScale} onValueChange={(value) => save({ fontScale: value as "110" | "120" })}><SelectTrigger className="mt-2 h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="110">Large — 110%</SelectItem><SelectItem value="120">Extra large — 120%</SelectItem></SelectContent></Select></div>
-      </div>
-      {update.isPending && <p className="mt-3 text-[10px] text-[#77818d]">Saving system appearance…</p>}
-    </div>}
-  </div>;
+  return (
+    <div className="relative" ref={containerRef}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen((current) => !current)}
+        className="h-9 w-9 rounded-[4px] text-[#566171] hover:text-[#202833] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8]"
+        aria-label="System appearance settings"
+        aria-expanded={open}
+      >
+        {theme === "dark" ? <Moon className="h-4 w-4 text-[#f0c36a]" /> : <Sun className="h-4 w-4 text-[#566171]" />}
+      </Button>
+
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-64 rounded-md border border-[#e4e1da] bg-white p-3 shadow-lg dark:border-[#46515c] dark:bg-[#1b2229]">
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#1f2933] dark:text-[#f1f5f8]">Appearance</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#68737f] dark:text-[#aeb9c4]">{theme} mode</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 rounded-[4px] border border-[#e4e1da] bg-[#f7f8fa] p-1 dark:border-[#46515c] dark:bg-[#232c35]">
+            <button
+              type="button"
+              onClick={() => applyTheme("light")}
+              className={`flex items-center justify-center gap-1.5 rounded-[3px] py-1.5 text-xs font-medium transition-colors ${
+                theme === "light"
+                  ? "bg-white font-semibold text-[#1f2933] shadow-xs dark:bg-[#29333d] dark:text-[#f1f5f8]"
+                  : "text-[#52606d] hover:text-[#1f2933] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8]"
+              }`}
+            >
+              <Sun className="h-3.5 w-3.5 text-[#d98b00]" />
+              <span>Light</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => applyTheme("dark")}
+              className={`flex items-center justify-center gap-1.5 rounded-[3px] py-1.5 text-xs font-medium transition-colors ${
+                theme === "dark"
+                  ? "bg-white font-semibold text-[#1f2933] shadow-xs dark:bg-[#29333d] dark:text-[#f1f5f8]"
+                  : "text-[#52606d] hover:text-[#1f2933] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8]"
+              }`}
+            >
+              <Moon className="h-3.5 w-3.5 text-[#f0c36a]" />
+              <span>Dark</span>
+            </button>
+          </div>
+          {update.isPending && <p className="mt-2 text-[10px] text-[#68737f] dark:text-[#aeb9c4]">Saving theme…</p>}
+        </div>
+      )}
+    </div>
+  );
 }

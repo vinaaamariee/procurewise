@@ -48,61 +48,72 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => { await logout(); setLocation("/access"); };
 
   if (loading) {
-    return <div className="min-h-screen bg-[#f8f7f3]" />;
+    return <div className="min-h-screen bg-[#f8f7f3] dark:bg-[#11161b]" />;
   }
 
   if (!user) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#f8f7f3] px-5">
-        <div className="w-full max-w-md border border-[#e4e1da] bg-white p-8 text-center shadow-[0_12px_36px_rgba(36,42,52,0.08)]">
+      <div className="grid min-h-screen place-items-center bg-[#f8f7f3] px-5 dark:bg-[#11161b]">
+        <div className="w-full max-w-md border border-[#e4e1da] bg-white p-8 text-center shadow-[0_12px_36px_rgba(36,42,52,0.08)] dark:border-[#46515c] dark:bg-[#1b2229]">
           <ProcureWiseLogo className="justify-center" />
-          <ShieldCheck className="mx-auto mt-8 h-8 w-8 text-[#7b1e1e]" />
-          <h1 className="mt-4 font-display text-2xl font-semibold text-[#202833]">Authorized access only</h1>
-          <p className="mt-2 text-sm leading-6 text-[#677281]">Sign in to access your assigned procurement workspace and workflow actions.</p>
-          <Button asChild className="mt-7 h-10 w-full rounded-[4px] bg-[#7b1e1e] text-sm font-semibold hover:bg-[#641818]"><Link href="/access">Sign in to ProcureWise</Link></Button>
+          <ShieldCheck className="mx-auto mt-8 h-8 w-8 text-[#7b1e1e] dark:text-[#ff837a]" />
+          <h1 className="mt-4 font-display text-2xl font-semibold text-[#202833] dark:text-[#f1f5f8]">Authorized access only</h1>
+          <p className="mt-2 text-sm leading-6 text-[#677281] dark:text-[#aeb9c4]">Sign in to access your assigned procurement workspace and workflow actions.</p>
+          <Button asChild className="mt-7 h-10 w-full rounded-[4px] bg-[#7b1e1e] text-sm font-semibold text-white hover:bg-[#641818]"><Link href="/access">Sign in to ProcureWise</Link></Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f3] text-[#202833]">
+    <div className="min-h-screen bg-[#f8f7f3] text-[#202833] dark:bg-[#11161b] dark:text-[#f1f5f8]">
       <AppearanceRuntime />
       <NotificationToastListener />
-      <div className="border-b border-[#e4e1da] bg-white">
+      <div className="border-b border-[#e4e1da] bg-white dark:border-[#46515c] dark:bg-[#1b2229]">
         <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">
-          <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} className="h-9 w-9 rounded-[4px] lg:hidden" aria-label="Toggle navigation">
+          <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} className="h-9 w-9 rounded-[4px] lg:hidden dark:text-[#d1dae2]" aria-label="Toggle navigation">
             <Menu className="h-4.5 w-4.5" />
           </Button>
           <Link href="/dashboard" className="shrink-0"><ProcureWiseLogo /></Link>
           <div className="mx-auto hidden max-w-md flex-1 lg:block">
             <label className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#87909b]" />
-              <Input aria-label="Search procurement records" placeholder="Search PR, RFQ, PO, or supplier" className="h-9 rounded-[4px] border-[#e4e1da] bg-[#fbfaf7] pl-9 text-xs shadow-none placeholder:text-[#9aa1aa] focus-visible:ring-[#7b1e1e]" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#87909b] dark:text-[#aeb9c4]" />
+              <Input aria-label="Search procurement records" placeholder="Search PR, RFQ, PO, or supplier" className="h-9 rounded-[4px] border-[#e4e1da] bg-[#fbfaf7] pl-9 text-xs shadow-none placeholder:text-[#9aa1aa] focus-visible:ring-[#7b1e1e] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] dark:placeholder:text-[#aeb9c4]" />
             </label>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/notifications")} className="relative h-9 w-9 rounded-[4px]" aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}>
-              <Bell className="h-4 w-4 text-[#566171]" />
-              {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-white bg-[#7b1e1e] px-1 text-[8px] font-bold leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/notifications")} className="relative h-9 w-9 rounded-[4px] text-[#566171] hover:text-[#1f2933] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8]" aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}>
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-white bg-[#7b1e1e] px-1 text-[8px] font-bold leading-none text-white dark:border-[#1b2229]">{unreadCount > 9 ? "9+" : unreadCount}</span>}
             </Button>
             <GlobalAppearanceControls />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex h-9 items-center gap-2 rounded-[4px] px-2" aria-label="Open account menu">
-                  <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3]">
-                    <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
+                <Button variant="ghost" className="flex h-9 items-center gap-2 rounded-[4px] px-2 hover:bg-[#f5f3ee] dark:hover:bg-[#232c35]" aria-label="Open account menu">
+                  <Avatar className="h-8 w-8 rounded-[4px] border border-[#e1ddd3] dark:border-[#46515c]">
+                    <AvatarFallback className="rounded-[3px] bg-[#f8f1e0] text-[11px] font-bold text-[#7b1e1e] dark:bg-[#3d2719] dark:text-[#f0c36a]">{user.name?.slice(0, 1).toUpperCase() || "U"}</AvatarFallback>
                   </Avatar>
-                  <span className="hidden max-w-[132px] text-left xl:block"><span className="block truncate text-xs font-semibold text-[#303946]">{user.name || "Procurement User"}</span><span className="mt-0.5 block truncate text-[10px] font-medium text-[#8a6a2e]">{roleLabel}</span></span>
+                  <span className="hidden max-w-[132px] text-left xl:block">
+                    <span className="block truncate text-xs font-semibold text-[#303946] dark:text-[#f1f5f8]">{user.name || "Procurement User"}</span>
+                    <span className="mt-0.5 block truncate text-[10px] font-medium text-[#8a6a2e] dark:text-[#f0c36a]">{roleLabel}</span>
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="font-normal"><p className="truncate text-sm font-semibold">{user.name || "Procurement User"}</p><p className="mt-1 truncate text-xs text-muted-foreground">{user.email || "Signed-in account"}</p><p className="mt-1 text-[11px] font-medium text-[#8a6a2e]">{roleLabel}</p>{user.officeName && <p className="mt-1 truncate text-[11px] text-muted-foreground">{user.officeName}</p>}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => void handleLogout()} className="text-destructive focus:text-destructive"><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-64 border-[#e4e1da] bg-white dark:border-[#46515c] dark:bg-[#1b2229]">
+                <DropdownMenuLabel className="font-normal">
+                  <p className="truncate text-sm font-semibold text-[#17202a] dark:text-white">{user.name || "Procurement User"}</p>
+                  <p className="mt-1 truncate text-xs text-[#52606d] dark:text-[#d1dae2]">{user.email || "Signed-in account"}</p>
+                  <p className="mt-1 text-[11px] font-medium text-[#8a6a2e] dark:text-[#f0c36a]">{roleLabel}</p>
+                  {user.officeName && <p className="mt-1 truncate text-[11px] text-[#52606d] dark:text-[#d1dae2]">{user.officeName}</p>}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[#e4e1da] dark:bg-[#46515c]" />
+                <DropdownMenuItem variant="destructive" onSelect={() => void handleLogout()} className="cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="icon" onClick={() => void handleLogout()} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525]" aria-label="Sign out">
+            <Button variant="ghost" size="icon" onClick={() => void handleLogout()} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525] dark:text-[#aeb9c4] dark:hover:bg-red-950/30 dark:hover:text-[#ff837a]" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -110,24 +121,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <div className="mx-auto flex max-w-[1560px]">
-        <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[236px] lg:shrink-0 lg:border-b-0 lg:border-r lg:p-4 ${menuOpen ? "block" : "hidden"}`}>
-          <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#9198a1]">Procurement workspace</p>
+        <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[236px] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#e4e1da] lg:p-4 dark:border-[#46515c] dark:bg-[#1b2229] ${menuOpen ? "block" : "hidden"}`}>
+          <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#9198a1] dark:text-[#aeb9c4]">Procurement workspace</p>
           <nav className="grid gap-0.5">
             {visibleNavigation.map((item) => {
               const active = location === item.path;
               return (
-                <button key={item.path} onClick={() => { setLocation(item.path); setMenuOpen(false); }} aria-current={active ? "page" : undefined} className={`relative flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs transition-colors ${active ? "bg-[#7b1e1e] pl-3 font-bold text-white shadow-[0_2px_7px_rgba(92,20,20,0.18)] before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r before:bg-[#d5ab55]" : "font-medium text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946]"}`}>
-                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#f7d98b]" : "text-[#7c8795]"}`} />
+                <button
+                  key={item.path}
+                  onClick={() => { setLocation(item.path); setMenuOpen(false); }}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs transition-colors ${
+                    active
+                      ? "bg-[#7b1e1e] pl-3 font-bold text-white shadow-[0_2px_7px_rgba(92,20,20,0.18)] before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r before:bg-[#d5ab55] dark:bg-[#8f2424] dark:text-white dark:before:bg-[#ffd166]"
+                      : "font-medium text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946] dark:text-[#d1dae2] dark:hover:bg-[#232c35] dark:hover:text-white"
+                  }`}
+                >
+                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#f7d98b] dark:text-[#ffd166]" : "text-[#7c8795] dark:text-[#aeb9c4]"}`} />
                   <span>{item.label}</span>
                 </button>
               );
             })}
           </nav>
-          <div className="mt-7 border-t border-[#ece9e2] pt-5">
-            <div className="rounded-[4px] border border-[#e7dfce] bg-[#fcfaf4] p-3">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">Workflow controls</p>
-              <p className="mt-1.5 text-[11px] leading-5 text-[#6a7280]">Actions appear only when your assigned role is permitted to act.</p>
-              <Badge variant="outline" className="mt-2 rounded-[3px] border-[#dec99b] bg-white px-1.5 py-0 text-[9px] font-semibold text-[#7b5c20]">ROLE-GATED</Badge>
+          <div className="mt-7 border-t border-[#ece9e2] pt-5 dark:border-[#46515c]">
+            <div className="rounded-[4px] border border-[#e7dfce] bg-[#fcfaf4] p-3 dark:border-[#635028] dark:bg-[#221c12]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19] dark:text-[#f0c36a]">Workflow controls</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-[#6a7280] dark:text-[#d1dae2]">Actions appear only when your assigned role is permitted to act.</p>
+              <Badge variant="outline" className="mt-2 rounded-[3px] border-[#dec99b] bg-white px-1.5 py-0 text-[9px] font-semibold text-[#7b5c20] dark:border-[#806429] dark:bg-[#2b2416] dark:text-[#f0c36a]">ROLE-GATED</Badge>
             </div>
           </div>
         </aside>
