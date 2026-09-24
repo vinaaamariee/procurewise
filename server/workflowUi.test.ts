@@ -10,8 +10,8 @@ const managementSource = readFileSync(resolve(projectRoot, "client/src/pages/Man
 describe("ProcureWise PPMP-to-PMR workflow workspaces", () => {
   it("keeps the required package, approval, PO, delivery, and PMR controls in the authenticated UI", () => {
     expect(requestSource).toContain("Linked PPMP entry");
-    expect(workflowSource).toContain("Pre-Canvass & supplier quotes");
-    expect(workflowSource).toContain("Create abstract");
+    expect(workflowSource).toContain("Pre-Canvass");
+    expect(workflowSource).toContain("official Abstract");
     expect(workflowSource).toContain("Issue PO");
     expect(workflowSource).toContain("Record delivery");
     expect(workflowSource).toContain("Log PMR");

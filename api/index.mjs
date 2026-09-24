@@ -702,15 +702,28 @@ var auditTrails = procurewiseSchema.table("audit_trails", {
 }, (table) => [index("audit_entity_created_idx").on(table.entityType, table.entityId, table.createdAt)]);
 
 // shared/procurementRules.ts
-var PROCUREMENT_ROLES = ["end_user", "procurement_officer", "administrative_approver", "admin"];
-var USER_ROLES = ["user", ...PROCUREMENT_ROLES, "bac", "supply_officer", "budget_officer"];
+var PROCUREMENT_ROLES = [
+  "end_user",
+  "procurement_officer",
+  "procurement_officer_i",
+  "procurement_officer_ii",
+  "procurement_staff",
+  "administrative_approver",
+  "bac_secretariat",
+  "bac",
+  "hope",
+  "budget_officer",
+  "supplier_contractor",
+  "admin"
+];
+var USER_ROLES = ["user", ...PROCUREMENT_ROLES, "supply_officer"];
 function roleCanAct(role, permittedRoles) {
   return role === "admin" || permittedRoles.includes(role);
 }
 function normalizeProcurementRole(role) {
   if (role === "user") return "end_user";
-  if (role === "supply_officer") return "procurement_officer";
-  if (role === "bac" || role === "budget_officer") return "administrative_approver";
+  if (role === "supply_officer" || role === "procurement_officer_i" || role === "procurement_officer_ii" || role === "procurement_staff") return "procurement_officer";
+  if (role === "bac_secretariat" || role === "bac" || role === "hope" || role === "budget_officer") return "administrative_approver";
   return role;
 }
 function getNextPrStatus(currentStatus, role) {
@@ -2102,7 +2115,7 @@ var appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
         return listUserProfiles();
       }),
-      updateUserRole: protectedProcedure.input(z2.object({ userId: z2.number().int().positive(), role: z2.enum(["end_user", "procurement_officer", "administrative_approver", "admin"]) })).mutation(({ ctx, input }) => {
+      updateUserRole: protectedProcedure.input(z2.object({ userId: z2.number().int().positive(), role: z2.enum(["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "administrative_approver", "bac_secretariat", "bac", "hope", "budget_officer", "supplier_contractor", "admin"]) })).mutation(({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
         return updateUserProcurementRole(input.userId, input.role, ctx.user);
       })
@@ -2219,7 +2232,7 @@ var appRouter = router({
       createAbstract: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive() })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer"]);
         const result = await createAbstractOfCanvass(input.preCanvassId, ctx.user);
-        await notifyRoles(["administrative_approver"], { kind: "action_required", title: "Abstract of Canvass awaiting decision", body: "A Procurement Officer recommendation is ready for administrative review.", entityType: "pre_canvass", entityId: input.preCanvassId });
+        await notifyRoles(["administrative_approver"], { kind: "action_required", title: "Official Abstract awaiting BAC/HoPE decision", body: "Procurement Staff/BAC final canvass validation is complete and the official Abstract of Quotations is ready for BAC/HoPE review.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
         void publishProcurementRealtimeUpdate("abstract_of_canvass");
         return result;
@@ -2227,7 +2240,7 @@ var appRouter = router({
       decideAbstract: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive(), decision: z2.enum(["approved", "rejected"]), remarks: z2.string().max(1e3).optional() })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver"]);
         const result = await decideAbstractOfCanvass(input, ctx.user);
-        await notifyRoles(["procurement_officer"], { kind: "status_change", title: `Abstract ${input.decision}`, body: input.remarks || "The Administrative Approver recorded a decision on the Abstract of Canvass.", entityType: "pre_canvass", entityId: input.preCanvassId });
+        await notifyRoles(["procurement_officer"], { kind: "status_change", title: `Official Abstract ${input.decision}`, body: input.remarks || "BAC/HoPE recorded a decision on the official Abstract of Quotations.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
         void publishProcurementRealtimeUpdate("abstract_of_canvass");
         return result;

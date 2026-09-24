@@ -77,3 +77,62 @@ export function canReserveBudget(allottedAmount: number | string, committedAmoun
 export function hasReservedBudgetCommitment(committedAmount: number | string, requestAmount: number | string) {
   return Number(committedAmount) >= Number(requestAmount);
 }
+
+export const EMPLOYEE_PR_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  procurement_review: "In Progress — Procurement Review",
+  returned: "Returned for Correction",
+  approval_review: "In Progress — Approval Review",
+  budget_review: "In Progress — Approval Review",
+  supply_review: "In Progress — Approval Review",
+  bac_review: "In Progress — Approval Review",
+  approved: "Approved",
+  rejected: "Rejected",
+  rfq: "RFQ in Progress",
+  po: "Purchase Order in Progress",
+  po_issued: "Purchase Order in Progress",
+  delivered: "Delivered",
+  pmr_logged: "Closed — PMR Logged",
+  closed: "Closed — PMR Logged",
+};
+
+export const EMPLOYEE_PR_STATUS_MEANINGS: Record<string, string> = {
+  draft: "Employee is still preparing the package.",
+  procurement_review: "Package has been submitted to Procurement.",
+  returned: "Employee must correct the package and resubmit.",
+  approval_review: "Package is being reviewed by the authorized decision role.",
+  budget_review: "Package is being reviewed by the authorized decision role.",
+  supply_review: "Package is being reviewed by the authorized decision role.",
+  bac_review: "Package is being reviewed by the authorized decision role.",
+  approved: "PR passed the required decision stage.",
+  rejected: "Current transaction path was rejected and requires a new controlled submission or documented resubmission.",
+  rfq: "Final RFQ is being prepared, distributed, or evaluated.",
+  po: "PO is being prepared or approved.",
+  po_issued: "PO is being prepared or approved.",
+  delivered: "Delivery has been recorded.",
+  pmr_logged: "PMR requirements are complete.",
+  closed: "PMR requirements are complete.",
+};
+
+export function getEmployeePrStatus(status: string) {
+  const normalized = status.toLowerCase();
+  const label = EMPLOYEE_PR_STATUS_LABELS[normalized] ?? status.replaceAll("_", " ");
+  const meaning = EMPLOYEE_PR_STATUS_MEANINGS[normalized] ?? "Status is being updated by the procurement workflow.";
+  return { label, meaning };
+}
+
+const COUNTABLE_UNITS = new Set(["pc", "pcs", "piece", "pieces", "unit", "units", "box", "boxes", "pack", "packs", "ream", "reams", "set", "sets", "roll", "rolls", "pad", "pads", "bundle", "bundles"]);
+const VOLUME_UNITS = new Set(["l", "liter", "liters", "ml", "milliliter", "milliliters", "gal", "gallon", "gallons"]);
+const WEIGHT_UNITS = new Set(["kg", "kilogram", "kilograms", "g", "gram", "grams", "lb", "lbs", "ton", "tons"]);
+const LENGTH_UNITS = new Set(["m", "meter", "meters", "cm", "centimeter", "centimeters", "ft", "foot", "feet", "yard", "yards"]);
+
+export function areUnitsCompatible(unitA: string, unitB: string): boolean {
+  const normA = unitA.trim().toLowerCase();
+  const normB = unitB.trim().toLowerCase();
+  if (normA === normB) return true;
+  if (COUNTABLE_UNITS.has(normA) && COUNTABLE_UNITS.has(normB)) return true;
+  if (VOLUME_UNITS.has(normA) && VOLUME_UNITS.has(normB)) return true;
+  if (WEIGHT_UNITS.has(normA) && WEIGHT_UNITS.has(normB)) return true;
+  if (LENGTH_UNITS.has(normA) && LENGTH_UNITS.has(normB)) return true;
+  return false;
+}

@@ -50,6 +50,13 @@
       "when": 1789793691161,
       "tag": "0006_adorable_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790200000000,
+      "tag": "0007_adviser_workflow_controls",
+      "breakpoints": true
     }
   ]
 }
