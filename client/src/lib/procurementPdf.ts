@@ -10,6 +10,8 @@ const value = (item: string | number | null | undefined) => String(item ?? "").t
 
 const BSC_HEADER_URL = "/manus-storage/bsc-header_31d256ab.png";
 const BSC_FOOTER_URL = "/manus-storage/bsc-footer_9296dc8a.png";
+const SUPPLIER_EVALUATION_HEADER_URL = "/header.png";
+const SUPPLIER_EVALUATION_FOOTER_URL = "/footer.png";
 let bscLetterheadPromise: Promise<{ header: string; footer: string }> | null = null;
 
 async function imageUrlToDataUrl(url: string) {
@@ -31,6 +33,13 @@ async function addBscLetterhead(doc: jsPDF) {
   doc.addImage(footer, "PNG", 0, 263, 210, 32.6);
 }
 
+let supplierEvaluationLetterheadPromise: Promise<{ header: string; footer: string }> | null = null;
+async function addSupplierEvaluationLetterhead(doc: jsPDF) {
+  supplierEvaluationLetterheadPromise ??= Promise.all([imageUrlToDataUrl(SUPPLIER_EVALUATION_HEADER_URL), imageUrlToDataUrl(SUPPLIER_EVALUATION_FOOTER_URL)]).then(([header, footer]) => ({ header, footer }));
+  const { header, footer } = await supplierEvaluationLetterheadPromise;
+  doc.addImage(header, "PNG", 14, 7, 182, 28.5);
+  doc.addImage(footer, "PNG", 14, 270, 182, 21);
+}
 export function officialFormFileName(kind: "purchase_request" | "pre_canvass" | "abstract" | "purchase_order" | "ppmp", recordNumber: string) { return `${recordNumber}_${{ purchase_request: "Appendix60", pre_canvass: "AnnexD", abstract: "AnnexF", purchase_order: "Appendix61", ppmp: "PPMP" }[kind]}.pdf`; }
 export function invokeOfficialPdfDownload(doc: Pick<jsPDF, "save"> & { output?: (type: "bloburl") => string }, fileName: string, preview = false) { if (preview && typeof window !== "undefined" && doc.output) { window.open(doc.output("bloburl"), "_blank", "noopener,noreferrer"); return; } doc.save(fileName); }
 
@@ -165,17 +174,18 @@ export function downloadBestValuePolicyHistoryPdf(history: BestValuePolicyHistor
 
 export async function downloadSupplierEvaluationFormPdf(input: { audience: SupplierEvaluationAudience; supplierName: string; goodsServicesType?: string | null; officeName?: string | null; purchaseRequestNumber?: string | null; purchaseOrderNumber: string; supplierRegistryReference?: string | null; supplierRegistryRegisteredAt?: Date | string | null; supplierRegistryExpiresAt?: Date | string | null; responseScores: Record<string, number>; remarks?: string | null; respondentName?: string | null; evaluatedAt: Date | string; electronicApproval?: { approverName: string; approverDesignation: string; consentStatement: string; signatureDigest: string; approvedAt: Date | string } | null }, options?: { preview?: boolean }) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  await addBscLetterhead(doc);
-  formTitle(doc, "Procurement Unit", "SUPPLIER EVALUATION FORM");
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("(Goods)", 105, 27, { align: "center" });
-  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.text(`To be accomplished by ${input.audience === "end_user" ? "End-User" : "Procurement Office"}`, 105, 33, { align: "center" });
-  let y = 42;
+  await addSupplierEvaluationLetterhead(doc);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PROCUREMENT UNIT", 105, 40, { align: "center" });
+  doc.setFontSize(12); doc.text("SUPPLIER EVALUATION FORM", 105, 47, { align: "center" });
+  doc.setFontSize(10); doc.text("(Goods)", 105, 53, { align: "center" });
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.text(`To be accomplished by ${input.audience === "end_user" ? "end-user" : "Procurement Office"}`, 105, 59, { align: "center" });
+  let y = 69;
   line(doc, 14, y, 88, "Name of Supplier:", input.supplierName); line(doc, 110, y, 86, "Purchase Order No.:", input.purchaseOrderNumber); y += 7;
-  if (input.audience === "end_user") { line(doc, 14, y, 88, "Type of Goods/Services Provided:", input.goodsServicesType); line(doc, 110, y, 86, "Office/Unit:", input.officeName); y += 7; }
-  else { line(doc, 14, y, 88, "Purchase Request No.:", input.purchaseRequestNumber); line(doc, 110, y, 86, "Supplier registry reference:", input.supplierRegistryReference); y += 7; line(doc, 14, y, 88, "Date Registered:", date(input.supplierRegistryRegisteredAt)); line(doc, 110, y, 86, "Expiration Date:", date(input.supplierRegistryExpiresAt)); y += 7; }
+  if (input.audience === "end_user") { line(doc, 14, y, 88, "Type of Goods/Services Provided:", input.goodsServicesType); line(doc, 110, y, 86, "Office/Unit:", input.officeName); y += 7; line(doc, 14, y, 88, "PhilGEPS Registration:", input.supplierRegistryReference || "Not recorded"); line(doc, 110, y, 86, "Registration Date:", date(input.supplierRegistryRegisteredAt) || "Not recorded"); y += 7; line(doc, 14, y, 88, "PhilGEPS Expiration Date:", date(input.supplierRegistryExpiresAt) || "Not recorded"); y += 7; }
+  else { line(doc, 14, y, 88, "Purchase Request No.:", input.purchaseRequestNumber); line(doc, 110, y, 86, "PhilGEPS Registration:", input.supplierRegistryReference); y += 7; line(doc, 14, y, 88, "Registration Date:", date(input.supplierRegistryRegisteredAt)); line(doc, 110, y, 86, "PhilGEPS Expiration Date:", date(input.supplierRegistryExpiresAt)); y += 7; }
   doc.setFont("helvetica", "bold"); doc.setFontSize(7.3); doc.text("Instructions:", 14, y + 2); doc.setFont("helvetica", "normal");
   doc.text(doc.splitTextToSize("This is a survey on the performance of our suppliers. It aims to improve our procurement service/system. Your sincere and honest answers will be highly appreciated and treated with utmost confidentiality.", 180), 14, y + 7); y += 17;
-  doc.text(doc.splitTextToSize("Please rate the supplier according to each criterion provided and put a mark on the column that best corresponds to your answer.", 180), 14, y); y += 9;
+  doc.text(doc.splitTextToSize("Please rate the supplier according to each criterion provided and put a checkmark (✓) on the column that best corresponds to your answer.", 180), 14, y); y += 9;
   const columns = [{ label: "CRITERIA", x: 14, width: 90 }, ...SUPPLIER_EVALUATION_RATINGS.map((rating, index) => ({ label: `${rating.label.toUpperCase()}\n(${rating.score})`, x: 104 + index * 23, width: 23 }))];
   columns.forEach((column) => { doc.rect(column.x, y, column.width, 11); doc.setFont("helvetica", "bold"); doc.setFontSize(5.6); doc.text(column.label.split("\n"), column.x + column.width / 2, y + 4, { align: "center" }); }); y += 11;
   const criteria = criteriaForSupplierEvaluation(input.audience);

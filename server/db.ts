@@ -531,6 +531,8 @@ export async function createSupplierEvaluationForm(input: SupplierEvaluationForm
   if (responseError) throw new Error(responseError);
   const { order, request } = await getVerifiedEvaluationOrder(input, user, audience);
   const db = await requireDb();
+  const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+  if (!supplier) throw new Error("The selected supplier could not be found.");
   const summary = deriveSupplierEvaluationSummary(audience, input.responseScores);
   const reportedPurchaseRequestNumber = audience === "procurement_office" ? input.reportedPurchaseRequestNumber?.trim() || request.prNumber : request.prNumber;
   const urgentPurchaseRequestReference = audience === "procurement_office" && reportedPurchaseRequestNumber !== request.prNumber;
@@ -546,9 +548,9 @@ export async function createSupplierEvaluationForm(input: SupplierEvaluationForm
     officeId: request.officeId,
     evaluationAudience: audience,
     goodsServicesType: audience === "end_user" ? input.goodsServicesType?.trim() || null : null,
-    supplierRegistryReference: audience === "procurement_office" ? input.supplierRegistryReference?.trim() || null : null,
-    supplierRegistryRegisteredAt: audience === "procurement_office" ? input.supplierRegistryRegisteredAt ?? null : null,
-    supplierRegistryExpiresAt: audience === "procurement_office" ? input.supplierRegistryExpiresAt ?? null : null,
+    supplierRegistryReference: supplier.philgepsRegistrationNumber?.trim() || (audience === "procurement_office" ? input.supplierRegistryReference?.trim() || null : null),
+    supplierRegistryRegisteredAt: supplier.philgepsRegistrationDate ?? (audience === "procurement_office" ? input.supplierRegistryRegisteredAt ?? null : null),
+    supplierRegistryExpiresAt: supplier.philgepsExpirationDate ?? (audience === "procurement_office" ? input.supplierRegistryExpiresAt ?? null : null),
     responseScores: input.responseScores,
     ...summary,
     remarks: input.remarks?.trim() || null,

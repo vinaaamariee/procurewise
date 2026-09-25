@@ -12,14 +12,14 @@ export const END_USER_EVALUATION_CRITERIA: SupplierEvaluationCriterion[] = [
   { key: "communication", section: "Communication and responsiveness", label: "The supplier provides clear and concise communication throughout the ordering process." },
   { key: "competitive_pricing", section: "Cost and pricing", label: "The supplier offers competitive pricing of the products/services." },
   { key: "cost_justification", section: "Cost and pricing", label: "The products/services justify the cost." },
-  { key: "recommend_supplier", section: "Overall satisfaction", label: "I would recommend this supplier provider to others within the institution." },
+  { key: "recommend_supplier", section: "Overall satisfaction", label: "I would recommend this supplier to others within the institution." },
 ];
 
 export const PROCUREMENT_OFFICE_EVALUATION_CRITERIA: SupplierEvaluationCriterion[] = [
   { key: "rfq_timeliness", section: "Procurement Office assessment", label: "Responds to the Request for Quotation (RFQ) within the specified date." },
-  { key: "competitive_price", section: "Procurement Office assessment", label: "Products are offered at a competitive price with other suppliers/bidders." },
+  { key: "competitive_price", section: "Procurement Office assessment", label: "Products are offered at a competitive price compared with other suppliers/bidders." },
   { key: "specification_conformance", section: "Procurement Office assessment", label: "Offer conforms to product sample/specification requirements." },
-  { key: "documentary_requirements", section: "Procurement Office assessment", label: "Submit all prescribed documentary requirements within 1–2 days upon Procurement Officer request or coordination." },
+  { key: "documentary_requirements", section: "Procurement Office assessment", label: "The supplier submits all prescribed documentary requirements within 1–2 days upon request or coordination by the Procurement Officer." },
   { key: "delivery_term", section: "Procurement Office assessment", label: "Delivers the goods following the delivery term specified in the Purchase Order/Contract." },
 ];
 
