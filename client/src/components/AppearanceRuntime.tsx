@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { disableTransitionsTemporarily } from "@/lib/themeTransitions";
 import { useEffect } from "react";
 
 export function AppearanceRuntime() {
@@ -21,6 +22,7 @@ export function AppearanceRuntime() {
         }
       }
 
+      disableTransitionsTemporarily();
       root.dataset.appearanceTheme = theme;
       root.dataset.appearanceFont = "public_sans";
       root.classList.toggle("dark", theme === "dark");

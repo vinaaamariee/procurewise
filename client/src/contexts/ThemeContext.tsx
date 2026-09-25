@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { disableTransitionsTemporarily } from "@/lib/themeTransitions";
 
 type Theme = "light" | "dark";
 
@@ -19,32 +20,59 @@ interface ThemeProviderProps {
 export function ThemeProvider({
   children,
   defaultTheme = "light",
-  switchable = false,
+  switchable = true,
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
+      if (stored === "dark" || stored === "light") return stored;
+      if (document.documentElement.classList.contains("dark") || document.documentElement.dataset.appearanceTheme === "dark") {
+        return "dark";
+      }
     }
     return defaultTheme;
   });
 
   useEffect(() => {
+    const handleSync = () => {
+      if (typeof window === "undefined") return;
+      const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
+      if (stored === "dark" || stored === "light") {
+        setTheme(stored);
+      }
+    };
+    window.addEventListener("procurewise-theme-change", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("procurewise-theme-change", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
+
+  useEffect(() => {
     const root = document.documentElement;
+    disableTransitionsTemporarily();
     if (theme === "dark") {
       root.classList.add("dark");
+      root.dataset.appearanceTheme = "dark";
     } else {
       root.classList.remove("dark");
+      root.dataset.appearanceTheme = "light";
     }
 
     if (switchable) {
+      localStorage.setItem("procurewise.appearanceTheme", theme);
       localStorage.setItem("theme", theme);
     }
   }, [theme, switchable]);
 
   const toggleTheme = switchable
     ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
+        setTheme((prev) => {
+          const next = prev === "light" ? "dark" : "light";
+          window.dispatchEvent(new CustomEvent("procurewise-theme-change", { detail: next }));
+          return next;
+        });
       }
     : undefined;
 
