@@ -25,4 +25,9 @@ describe("ProcureWise PPMP-to-PMR workflow workspaces", () => {
     expect(workflowSource).toContain("Delivery status");
     expect(managementSource).toContain("TIN");
   });
+
+  it("displays PR Numbers and traceability in Budget utilization", () => {
+    expect(managementSource).toContain("PR Numbers");
+    expect(managementSource).toContain("Search by PR number, office, or object of expenditure");
+  });
 });

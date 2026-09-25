@@ -181,8 +181,122 @@ export function PurchaseOrderPage() {
 }
 
 export function BudgetPage() {
+  const [search, setSearch] = useState("");
   const budgets = trpc.procurement.setup.budgetUtilization.useQuery(undefined, { retry: false });
-  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Allotment control" title="Budget utilization" description="Track allotted, committed, and available balances at the specific office and object-of-expenditure level." /> <div className="mt-7">{budgets.isLoading ? <LoadingPanel label="Loading budget utilization" /> : budgets.data?.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Office</th><th className="px-4 py-3 font-semibold">Object of expenditure</th><th className="px-4 py-3 font-semibold">FY</th><th className="px-4 py-3 font-semibold">Allotted</th><th className="px-4 py-3 font-semibold">Committed</th><th className="px-4 py-3 font-semibold">Available</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{budgets.data.map((budget) => <tr key={budget.id}><td className="px-4 py-3 text-[#3e4855]">{budget.office ? `${budget.office.code} — ${budget.office.name}` : `Office #${budget.officeId}`}</td><td className="px-4 py-3 text-[#3e4855]">{budget.objectOfExpenditure ? `${budget.objectOfExpenditure.code} — ${budget.objectOfExpenditure.name}` : `Object #${budget.objectOfExpenditureId}`}</td><td className="px-4 py-3 text-[#65717e]">{budget.fiscalYear}</td><td className="px-4 py-3 text-[#3e4855]">{formatMoney(budget.allottedAmount)}</td><td className="px-4 py-3 text-[#3e4855]">{formatMoney(budget.committedAmount)}</td><td className="px-4 py-3"><StatusBadge tone={Number(budget.availableAmount) > 0 ? "approved" : "returned"}>{formatMoney(budget.availableAmount)}</StatusBadge></td></tr>)}</tbody></RecordTable> : <EmptyWorkspace eyebrow="Allotment control" title="No office-level budget allotments have been registered." description="Use System setup to create an office, an object of expenditure, and the associated fiscal-year allotment before PR submissions can be validated." actionLabel="Open system setup" actionHref="/setup" />}</div></div>;
+
+  const filtered = useMemo(() => {
+    if (!budgets.data) return [];
+    if (!search.trim()) return budgets.data;
+    const q = search.trim().toLowerCase();
+    return budgets.data.filter((budget) => {
+      const officeText = budget.office ? `${budget.office.code} ${budget.office.name}`.toLowerCase() : "";
+      const objectText = budget.objectOfExpenditure ? `${budget.objectOfExpenditure.code} ${budget.objectOfExpenditure.name}`.toLowerCase() : "";
+      const prText = (budget.purchaseRequests || []).map((pr: any) => `${pr.prNumber} ${pr.purpose || ""}`).join(" ").toLowerCase();
+      const fyText = String(budget.fiscalYear);
+      return officeText.includes(q) || objectText.includes(q) || prText.includes(q) || fyText.includes(q);
+    });
+  }, [budgets.data, search]);
+
+  return (
+    <div className="mx-auto max-w-[1360px]">
+      <PageHeader
+        eyebrow="Allotment control"
+        title="Budget utilization"
+        description="Track allotted, committed, and available balances at the specific office and object-of-expenditure level, with full traceability to linked Purchase Requests."
+      />
+      <div className="mt-7">
+        {budgets.isLoading ? (
+          <LoadingPanel label="Loading budget utilization" />
+        ) : budgets.data?.length ? (
+          <div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="w-full sm:max-w-md">
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by PR number, office, or object of expenditure"
+                  className="h-9 text-xs"
+                />
+              </div>
+              {search && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearch("")}
+                  className="h-9 text-xs"
+                >
+                  Clear filter
+                </Button>
+              )}
+            </div>
+
+            <RecordTable>
+              <RecordTableHeader>
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Office</th>
+                  <th className="px-4 py-3 font-semibold">Object of expenditure</th>
+                  <th className="px-4 py-3 font-semibold">FY</th>
+                  <th className="px-4 py-3 font-semibold">PR Numbers</th>
+                  <th className="px-4 py-3 font-semibold">Allotted</th>
+                  <th className="px-4 py-3 font-semibold">Committed</th>
+                  <th className="px-4 py-3 font-semibold">Available</th>
+                </tr>
+              </RecordTableHeader>
+              <tbody className="divide-y divide-[#efebe4] dark:divide-[#3d4854]">
+                {filtered.map((budget) => (
+                  <tr key={budget.id}>
+                    <td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">
+                      {budget.office ? `${budget.office.code} — ${budget.office.name}` : `Office #${budget.officeId}`}
+                    </td>
+                    <td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">
+                      {budget.objectOfExpenditure ? `${budget.objectOfExpenditure.code} — ${budget.objectOfExpenditure.name}` : `Object #${budget.objectOfExpenditureId}`}
+                    </td>
+                    <td className="px-4 py-3 text-[#65717e] dark:text-[#aebac7]">{budget.fiscalYear}</td>
+                    <td className="px-4 py-3">
+                      {budget.purchaseRequests && budget.purchaseRequests.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                          {budget.purchaseRequests.map((pr: any) => (
+                            <a
+                              key={pr.id}
+                              href="/purchase-requests"
+                              title={`${pr.prNumber}${pr.purpose ? `: ${pr.purpose}` : ""} (${formatMoney(pr.totalEstimate)}) · ${pr.status.replaceAll("_", " ")}`}
+                              className="inline-flex items-center gap-1 rounded bg-[#f5f2eb] px-2 py-0.5 text-[11px] font-medium font-mono text-[#7b1e1e] border border-[#e2dcd2] transition-colors hover:bg-[#eae4d7] hover:border-[#cbbeaa] dark:bg-[#25303d] dark:text-[#ff837a] dark:border-[#3d4a59] dark:hover:bg-[#303e4e]"
+                            >
+                              <span>{pr.prNumber}</span>
+                              <span className="text-[10px] text-[#7d8894] dark:text-[#9eaab6]">
+                                ({formatMoney(pr.totalEstimate)})
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-[#8994a1] italic">No linked PRs</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{formatMoney(budget.allottedAmount)}</td>
+                    <td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{formatMoney(budget.committedAmount)}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge tone={Number(budget.availableAmount) > 0 ? "approved" : "returned"}>
+                        {formatMoney(budget.availableAmount)}
+                      </StatusBadge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </RecordTable>
+          </div>
+        ) : (
+          <EmptyWorkspace
+            eyebrow="Allotment control"
+            title="No office-level budget allotments have been registered."
+            description="Use System setup to create an office, an object of expenditure, and the associated fiscal-year allotment before PR submissions can be validated."
+            actionLabel="Open system setup"
+            actionHref="/setup"
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function AnalyticsPage() {

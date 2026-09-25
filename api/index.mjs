@@ -1293,13 +1293,50 @@ async function saveBestValuePolicy(input, user) {
 }
 async function getBudgetUtilization() {
   const db = await requireDb();
-  const [allotments, officeRows, objectRows] = await Promise.all([db.select().from(budgetAllotments), db.select().from(offices), db.select().from(objectsOfExpenditure)]);
-  return allotments.map((allotment) => ({
-    ...allotment,
-    office: officeRows.find((office) => office.id === allotment.officeId) ?? null,
-    objectOfExpenditure: objectRows.find((object) => object.id === allotment.objectOfExpenditureId) ?? null,
-    availableAmount: (Number(allotment.allottedAmount) - Number(allotment.committedAmount)).toFixed(2)
-  }));
+  const [allotments, officeRows, objectRows, prRows] = await Promise.all([
+    db.select().from(budgetAllotments),
+    db.select().from(offices),
+    db.select().from(objectsOfExpenditure),
+    db.select({
+      id: purchaseRequests.id,
+      prNumber: purchaseRequests.prNumber,
+      officeId: purchaseRequests.officeId,
+      objectOfExpenditureId: purchaseRequests.objectOfExpenditureId,
+      totalEstimate: purchaseRequests.totalEstimate,
+      status: purchaseRequests.status,
+      purpose: purchaseRequests.purpose,
+      createdAt: purchaseRequests.createdAt
+    }).from(purchaseRequests)
+  ]);
+  return allotments.map((allotment) => {
+    let linkedPrs = prRows.filter((pr) => {
+      if (pr.officeId !== allotment.officeId || pr.objectOfExpenditureId !== allotment.objectOfExpenditureId) {
+        return false;
+      }
+      if (!allotment.fiscalYear) return true;
+      const createdYear = pr.createdAt ? new Date(pr.createdAt).getFullYear() : null;
+      return createdYear === allotment.fiscalYear || pr.prNumber.includes(String(allotment.fiscalYear));
+    });
+    if (linkedPrs.length === 0) {
+      linkedPrs = prRows.filter(
+        (pr) => pr.officeId === allotment.officeId && pr.objectOfExpenditureId === allotment.objectOfExpenditureId
+      );
+    }
+    return {
+      ...allotment,
+      office: officeRows.find((office) => office.id === allotment.officeId) ?? null,
+      objectOfExpenditure: objectRows.find((object) => object.id === allotment.objectOfExpenditureId) ?? null,
+      availableAmount: (Number(allotment.allottedAmount) - Number(allotment.committedAmount)).toFixed(2),
+      purchaseRequests: linkedPrs.map((pr) => ({
+        id: pr.id,
+        prNumber: pr.prNumber,
+        status: pr.status,
+        totalEstimate: pr.totalEstimate,
+        purpose: pr.purpose
+      })),
+      prNumbers: linkedPrs.map((pr) => pr.prNumber)
+    };
+  });
 }
 async function createOffice(input, user) {
   const db = await requireDb();
