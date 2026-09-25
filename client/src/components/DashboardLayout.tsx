@@ -121,8 +121,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <div className="mx-auto flex max-w-[1560px]">
-        <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[236px] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#e4e1da] lg:p-4 dark:border-[#46515c] dark:bg-[#1b2229] ${menuOpen ? "block" : "hidden"}`}>
-          <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#9198a1] dark:text-[#aeb9c4]">Procurement workspace</p>
+        <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[252px] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#e4e1da] lg:p-4 dark:border-[#46515c] dark:bg-[#1b2229] ${menuOpen ? "block" : "hidden"}`}>
+          <p className="mb-2.5 px-2 text-xs font-bold uppercase tracking-[0.14em] text-[#868f9a] dark:text-[#aeb9c4]">Procurement workspace</p>
           <nav className="grid gap-0.5">
             {visibleNavigation.map((item) => {
               const active = location === item.path;
@@ -131,23 +131,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   key={item.path}
                   onClick={() => { setLocation(item.path); setMenuOpen(false); }}
                   aria-current={active ? "page" : undefined}
-                  className={`relative flex h-9 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-xs transition-colors ${
+                  className={`relative flex h-9.5 items-center gap-2.5 rounded-[4px] px-2.5 text-left text-[13px] transition-colors ${
                     active
                       ? "bg-[#7b1e1e] pl-3 font-bold text-white shadow-[0_2px_7px_rgba(92,20,20,0.18)] before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r before:bg-[#d5ab55] dark:bg-[#8f2424] dark:text-white dark:before:bg-[#ffd166]"
                       : "font-medium text-[#566171] hover:bg-[#f5f3ee] hover:text-[#303946] dark:text-[#d1dae2] dark:hover:bg-[#232c35] dark:hover:text-white"
                   }`}
                 >
-                  <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#f7d98b] dark:text-[#ffd166]" : "text-[#7c8795] dark:text-[#aeb9c4]"}`} />
+                  <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-[#f7d98b] dark:text-[#ffd166]" : "text-[#7c8795] dark:text-[#aeb9c4]"}`} />
                   <span>{procurementRole === "end_user" && item.path === "/analytics" ? "My Analytics" : procurementRole === "end_user" && item.path === "/audit" ? "My Audit Trail" : item.label}</span>
                 </button>
               );
             })}
           </nav>
           <div className="mt-7 border-t border-[#ece9e2] pt-5 dark:border-[#46515c]">
-            <div className="rounded-[4px] border border-[#e7dfce] bg-[#fcfaf4] p-3 dark:border-[#635028] dark:bg-[#221c12]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19] dark:text-[#f0c36a]">Workflow controls</p>
-              <p className="mt-1.5 text-[11px] leading-5 text-[#6a7280] dark:text-[#d1dae2]">Actions appear only when your assigned role is permitted to act.</p>
-              <Badge variant="outline" className="mt-2 rounded-[3px] border-[#dec99b] bg-white px-1.5 py-0 text-[9px] font-semibold text-[#7b5c20] dark:border-[#806429] dark:bg-[#2b2416] dark:text-[#f0c36a]">ROLE-GATED</Badge>
+            <div className="rounded-[4px] border border-[#e7dfce] bg-[#fcfaf4] p-3.5 dark:border-[#635028] dark:bg-[#221c12]">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#9a6d19] dark:text-[#f0c36a]">Workflow controls</p>
+              <p className="mt-1.5 text-xs leading-5 text-[#6a7280] dark:text-[#d1dae2]">Actions appear only when your assigned role is permitted to act.</p>
+              <Badge variant="outline" className="mt-2 rounded-[3px] border-[#dec99b] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#7b5c20] dark:border-[#806429] dark:bg-[#2b2416] dark:text-[#f0c36a]">ROLE-GATED</Badge>
             </div>
           </div>
         </aside>

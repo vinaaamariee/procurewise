@@ -10,7 +10,7 @@ const styles = {
 
 export function StatusBadge({ children, tone = "draft" }: { children: React.ReactNode; tone?: keyof typeof styles }) {
   return (
-    <span className={cn("inline-flex items-center rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold leading-4", styles[tone])}>
+    <span className={cn("inline-flex items-center rounded-[4px] border px-2.5 py-0.5 text-xs font-semibold leading-4", styles[tone])}>
       {children}
     </span>
   );
