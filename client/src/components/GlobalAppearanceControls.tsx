@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { disableTransitionsTemporarily } from "@/lib/themeTransitions";
+import { useTheme } from "next-themes";
 
 export function GlobalAppearanceControls({ className }: { className?: string }) {
   const { user } = useAuth();
@@ -15,14 +15,8 @@ export function GlobalAppearanceControls({ className }: { className?: string }) 
   const containerRef = useRef<HTMLDivElement>(null);
   const settings = setup.data?.settings;
 
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
-      if (stored === "dark" || stored === "light") return stored;
-      if (document.documentElement.classList.contains("dark") || document.documentElement.dataset.appearanceTheme === "dark") return "dark";
-    }
-    return "light";
-  });
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const currentTheme = theme || resolvedTheme || "light";
 
   const update = trpc.procurement.setup.updateSettings.useMutation({
     onSuccess: () => {
@@ -32,26 +26,6 @@ export function GlobalAppearanceControls({ className }: { className?: string }) 
       console.warn("Theme sync to server:", error.message);
     },
   });
-
-  useEffect(() => {
-    const syncTheme = () => {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
-        if (stored === "dark" || stored === "light") {
-          setTheme(stored);
-        } else if (settings?.appearanceTheme) {
-          setTheme(settings.appearanceTheme === "dark" ? "dark" : "light");
-        }
-      }
-    };
-
-    window.addEventListener("procurewise-theme-change", syncTheme);
-    window.addEventListener("storage", syncTheme);
-    return () => {
-      window.removeEventListener("procurewise-theme-change", syncTheme);
-      window.removeEventListener("storage", syncTheme);
-    };
-  }, [settings]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -66,16 +40,7 @@ export function GlobalAppearanceControls({ className }: { className?: string }) 
   }, [open]);
 
   const applyTheme = (nextTheme: "light" | "dark") => {
-    disableTransitionsTemporarily();
     setTheme(nextTheme);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("procurewise.appearanceTheme", nextTheme);
-      localStorage.setItem("theme", nextTheme);
-      window.dispatchEvent(new CustomEvent("procurewise-theme-change", { detail: nextTheme }));
-    }
-    const root = document.documentElement;
-    root.dataset.appearanceTheme = nextTheme;
-    root.classList.toggle("dark", nextTheme === "dark");
 
     if (isAdmin && settings) {
       update.mutate({
@@ -109,22 +74,22 @@ export function GlobalAppearanceControls({ className }: { className?: string }) 
         aria-label="System appearance settings"
         aria-expanded={open}
       >
-        {theme === "dark" ? <Moon className="h-4 w-4 text-[#f0c36a]" /> : <Sun className="h-4 w-4 text-[#566171] dark:text-[#aeb9c4]" />}
+        {currentTheme === "dark" ? <Moon className="h-4 w-4 text-[#f0c36a]" /> : <Sun className="h-4 w-4 text-[#566171] dark:text-[#aeb9c4]" />}
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-64 rounded-md border border-border bg-card p-3 shadow-lg outline-none focus:outline-none ring-0">
+        <div className="absolute right-0 top-11 z-50 w-64 rounded-md border border-border dark:border-border bg-card p-3 shadow-lg outline-none focus:outline-none ring-0">
           <div className="mb-2.5 flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">Appearance</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{theme} mode</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{currentTheme} mode</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 rounded-[4px] border border-border bg-muted/50 p-1">
+          <div className="grid grid-cols-2 gap-1.5 rounded-[4px] border border-border dark:border-border bg-muted/50 p-1">
             <button
               type="button"
               onClick={() => applyTheme("light")}
               className={`flex items-center justify-center gap-1.5 rounded-[3px] py-1.5 text-xs font-medium focus:outline-none ${
-                theme === "light"
+                currentTheme === "light"
                   ? "bg-card font-semibold text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
@@ -136,7 +101,7 @@ export function GlobalAppearanceControls({ className }: { className?: string }) 
               type="button"
               onClick={() => applyTheme("dark")}
               className={`flex items-center justify-center gap-1.5 rounded-[3px] py-1.5 text-xs font-medium focus:outline-none ${
-                theme === "dark"
+                currentTheme === "dark"
                   ? "bg-card font-semibold text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}

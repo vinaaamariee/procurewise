@@ -1,5 +1,4 @@
 import { trpc } from "@/lib/trpc";
-import { disableTransitionsTemporarily } from "@/lib/themeTransitions";
 import { useEffect } from "react";
 
 export function AppearanceRuntime() {
@@ -8,40 +7,7 @@ export function AppearanceRuntime() {
 
   useEffect(() => {
     const root = document.documentElement;
-
-    const applyCurrentTheme = (override?: "light" | "dark") => {
-      let theme: "light" | "dark" = "light";
-      if (override) {
-        theme = override;
-      } else {
-        const storedTheme = typeof window !== "undefined" ? localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme") : null;
-        if (storedTheme === "dark" || storedTheme === "light") {
-          theme = storedTheme;
-        } else if (settings?.appearanceTheme === "dark") {
-          theme = "dark";
-        }
-      }
-
-      disableTransitionsTemporarily();
-      root.dataset.appearanceTheme = theme;
-      root.dataset.appearanceFont = "public_sans";
-      root.classList.toggle("dark", theme === "dark");
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("procurewise.appearanceTheme", theme);
-        localStorage.setItem("theme", theme);
-      }
-    };
-
-    applyCurrentTheme();
-
-    const handleThemeChange = (e: Event) => {
-      const customEvent = e as CustomEvent<"light" | "dark">;
-      applyCurrentTheme(customEvent.detail);
-    };
-
-    window.addEventListener("procurewise-theme-change", handleThemeChange);
-    window.addEventListener("storage", handleThemeChange);
+    root.dataset.appearanceFont = "public_sans";
 
     const accents: Record<string, string> = {
       maroon: "oklch(0.37 0.13 27)",
@@ -66,15 +32,20 @@ export function AppearanceRuntime() {
       root.dataset.appearanceTheme = "light";
     };
     const handleAfterPrint = () => {
-      applyCurrentTheme();
+      const activeTheme = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
+      if (activeTheme === "dark") {
+        root.classList.add("dark");
+        root.dataset.appearanceTheme = "dark";
+      } else {
+        root.classList.remove("dark");
+        root.dataset.appearanceTheme = "light";
+      }
     };
 
     window.addEventListener("beforeprint", handleBeforePrint);
     window.addEventListener("afterprint", handleAfterPrint);
 
     return () => {
-      window.removeEventListener("procurewise-theme-change", handleThemeChange);
-      window.removeEventListener("storage", handleThemeChange);
       window.removeEventListener("beforeprint", handleBeforePrint);
       window.removeEventListener("afterprint", handleAfterPrint);
     };

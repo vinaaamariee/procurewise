@@ -86,11 +86,14 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <AppearanceRuntime />
       <ThemeProvider
+        attribute={["class", "data-appearance-theme"]}
         defaultTheme="light"
-        // switchable
+        enableSystem={false}
+        disableTransitionOnChange
+        storageKey="procurewise.appearanceTheme"
       >
+        <AppearanceRuntime />
         <TooltipProvider>
           <Toaster />
           <Router />
