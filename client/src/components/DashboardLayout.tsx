@@ -16,7 +16,7 @@ import { Link, useLocation } from "wouter";
 
 const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashboard; roles: ProcurementRole[] }> = [
   { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
-  { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["end_user", "admin"] },
+  { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["admin"] },
   { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
   { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user", "procurement_officer", "admin"] },
@@ -27,8 +27,8 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Documents", path: "/documents", icon: Paperclip, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Budget Control", path: "/budgets", icon: WalletCards, roles: ["administrative_approver", "admin"] },
   { label: "Procurement Forecast", path: "/officer/forecast", icon: LineChart, roles: ["procurement_officer", "admin"] },
-  { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["procurement_officer", "administrative_approver", "admin"] },
-  { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "admin"] },
+  { label: "Analytics", path: "/analytics", icon: Boxes, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
+  { label: "Audit Trail", path: "/audit", icon: ReceiptText, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Historical PMR", path: "/pmr-history", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "supplier_contractor", "admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
@@ -138,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }`}
                 >
                   <item.icon className={`h-3.5 w-3.5 ${active ? "text-[#f7d98b] dark:text-[#ffd166]" : "text-[#7c8795] dark:text-[#aeb9c4]"}`} />
-                  <span>{item.label}</span>
+                  <span>{procurementRole === "end_user" && item.path === "/analytics" ? "My Analytics" : procurementRole === "end_user" && item.path === "/audit" ? "My Audit Trail" : item.label}</span>
                 </button>
               );
             })}

@@ -1736,7 +1736,7 @@ export async function getProcurementDashboard(user: User) {
   const poIds = poRows.map((po) => po.id);
   const deliveryRows = poIds.length ? await db.select().from(deliveryReceipts).where(inArray(deliveryReceipts.purchaseOrderId, poIds)) : [];
   const pmrRows = poIds.length ? await db.select().from(pmrLogs).where(inArray(pmrLogs.purchaseOrderId, poIds)) : [];
-  const auditRows = isEndUser ? await db.select().from(auditTrails).where(eq(auditTrails.performedById, user.id)) : await db.select().from(auditTrails);
+  const auditRows = isEndUser ? (await listAuditTrails({}, user)).items : await db.select().from(auditTrails);
   const planRows = (isEndUser ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.preparedById, user.id)) : await db.select().from(appPpmpEntries)).filter((record) => !archivedPpmpEntryIds.has(record.id));
   const [documents, corrections, notifications] = await Promise.all([listProcurementDocuments(user), listWorkflowCorrections(user), listWorkflowNotifications(user)]);
   const relatedPrs = prRows;
@@ -2166,10 +2166,11 @@ export async function listAuditTrails(
         return false;
       }
     } else {
-      const isActor = audit.performedById === user.id;
       const isOwnPr = audit.entityType === "purchase_request" && userPrIds.has(audit.entityId);
       const isOwnPreCanvass = audit.entityType === "pre_canvass" && userPreCanvassIds.has(audit.entityId);
-      if (!isActor && !isOwnPr && !isOwnPreCanvass) {
+      // End-Users may track only events attached to their own submitted
+      // procurement package, not unrelated events they may have performed.
+      if (actorRole === "end_user" && !isOwnPr && !isOwnPreCanvass) {
         return false;
       }
     }
