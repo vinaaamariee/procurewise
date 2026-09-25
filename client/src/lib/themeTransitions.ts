@@ -1,11 +1,15 @@
 /**
  * Temporarily disables all CSS transitions during theme switching.
+ * Adds the `disable-transitions` utility class to <html> and removes it after a tick.
  * This prevents transition jitter, layout stutter, color flashes, and sizing jumps.
  */
 export function disableTransitionsTemporarily(): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return () => {};
   }
+
+  const root = document.documentElement;
+  root.classList.add("disable-transitions");
 
   const css = document.createElement("style");
   css.setAttribute("type", "text/css");
@@ -29,12 +33,13 @@ export function disableTransitionsTemporarily(): () => void {
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    root.classList.remove("disable-transitions");
     if (document.head.contains(css)) {
       document.head.removeChild(css);
     }
   };
 
-  // Re-enable transitions after the browser has completed the theme render
+  // Remove after a tick (next animation frame)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       cleanup();

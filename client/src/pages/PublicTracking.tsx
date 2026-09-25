@@ -30,7 +30,7 @@ export default function PublicTrackingPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground outline-none ring-0 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <header className="flex items-center justify-between border-b border-border pb-6">
+        <header className="flex items-center justify-between border-b border-border dark:border-border pb-6">
           <Link href="/">
             <ProcureWiseLogo />
           </Link>
@@ -46,7 +46,7 @@ export default function PublicTrackingPage() {
           </div>
         </header>
 
-        <section className="mt-8 border border-border bg-card p-6 shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)] outline-none focus:outline-none ring-0 sm:p-8">
+        <section className="mt-8 border border-border dark:border-border bg-card p-6 shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)] outline-none focus:outline-none ring-0 sm:p-8">
           <p className="text-center text-[10px] font-bold uppercase tracking-[0.15em] text-[#9a6d19] dark:text-[#f0c36a]">
             Public tracking
           </p>
@@ -67,7 +67,7 @@ export default function PublicTrackingPage() {
               value={token}
               onChange={(event) => setToken(event.target.value)}
               placeholder="Enter tracking token"
-              className="h-10 rounded-[4px] bg-background dark:bg-[#151c24] border-input text-foreground placeholder:text-muted-foreground text-sm"
+              className="h-10 rounded-[4px] border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground text-sm"
             />
             <Button className="h-10 rounded-[4px] bg-[#7b1e1e] hover:bg-[#641818] text-white dark:bg-[#9a2828] dark:hover:bg-[#852020] focus:outline-none">
               <Search className="mr-1.5 h-4 w-4" />

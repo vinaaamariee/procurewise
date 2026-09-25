@@ -104,7 +104,7 @@ export default function Access() {
   const registration = mode === "register";
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-border dark:border-border bg-card">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-5 sm:px-8">
           <Link href="/">
             <ProcureWiseLogo />
@@ -121,7 +121,7 @@ export default function Access() {
           </div>
         </div>
       </header>
-      <main className="flat-grid min-h-[calc(100vh-64px)] border-b border-border bg-background outline-none ring-0">
+      <main className="flat-grid min-h-[calc(100vh-64px)] border-b border-border dark:border-border bg-background outline-none ring-0">
         <div className="mx-auto grid max-w-[1120px] gap-10 px-5 py-12 sm:px-8 lg:min-h-[calc(100vh-64px)] lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16 lg:py-16">
           <section className="max-w-xl outline-none ring-0">
             <div className="inline-flex items-center gap-2 rounded-[4px] border border-[#e8d8b5] bg-[#fffaf0] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8a6520] dark:border-[#52411e] dark:bg-[#251d10] dark:text-[#f0c36a]">
@@ -133,7 +133,7 @@ export default function Access() {
             <p className="mt-6 text-[15px] leading-7 text-muted-foreground">
               Sign in to your assigned workspace or create an End-User profile before preparing a PPMP, Purchase Request, and preliminary quotation package. Elevated procurement roles remain under administrator control.
             </p>
-            <div className="mt-9 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
+            <div className="mt-9 grid gap-px overflow-hidden border border-border dark:border-border bg-border sm:grid-cols-2">
               <div className="bg-card p-5">
                 <ClipboardList className="h-5 w-5 text-primary dark:text-[#eb766a]" />
                 <p className="mt-4 text-sm font-semibold text-foreground">Start with your procurement package</p>
@@ -146,8 +146,8 @@ export default function Access() {
               </div>
             </div>
           </section>
-          <section className="border border-border bg-card p-5 sm:p-6 shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)] outline-none focus:outline-none ring-0 focus:ring-0 focus-visible:outline-none focus-visible:ring-0">
-            <div className="flex border-b border-border">
+          <section className="border border-border dark:border-border bg-card p-5 sm:p-6 shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)] outline-none focus:outline-none ring-0 focus:ring-0 focus-visible:outline-none focus-visible:ring-0">
+            <div className="flex border-b border-border dark:border-border">
               <button
                 type="button"
                 onClick={() => setMode("sign-in")}
@@ -164,7 +164,7 @@ export default function Access() {
               </button>
             </div>
             <form onSubmit={submit} className="pt-7">
-              <div className="grid h-10 w-10 place-items-center rounded-[5px] border border-border bg-muted/50 text-primary dark:text-[#eb766a]">
+              <div className="grid h-10 w-10 place-items-center rounded-[5px] border border-border dark:border-border bg-muted/50 text-primary dark:text-[#eb766a]">
                 {registration ? <UserPlus className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
               </div>
               <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6d19] dark:text-[#f0c36a]">
@@ -180,22 +180,22 @@ export default function Access() {
                 {registration && (
                   <div>
                     <Label htmlFor="access-name" className="text-xs font-semibold text-foreground">Full name</Label>
-                    <Input id="access-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required className="mt-1.5 h-10 bg-background dark:bg-[#151c24] border-input text-foreground placeholder:text-muted-foreground" autoComplete="name" />
+                    <Input id="access-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" autoComplete="name" />
                   </div>
                 )}
                 <div>
                   <Label htmlFor="access-office" className="text-xs font-semibold text-foreground">Office / Unit</Label>
-                  <Input id="access-office" value={officeName} onChange={(event) => setOfficeName(event.target.value)} required placeholder="Type your office or unit" className="mt-1.5 h-10 bg-background dark:bg-[#151c24] border-input text-foreground placeholder:text-muted-foreground" />
+                  <Input id="access-office" value={officeName} onChange={(event) => setOfficeName(event.target.value)} required placeholder="Type your office or unit" className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" />
                 </div>
                 <div>
                   <Label htmlFor="access-email" className="text-xs font-semibold text-foreground">Work email</Label>
-                  <Input id="access-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} onBlur={() => setTouched((current) => ({ ...current, email: true }))} required className={`mt-1.5 h-10 bg-background dark:bg-[#151c24] border-input text-foreground placeholder:text-muted-foreground ${emailError ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoComplete="email" aria-invalid={Boolean(emailError)} aria-describedby={emailError ? "access-email-error" : undefined} />
+                  <Input id="access-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} onBlur={() => setTouched((current) => ({ ...current, email: true }))} required className={`mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground ${emailError ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoComplete="email" aria-invalid={Boolean(emailError)} aria-describedby={emailError ? "access-email-error" : undefined} />
                   {emailError && <p id="access-email-error" className="mt-1 text-xs text-red-600 dark:text-red-400">{emailError}</p>}
                 </div>
                 <div>
                   <Label htmlFor="access-password" className="text-xs font-semibold text-foreground">Password</Label>
                   <div className="relative mt-1.5">
-                    <Input id="access-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} onBlur={() => setTouched((current) => ({ ...current, password: true }))} required minLength={6} className={`h-10 pr-10 bg-background dark:bg-[#151c24] border-input text-foreground placeholder:text-muted-foreground ${passwordError ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoComplete={registration ? "new-password" : "current-password"} aria-invalid={Boolean(passwordError)} aria-describedby={passwordError ? "access-password-error" : undefined} />
+                    <Input id="access-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} onBlur={() => setTouched((current) => ({ ...current, password: true }))} required minLength={6} className={`h-10 pr-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground ${passwordError ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoComplete={registration ? "new-password" : "current-password"} aria-invalid={Boolean(passwordError)} aria-describedby={passwordError ? "access-password-error" : undefined} />
                     <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none" aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}>
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
