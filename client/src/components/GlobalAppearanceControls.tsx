@@ -1,11 +1,15 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-export function GlobalAppearanceControls() {
-  const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
+export function GlobalAppearanceControls({ className }: { className?: string }) {
+  const { user } = useAuth();
+  const isAdmin = user && normalizeProcurementRole(user.role) === "admin";
+  const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false, enabled: Boolean(isAdmin) });
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,9 +17,9 @@ export function GlobalAppearanceControls() {
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("procurewise.appearanceTheme");
+      const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
       if (stored === "dark" || stored === "light") return stored;
-      if (document.documentElement.dataset.appearanceTheme === "dark") return "dark";
+      if (document.documentElement.classList.contains("dark") || document.documentElement.dataset.appearanceTheme === "dark") return "dark";
     }
     return "light";
   });
@@ -23,15 +27,30 @@ export function GlobalAppearanceControls() {
   const update = trpc.procurement.setup.updateSettings.useMutation({
     onSuccess: () => {
       void utils.procurement.setup.details.invalidate();
-      toast.success("Theme preference updated.");
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      console.warn("Theme sync to server:", error.message);
+    },
   });
 
   useEffect(() => {
-    if (!settings) return;
-    const resolvedTheme = settings.appearanceTheme === "dark" ? "dark" : "light";
-    setTheme(resolvedTheme);
+    const syncTheme = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("procurewise.appearanceTheme") || localStorage.getItem("theme");
+        if (stored === "dark" || stored === "light") {
+          setTheme(stored);
+        } else if (settings?.appearanceTheme) {
+          setTheme(settings.appearanceTheme === "dark" ? "dark" : "light");
+        }
+      }
+    };
+
+    window.addEventListener("procurewise-theme-change", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener("procurewise-theme-change", syncTheme);
+      window.removeEventListener("storage", syncTheme);
+    };
   }, [settings]);
 
   useEffect(() => {
@@ -50,38 +69,44 @@ export function GlobalAppearanceControls() {
     setTheme(nextTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("procurewise.appearanceTheme", nextTheme);
+      localStorage.setItem("theme", nextTheme);
+      window.dispatchEvent(new CustomEvent("procurewise-theme-change", { detail: nextTheme }));
     }
     const root = document.documentElement;
     root.dataset.appearanceTheme = nextTheme;
     root.classList.toggle("dark", nextTheme === "dark");
 
-    update.mutate({
-      entityName: settings?.entityName || "Batanes State College",
-      authorizedOfficialName: settings?.authorizedOfficialName || undefined,
-      authorizedOfficialDesignation: settings?.authorizedOfficialDesignation || undefined,
-      chiefAccountantName: settings?.chiefAccountantName || undefined,
-      defaultNoticeSignatory: settings?.defaultNoticeSignatory || undefined,
-      sessionTimeoutMinutes: settings?.sessionTimeoutMinutes || 30,
-      enableInAppNotifications: settings?.enableInAppNotifications !== 0,
-      notificationRefreshSeconds: settings?.notificationRefreshSeconds || 15,
-      appearanceTheme: nextTheme,
-      appearanceFont: "public_sans",
-      appearanceFontScale: "110", // backward compatibility value only; not user-editable
-      appearanceDensity: "comfortable",
-      appearanceAccent: "maroon",
-      appearanceCorners: "sharp",
-      appearanceReducedMotion: Boolean(settings?.appearanceReducedMotion),
-    });
+    toast.success(`${nextTheme === "dark" ? "Dark" : "Light"} mode enabled.`);
+
+    if (isAdmin && settings) {
+      update.mutate({
+        entityName: settings.entityName || "Batanes State College",
+        authorizedOfficialName: settings.authorizedOfficialName || undefined,
+        authorizedOfficialDesignation: settings.authorizedOfficialDesignation || undefined,
+        chiefAccountantName: settings.chiefAccountantName || undefined,
+        defaultNoticeSignatory: settings.defaultNoticeSignatory || undefined,
+        sessionTimeoutMinutes: settings.sessionTimeoutMinutes || 30,
+        enableInAppNotifications: settings.enableInAppNotifications !== 0,
+        notificationRefreshSeconds: settings.notificationRefreshSeconds || 15,
+        appearanceTheme: nextTheme,
+        appearanceFont: "public_sans",
+        appearanceFontScale: "110", // backward compatibility value only; not user-editable
+        appearanceDensity: "comfortable",
+        appearanceAccent: "maroon",
+        appearanceCorners: "sharp",
+        appearanceReducedMotion: Boolean(settings.appearanceReducedMotion),
+      });
+    }
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className={`relative ${className || ""}`} ref={containerRef}>
       <Button
         type="button"
         variant="ghost"
         size="icon"
         onClick={() => setOpen((current) => !current)}
-        className="h-9 w-9 rounded-[4px] text-[#566171] hover:text-[#202833] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8]"
+        className="h-9 w-9 rounded-[4px] text-[#566171] hover:text-[#202833] dark:text-[#aeb9c4] dark:hover:text-[#f1f5f8] dark:hover:bg-[#232c35]"
         aria-label="System appearance settings"
         aria-expanded={open}
       >

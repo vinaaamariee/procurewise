@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
-import { AppearanceRuntime } from "@/components/AppearanceRuntime";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
@@ -67,7 +66,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[#f8f7f3] text-[#202833] dark:bg-[#11161b] dark:text-[#f1f5f8]">
-      <AppearanceRuntime />
       <NotificationToastListener />
       <div className="border-b border-[#e4e1da] bg-white dark:border-[#46515c] dark:bg-[#1b2229]">
         <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">
