@@ -2398,3 +2398,292 @@ export async function getPmrStatus(purchaseRequestId: number, options?: Procurem
     completionDate: po.updatedAt,
   };
 }
+
+const END_USER_OFFICE_NAME_MAP: Record<string, string> = {
+  OOP: "Office of the President (OOP)",
+  OVP: "Office of the Vice President (OVP)",
+  OVPAA: "Office of the Vice President for Academic Affairs (OVPAA)",
+  OVPA: "Office of the Vice President for Administration (OVPA)",
+  ICT: "Information & Communications Technology (ICT) Unit",
+  "ICT Unit": "Information & Communications Technology (ICT) Unit",
+  GSO: "General Services Office (GSO)",
+  DAFS: "Department of Accounting & Financial Services (DAFS)",
+  SSC: "Supreme Student Council (SSC)",
+  GAD: "Gender and Development (GAD)",
+  CBAO: "College of Business and Accountancy (CBAO)",
+  "CBAO-IGP": "CBAO - Income Generating Projects",
+  TED: "Teacher Education Department (TED)",
+  RDET: "Research, Development, Extension & Training (RDET)",
+  "RDET-S & T": "RDET - Science & Technology",
+  "RDET-Futures Thinking": "RDET - Futures Thinking",
+  "RDET-Sustainable Tourism": "RDET - Sustainable Tourism",
+  "BSC-RDET": "BSC - RDET",
+  HTM: "Hospitality & Tourism Management (HTM)",
+  Library: "College Library",
+  Registrar: "Office of the College Registrar",
+  Planning: "Planning and Development Office",
+  Publication: "Student Publication Office",
+  Procurement: "Procurement Office",
+  Agriculture: "Department of Agriculture",
+  "Agri-DOST-PCAARRD": "Agriculture - DOST PCAARRD",
+  "DOST-PCAARRD": "DOST - PCAARRD Projects",
+  "SSO-Medical": "Student Services - Medical Clinic",
+  "Socio-cultural": "Socio-Cultural Affairs Office",
+  Legal: "Legal Affairs Office",
+  DI: "Department of Instruction (DI)",
+  IT: "Information Technology Department (IT)",
+};
+
+export type EndUserPerformanceRecord = {
+  officeId?: number | null;
+  endUser: string;
+  prCount: number;
+  totalAbc: number;
+  totalContract: number;
+  savings: number;
+  delayedPrs: number;
+};
+
+export type EndUserPerformanceResult = {
+  kpiSummary: {
+    failedCount: number;
+    partialDeliveryCount: number;
+    cancelledCount: number;
+    totalDelayedPrs: number;
+    totalSavings: number;
+  };
+  officePerformance: EndUserPerformanceRecord[];
+  totals: {
+    prCount: number;
+    totalAbc: number;
+    totalContract: number;
+    savings: number;
+    delayedPrs: number;
+  };
+};
+
+export async function getEndUserPerformanceAnalytics(input?: {
+  source?: "all" | "live" | "historical";
+  fiscalYear?: number;
+}): Promise<EndUserPerformanceResult> {
+  const db = await requireDb();
+  const source = input?.source ?? "all";
+  const fiscalYear = input?.fiscalYear ?? 2025;
+
+  type PrEntry = {
+    prNumber: string;
+    office: string;
+    officeId?: number | null;
+    estimatedTotal: number;
+    total: number;
+    statuses: Set<string>;
+    isDelayed: boolean;
+    isFailed: boolean;
+    isPartial: boolean;
+    isCancelled: boolean;
+  };
+
+  const prEntries = new Map<string, PrEntry>();
+
+  // 1. Live PRs & POs from current workspace
+  if (source === "all" || source === "live") {
+    const [officeRows, livePrs, livePos, deliveryRows] = await Promise.all([
+      db.select().from(offices),
+      db.select().from(purchaseRequests),
+      db.select().from(purchaseOrders),
+      db.select().from(deliveryReceipts),
+    ]);
+    const officeById = new Map(officeRows.map((o) => [o.id, o]));
+    const poByPrId = new Map(livePos.map((po) => [po.purchaseRequestId, po]));
+    const receiptByPoId = new Map(deliveryRows.map((dr) => [dr.purchaseOrderId, dr]));
+
+    for (const pr of livePrs) {
+      const office = officeById.get(pr.officeId);
+      const rawName = office?.name || office?.code || "Unassigned Office";
+      const officeName = END_USER_OFFICE_NAME_MAP[rawName] || rawName;
+      const po = poByPrId.get(pr.id);
+      const receipt = po ? receiptByPoId.get(po.id) : null;
+
+      const estimatedTotal = Number(pr.totalEstimate || 0);
+      const contractTotal = po ? Number(po.totalAmount || 0) : 0;
+
+      const poStatus = po?.status?.toLowerCase() || "";
+      const prStatus = pr.status?.toLowerCase() || "";
+      const delStatus = receipt?.deliveryStatus?.toLowerCase() || "";
+
+      const isFailed = prStatus === "rejected";
+      const isPartial = delStatus === "partial";
+      const isCancelled = prStatus === "returned" || poStatus === "cancelled";
+
+      const now = Date.now();
+      const isOverduePo = Boolean(
+        po?.scheduledDeliveryDate &&
+          new Date(po.scheduledDeliveryDate).getTime() < now &&
+          poStatus !== "closed" &&
+          delStatus !== "complete"
+      );
+      const isDelayedPr = Boolean(
+        prStatus === "returned" ||
+          (!po && pr.submittedAt && now - new Date(pr.submittedAt).getTime() > 30 * 86_400_000) ||
+          isOverduePo
+      );
+
+      const key = `live_${pr.id}_${officeName}`;
+      prEntries.set(key, {
+        prNumber: pr.prNumber,
+        office: officeName,
+        officeId: pr.officeId,
+        estimatedTotal,
+        total: contractTotal,
+        statuses: new Set([pr.status, poStatus, delStatus].filter(Boolean)),
+        isDelayed: isDelayedPr,
+        isFailed,
+        isPartial,
+        isCancelled,
+      });
+    }
+  }
+
+  // 2. Historical PMR Records
+  if (source === "all" || source === "historical") {
+    const pmrConditions = fiscalYear ? [eq(pmrHistoricalRecords.fiscalYear, fiscalYear)] : [];
+    const pmrRows = await db
+      .select({
+        office: pmrHistoricalRecords.office,
+        endUser: pmrHistoricalRecords.endUser,
+        prNumber: pmrHistoricalRecords.prNumber,
+        estimatedTotal: pmrHistoricalRecords.estimatedTotal,
+        total: pmrHistoricalRecords.total,
+        status: pmrHistoricalRecords.status,
+        remarks: pmrHistoricalRecords.remarks,
+      })
+      .from(pmrHistoricalRecords)
+      .where(pmrConditions.length ? pmrConditions[0] : undefined);
+
+    for (const row of pmrRows) {
+      const rawOffice = (row.office || row.endUser || "Unassigned Office").trim();
+      const officeName = END_USER_OFFICE_NAME_MAP[rawOffice] || rawOffice;
+      const key = `pmr_${row.prNumber}__${officeName}`;
+
+      if (!prEntries.has(key)) {
+        prEntries.set(key, {
+          prNumber: row.prNumber,
+          office: officeName,
+          officeId: null,
+          estimatedTotal: 0,
+          total: 0,
+          statuses: new Set(),
+          isDelayed: false,
+          isFailed: false,
+          isPartial: false,
+          isCancelled: false,
+        });
+      }
+      const entry = prEntries.get(key)!;
+      entry.estimatedTotal += Number(row.estimatedTotal || 0);
+      entry.total += Number(row.total || 0);
+      if (row.status) entry.statuses.add(row.status.trim());
+      if (row.remarks) entry.statuses.add(row.remarks.trim());
+
+      const s = (row.status || "").toLowerCase();
+      const r = (row.remarks || "").toLowerCase();
+      if (s.includes("fail") || s.includes("exceeded the budget") || s.includes("no supplier quoted")) {
+        entry.isFailed = true;
+      }
+      if (s.includes("inc. delivery") || s.includes("partial") || r.includes("partial")) {
+        entry.isPartial = true;
+      }
+      if (s.includes("cancel") || s.includes("terminat") || r.includes("cancel")) {
+        entry.isCancelled = true;
+      }
+      if (
+        s.includes("delay") ||
+        s.includes("late") ||
+        s.includes("overdue") ||
+        s.includes("inc. delivery") ||
+        r.includes("delay") ||
+        r.includes("late")
+      ) {
+        entry.isDelayed = true;
+      }
+    }
+  }
+
+  // 3. Office grouping & Totals
+  const officeMap = new Map<string, {
+    officeId?: number | null;
+    endUser: string;
+    prCount: number;
+    totalAbc: number;
+    totalContract: number;
+    savings: number;
+    delayedPrs: number;
+  }>();
+
+  let failedCount = 0;
+  let partialDeliveryCount = 0;
+  let cancelledCount = 0;
+  let totalDelayedPrs = 0;
+
+  for (const entry of Array.from(prEntries.values())) {
+    if (entry.isFailed) failedCount++;
+    if (entry.isPartial) partialDeliveryCount++;
+    if (entry.isCancelled) cancelledCount++;
+    if (entry.isDelayed) totalDelayedPrs++;
+
+    if (!officeMap.has(entry.office)) {
+      officeMap.set(entry.office, {
+        officeId: entry.officeId ?? null,
+        endUser: entry.office,
+        prCount: 0,
+        totalAbc: 0,
+        totalContract: 0,
+        savings: 0,
+        delayedPrs: 0,
+      });
+    }
+    const o = officeMap.get(entry.office)!;
+    o.prCount++;
+    o.totalAbc += entry.estimatedTotal;
+    o.totalContract += entry.total;
+    if (entry.isDelayed) o.delayedPrs++;
+  }
+
+  const officePerformance = Array.from(officeMap.values())
+    .map((o) => {
+      const totalAbc = Math.round(o.totalAbc * 100) / 100;
+      const totalContract = Math.round(o.totalContract * 100) / 100;
+      const savings = Math.round((totalAbc - totalContract) * 100) / 100;
+      return {
+        ...o,
+        totalAbc,
+        totalContract,
+        savings,
+      };
+    })
+    .sort((a, b) => b.prCount - a.prCount || b.totalAbc - a.totalAbc);
+
+  const totals = officePerformance.reduce(
+    (acc, row) => ({
+      prCount: acc.prCount + row.prCount,
+      totalAbc: Math.round((acc.totalAbc + row.totalAbc) * 100) / 100,
+      totalContract: Math.round((acc.totalContract + row.totalContract) * 100) / 100,
+      savings: Math.round((acc.savings + row.savings) * 100) / 100,
+      delayedPrs: acc.delayedPrs + row.delayedPrs,
+    }),
+    { prCount: 0, totalAbc: 0, totalContract: 0, savings: 0, delayedPrs: 0 }
+  );
+
+  return {
+    kpiSummary: {
+      failedCount,
+      partialDeliveryCount,
+      cancelledCount,
+      totalDelayedPrs,
+      totalSavings: totals.savings,
+    },
+    officePerformance,
+    totals,
+  };
+}
+

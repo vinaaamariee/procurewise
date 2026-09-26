@@ -14,7 +14,7 @@ import { buildPpmpCsv, downloadCsv } from "@/lib/procurementExports";
 import { downloadPpmpPdf } from "@/lib/procurementPdf";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
-import { BarChart3, Download, FileCheck2, FileSearch, LoaderCircle, Paperclip, Plus, ScrollText, Star, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Ban, BarChart3, ChevronLeft, ChevronRight, Clock, Download, FileCheck2, FileSearch, LoaderCircle, Paperclip, Plus, ScrollText, Search, Star, TrendingUp, Truck, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -301,7 +301,10 @@ export function BudgetPage() {
 
 export function AnalyticsPage() {
   const { user } = useAuth();
-  const isEndUser = normalizeProcurementRole(user?.role ?? "end_user") === "end_user";
+  const role = normalizeProcurementRole(user?.role ?? "end_user");
+  const isEndUser = role === "end_user";
+  const canViewPerformanceAnalytics = role === "procurement_officer" || role === "admin";
+
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
   const data = dashboard.data;
   const planned = data?.appPpmpEntries.reduce((sum, entry) => sum + Number(entry.plannedAmount), 0) ?? 0;
@@ -310,8 +313,546 @@ export function AnalyticsPage() {
   const percentage = planned ? Math.min(100, (actual / planned) * 100) : 0;
   const cycleTime = data?.analytics.averageCycleTimeDays;
   const topCommodities = data?.analytics.topCommodities ?? [];
-  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow={isEndUser ? "My procurement activity" : "Procurement intelligence"} title={isEndUser ? "My Analytics" : "Analytics & performance"} description={isEndUser ? "A summary of the Purchase Requests, PPMP entries, and completed procurement activity connected to your account." : "Live, record-backed measures for workflow volume, budget plan-versus-actual progress, closed-PO cycle time, and completed commodities."} /><div className="mt-7 grid gap-4 md:grid-cols-3"><Metric label="Purchase Request estimate" value={formatMoney(prEstimate)} detail={isEndUser ? "Total estimate across your submitted PRs." : "Aggregate of PRs visible to your role."} icon={BarChart3} /><Metric label="Planned APP / PPMP" value={formatMoney(planned)} detail="Aggregate value of registered plan entries." icon={FileCheck2} /><Metric label="Purchase Order volume" value={String(data?.purchaseOrders.length ?? 0)} detail="Purchase Orders generated from approved abstracts." icon={FileSearch} /></div><div className="flat-panel mt-6 p-6"><div className="flex items-start justify-between gap-5"><div><p className="text-sm font-semibold text-[#34404e]">Budget plan versus actual</p><p className="mt-1 text-[11px] text-[#77818d]">Actual spending becomes available as related procurement records are completed.</p></div><p className="font-display text-2xl font-semibold text-[#7b1e1e]">{planned ? `${percentage.toFixed(1)}%` : "—"}</p></div><div className="mt-6 h-3 overflow-hidden rounded-[3px] bg-[#eeeae1]"><div className="h-full bg-[#9a6d19] transition-[width] duration-300" style={{ width: `${percentage}%` }} /></div><div className="mt-3 flex justify-between text-[11px] text-[#737e8a]"><span>Planned: {formatMoney(planned)}</span><span>Actual: {formatMoney(actual)}</span></div></div><div className="mt-6 grid gap-4 lg:grid-cols-2"><div className="flat-panel p-5"><p className="text-sm font-semibold text-[#34404e]">Average procurement cycle time</p><p className="mt-3 font-display text-2xl font-semibold text-[#7b1e1e]">{cycleTime === null || cycleTime === undefined ? "—" : `${cycleTime.toFixed(1)} days`}</p><p className="mt-2 text-[11px] leading-5 text-[#72808c]">Calculated only from PR records linked to Purchase Orders in the explicit closed state.</p></div><div className="flat-panel p-5"><p className="text-sm font-semibold text-[#34404e]">Top commodities</p>{topCommodities.length ? <ol className="mt-3 divide-y divide-[#efebe4]">{topCommodities.map((commodity, index) => <li key={commodity.description} className="flex items-center justify-between gap-3 py-2 text-[11px]"><span className="text-[#3e4855]"><span className="mr-2 font-bold text-[#9a6d19]">{index + 1}.</span>{commodity.description}</span><span className="font-semibold text-[#7b1e1e]">{formatMoney(commodity.amount)}</span></li>)}</ol> : <p className="mt-2 text-[11px] leading-5 text-[#72808c]">No closed-PO commodity records are available yet.</p>}</div></div></div>;
+
+  // Performance Analytics Data (Restricted to Procurement Staff/Officer and Admin)
+  const [source, setSource] = useState<"all" | "live" | "historical">("all");
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState<"endUser" | "prCount" | "totalAbc" | "totalContract" | "savings" | "delayedPrs">("prCount");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const performance = trpc.procurement.analytics.endUserPerformance.useQuery(
+    { source },
+    { enabled: canViewPerformanceAnalytics, retry: false }
+  );
+
+  const rawRecords = performance.data?.officePerformance ?? [];
+
+  const filteredRecords = useMemo(() => {
+    let records = rawRecords;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      records = records.filter((r) => r.endUser.toLowerCase().includes(q));
+    }
+    return [...records].sort((a, b) => {
+      const dir = sortDirection === "asc" ? 1 : -1;
+      if (sortField === "endUser") {
+        return a.endUser.localeCompare(b.endUser) * dir;
+      }
+      return (Number(a[sortField]) - Number(b[sortField])) * dir;
+    });
+  }, [rawRecords, search, sortField, sortDirection]);
+
+  const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+  const paginatedRecords = useMemo(() => {
+    if (pageSize === 0) return filteredRecords;
+    const start = (currentPage - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, currentPage, pageSize]);
+
+  const summaryTotals = useMemo(() => {
+    if (!filteredRecords.length) return { prCount: 0, totalAbc: 0, totalContract: 0, savings: 0, delayedPrs: 0 };
+    return filteredRecords.reduce(
+      (acc, r) => ({
+        prCount: acc.prCount + r.prCount,
+        totalAbc: Math.round((acc.totalAbc + r.totalAbc) * 100) / 100,
+        totalContract: Math.round((acc.totalContract + r.totalContract) * 100) / 100,
+        savings: Math.round((acc.savings + r.savings) * 100) / 100,
+        delayedPrs: acc.delayedPrs + r.delayedPrs,
+      }),
+      { prCount: 0, totalAbc: 0, totalContract: 0, savings: 0, delayedPrs: 0 }
+    );
+  }, [filteredRecords]);
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+    setCurrentPage(1);
+  };
+
+  return (
+    <div className="mx-auto max-w-[1360px] pb-12">
+      <PageHeader
+        eyebrow={isEndUser ? "My procurement activity" : "Procurement intelligence"}
+        title={isEndUser ? "My Analytics" : "Analytics & performance"}
+        description={
+          isEndUser
+            ? "A summary of the Purchase Requests, PPMP entries, and completed procurement activity connected to your account."
+            : "Live, record-backed measures for workflow volume, office-level end-user performance, budget plan-versus-actual progress, and delivery tracking."
+        }
+      />
+
+      {/* Top-Level KPI Summary Cards / Banner (Exclusively for Procurement Staff / Officer and Admin) */}
+      {canViewPerformanceAnalytics && (
+        <section className="mt-7">
+          <div className="mb-3.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6d19]">
+                Top-Level KPI Summary
+              </p>
+              <p className="text-[11px] text-[#77818d]">
+                Procurement status indicators for failed quotations, partial delivery shipments, cancellations, and overdue requests.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 self-start rounded-md border border-[#e5dfd5] bg-white p-0.5 text-xs shadow-sm">
+              <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-[#8b95a1]">Scope:</span>
+              <button
+                type="button"
+                onClick={() => { setSource("all"); setCurrentPage(1); }}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition ${source === "all" ? "bg-[#7b1e1e] text-white shadow-xs" : "text-[#5e6977] hover:text-[#202833]"}`}
+              >
+                All Data
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSource("live"); setCurrentPage(1); }}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition ${source === "live" ? "bg-[#7b1e1e] text-white shadow-xs" : "text-[#5e6977] hover:text-[#202833]"}`}
+              >
+                Live Operations
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSource("historical"); setCurrentPage(1); }}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition ${source === "historical" ? "bg-[#7b1e1e] text-white shadow-xs" : "text-[#5e6977] hover:text-[#202833]"}`}
+              >
+                FY 2025 PMR
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+            <KpiStatusCard
+              label="Failed"
+              count={performance.data?.kpiSummary.failedCount ?? 0}
+              subtitle="Quotation exceeded ABC or no supplier quote"
+              tone="danger"
+              icon={AlertTriangle}
+            />
+            <KpiStatusCard
+              label="Partial Delivery"
+              count={performance.data?.kpiSummary.partialDeliveryCount ?? 0}
+              subtitle="Incomplete deliveries pending final acceptance"
+              tone="warning"
+              icon={Truck}
+            />
+            <KpiStatusCard
+              label="Cancelled"
+              count={performance.data?.kpiSummary.cancelledCount ?? 0}
+              subtitle="Withdrawn or terminated purchase requests"
+              tone="neutral"
+              icon={Ban}
+            />
+            <KpiStatusCard
+              label="Realized Savings"
+              count={formatMoney(performance.data?.kpiSummary.totalSavings ?? 0)}
+              subtitle="Total ABC minus Total Contract awarded"
+              tone="success"
+              icon={TrendingUp}
+            />
+            <KpiStatusCard
+              label="Delayed PRs"
+              count={performance.data?.kpiSummary.totalDelayedPrs ?? 0}
+              subtitle="Overdue requests or delivery schedule delays"
+              tone="accent"
+              icon={Clock}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* End-User Performance Analytics Table (Exclusively for Procurement Staff / Officer and Admin) */}
+      {canViewPerformanceAnalytics && (
+        <section className="flat-panel mt-6 overflow-hidden">
+          <div className="border-b border-[#ece8df] px-6 py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-semibold text-[#2c3644]">
+                    End-User Performance Analytics
+                  </h3>
+                  <span className="rounded-[4px] border border-[#e2d5bd] bg-[#fffaf0] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8a6520]">
+                    END USER SUMMARY
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[#707c8a]">
+                  Replicated from official procurement monitoring sheets: PR count, Approved Budget for Contract (ABC), awarded contract values, realized savings, and overdue tracking per office.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[220px]">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8b95a1]" />
+                  <Input
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                    placeholder="Search End User / Office..."
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+                {search && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setCurrentPage(1); }} className="h-8 text-xs">
+                    Reset
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {performance.isLoading ? (
+            <div className="p-12">
+              <LoadingPanel label="Aggregating End-User performance data..." />
+            </div>
+          ) : filteredRecords.length ? (
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-[#e5dcce] bg-[#f8f5ee] text-[11px] font-bold uppercase tracking-wider text-[#554433]">
+                    <tr>
+                      <th
+                        className="cursor-pointer select-none px-5 py-3.5 hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("endUser")}
+                        title="Click to sort by End User"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>End User</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "endUser" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                      <th
+                        className="cursor-pointer select-none px-4 py-3.5 text-right hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("prCount")}
+                        title="Click to sort by PR Count"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>PR Count</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "prCount" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                      <th
+                        className="cursor-pointer select-none px-4 py-3.5 text-right hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("totalAbc")}
+                        title="Click to sort by Total ABC"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Total ABC</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "totalAbc" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                      <th
+                        className="cursor-pointer select-none px-4 py-3.5 text-right hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("totalContract")}
+                        title="Click to sort by Total Contract"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Total Contract</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "totalContract" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                      <th
+                        className="cursor-pointer select-none px-4 py-3.5 text-right hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("savings")}
+                        title="Click to sort by Savings"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>Savings</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "savings" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                      <th
+                        className="cursor-pointer select-none px-4 py-3.5 text-center hover:text-[#7b1e1e]"
+                        onClick={() => toggleSort("delayedPrs")}
+                        title="Click to sort by Delayed PRs"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>Delayed PRs</span>
+                          <ArrowUpDown className={`h-3 w-3 ${sortField === "delayedPrs" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#eeeae1]">
+                    {paginatedRecords.map((row) => (
+                      <tr key={row.endUser} className="transition-colors hover:bg-[#faf7f0]">
+                        <td className="px-5 py-3 font-semibold text-[#29323f]">
+                          {row.endUser}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-[#465160]">
+                          {row.prCount.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-[#374151]">
+                          {formatMoney(row.totalAbc)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-[#7b1e1e]">
+                          {formatMoney(row.totalContract)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold text-[#0f766e]">
+                          {formatMoney(row.savings)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {row.delayedPrs > 0 ? (
+                            <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 ring-1 ring-inset ring-red-600/20">
+                              {row.delayedPrs}
+                            </span>
+                          ) : (
+                            <span className="text-[#a0aab5]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t-2 border-[#d9ccb9] bg-[#f4efe4] font-bold text-[#202833]">
+                    <tr>
+                      <td className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#7b1e1e]">
+                        Summary Total ({filteredRecords.length} {filteredRecords.length === 1 ? "Office" : "Offices"})
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#202833]">
+                        {summaryTotals.prCount.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#202833]">
+                        {formatMoney(summaryTotals.totalAbc)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#7b1e1e]">
+                        {formatMoney(summaryTotals.totalContract)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#0f766e]">
+                        {formatMoney(summaryTotals.savings)}
+                      </td>
+                      <td className="px-4 py-3.5 text-center text-xs font-bold text-[#202833]">
+                        {summaryTotals.delayedPrs > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
+                            {summaryTotals.delayedPrs}
+                          </span>
+                        ) : (
+                          0
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Table pagination & rows per page controls */}
+              <div className="flex flex-col items-center justify-between gap-3 border-t border-[#ece8df] px-6 py-3 text-xs sm:flex-row">
+                <div className="flex items-center gap-2 text-[#707c8a]">
+                  <span>Showing</span>
+                  <span className="font-semibold text-[#29323f]">
+                    {filteredRecords.length === 0 ? 0 : pageSize === 0 ? 1 : (currentPage - 1) * pageSize + 1}
+                  </span>
+                  <span>to</span>
+                  <span className="font-semibold text-[#29323f]">
+                    {pageSize === 0 ? filteredRecords.length : Math.min(currentPage * pageSize, filteredRecords.length)}
+                  </span>
+                  <span>of</span>
+                  <span className="font-semibold text-[#29323f]">{filteredRecords.length}</span>
+                  <span>offices</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[#707c8a]">
+                    <span>Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="rounded border border-[#d8d0c2] bg-white px-2 py-1 text-xs text-[#29323f]"
+                    >
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={0}>All</option>
+                    </select>
+                  </div>
+
+                  {pageSize > 0 && totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className="h-7 w-7 p-0"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="px-2 font-medium text-[#29323f]">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="h-7 w-7 p-0"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-10 text-center text-xs text-[#707c8a]">
+              No office records match the search filter.
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* General Procurement Metrics & Activity */}
+      <div className="mt-8">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6d19]">
+          {isEndUser ? "My Activity Overview" : "Campus Procurement Macro Metrics"}
+        </p>
+        <div className="mt-2.5 grid gap-4 md:grid-cols-3">
+          <Metric
+            label="Purchase Request estimate"
+            value={formatMoney(prEstimate)}
+            detail={isEndUser ? "Total estimate across your submitted PRs." : "Aggregate of PR estimates visible to your role."}
+            icon={BarChart3}
+          />
+          <Metric
+            label="Planned APP / PPMP"
+            value={formatMoney(planned)}
+            detail="Aggregate value of registered plan entries."
+            icon={FileCheck2}
+          />
+          <Metric
+            label="Purchase Order volume"
+            value={String(data?.purchaseOrders.length ?? 0)}
+            detail="Purchase Orders generated from approved abstracts."
+            icon={FileSearch}
+          />
+        </div>
+      </div>
+
+      <div className="flat-panel mt-6 p-6">
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <p className="text-sm font-semibold text-[#34404e]">Budget plan versus actual</p>
+            <p className="mt-1 text-[11px] text-[#77818d]">
+              Actual spending becomes available as related procurement records are completed.
+            </p>
+          </div>
+          <p className="font-display text-2xl font-semibold text-[#7b1e1e]">
+            {planned ? `${percentage.toFixed(1)}%` : "—"}
+          </p>
+        </div>
+        <div className="mt-6 h-3 overflow-hidden rounded-[3px] bg-[#eeeae1]">
+          <div className="h-full bg-[#9a6d19] transition-[width] duration-300" style={{ width: `${percentage}%` }} />
+        </div>
+        <div className="mt-3 flex justify-between text-[11px] text-[#737e8a]">
+          <span>Planned: {formatMoney(planned)}</span>
+          <span>Actual: {formatMoney(actual)}</span>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="flat-panel p-5">
+          <p className="text-sm font-semibold text-[#34404e]">Average procurement cycle time</p>
+          <p className="mt-3 font-display text-2xl font-semibold text-[#7b1e1e]">
+            {cycleTime === null || cycleTime === undefined ? "—" : `${cycleTime.toFixed(1)} days`}
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-[#72808c]">
+            Calculated only from PR records linked to Purchase Orders in the explicit closed state.
+          </p>
+        </div>
+
+        <div className="flat-panel p-5">
+          <p className="text-sm font-semibold text-[#34404e]">Top commodities</p>
+          {topCommodities.length ? (
+            <ol className="mt-3 divide-y divide-[#efebe4]">
+              {topCommodities.map((commodity, index) => (
+                <li key={commodity.description} className="flex items-center justify-between gap-3 py-2 text-[11px]">
+                  <span className="text-[#3e4855]">
+                    <span className="mr-2 font-bold text-[#9a6d19]">{index + 1}.</span>
+                    {commodity.description}
+                  </span>
+                  <span className="font-semibold text-[#7b1e1e]">{formatMoney(commodity.amount)}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-2 text-[11px] leading-5 text-[#72808c]">
+              No closed-PO commodity records are available yet.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
+
+function KpiStatusCard({
+  label,
+  count,
+  subtitle,
+  tone,
+  icon: Icon,
+}: {
+  label: string;
+  count: number | string;
+  subtitle: string;
+  tone: "danger" | "warning" | "neutral" | "success" | "accent";
+  icon: typeof AlertTriangle;
+}) {
+  const toneStyles = {
+    danger: {
+      bg: "bg-[#fffafa] border-[#fed7d7]",
+      badge: "bg-[#ffe3e3] text-[#c53030]",
+      value: "text-[#9b2c2c]",
+      icon: "text-[#e53e3e]",
+    },
+    warning: {
+      bg: "bg-[#fffdfa] border-[#feebc8]",
+      badge: "bg-[#feebc8] text-[#c05621]",
+      value: "text-[#c05621]",
+      icon: "text-[#dd6b20]",
+    },
+    neutral: {
+      bg: "bg-[#fbfbfa] border-[#e2e8f0]",
+      badge: "bg-[#edf2f7] text-[#4a5568]",
+      value: "text-[#2d3748]",
+      icon: "text-[#718096]",
+    },
+    success: {
+      bg: "bg-[#f8fcf9] border-[#c6f6d5]",
+      badge: "bg-[#c6f6d5] text-[#22543d]",
+      value: "text-[#22543d]",
+      icon: "text-[#38a169]",
+    },
+    accent: {
+      bg: "bg-[#fffaf0] border-[#fed7aa]",
+      badge: "bg-[#feebc8] text-[#9a6d19]",
+      value: "text-[#7b1e1e]",
+      icon: "text-[#9a6d19]",
+    },
+  }[tone];
+
+  return (
+    <div className={`flat-panel p-4.5 transition hover:shadow-md ${toneStyles.bg}`}>
+      <div className="flex items-center justify-between">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneStyles.badge}`}>
+          <Icon className="h-3 w-3" />
+          {label}
+        </span>
+        <Icon className={`h-4 w-4 ${toneStyles.icon}`} />
+      </div>
+      <p className={`mt-3 font-display text-2xl font-bold tracking-tight ${toneStyles.value}`}>
+        {typeof count === "number" ? count.toLocaleString() : count}
+      </p>
+      <p className="mt-1 text-[11px] leading-4 text-[#73808b]">{subtitle}</p>
+    </div>
+  );
+}
+
 
 export function AuditTrailPage() {
   const { user } = useAuth();
