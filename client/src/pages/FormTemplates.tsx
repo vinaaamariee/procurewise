@@ -681,8 +681,11 @@ export default function FormTemplatesPage() {
                 <header className="evaluation-header-container official-form-header print-include w-full p-0 m-0 leading-none overflow-hidden select-none border-b border-[#9a6d19] print:border-b-0 print:p-0 print:m-0">
                   <img
                     src="/header.png"
-                    alt="Batanes State College official header"
+                    alt="Official Institutional Header"
                     className="w-full h-auto block object-cover print:w-full"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
                   />
                 </header>
 
@@ -690,7 +693,7 @@ export default function FormTemplatesPage() {
                 <main className="evaluation-content-area flex-1 px-4 sm:px-8 py-5 text-xs leading-normal print:px-[12mm] print:py-[6mm] print:text-[8pt] overflow-x-auto print:overflow-visible">
                   {previewQuery.data?.htmlTable ? (
                     <div
-                      className="print:w-full"
+                      className="print:w-full max-w-full overflow-x-auto"
                       dangerouslySetInnerHTML={{ __html: previewQuery.data.htmlTable }}
                     />
                   ) : (
@@ -704,8 +707,11 @@ export default function FormTemplatesPage() {
                 <footer className="evaluation-footer-container official-form-footer print-include w-full p-0 m-0 leading-none overflow-hidden select-none border-t border-[#d8b04d] mt-auto print:border-t-0 print:p-0 print:m-0">
                   <img
                     src="/footer.png"
-                    alt="Batanes State College official footer"
+                    alt="Official Institutional Footer"
                     className="w-full h-auto block object-cover print:w-full"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
                   />
                 </footer>
               </article>
@@ -1046,7 +1052,7 @@ export default function FormTemplatesPage() {
                 Template Display Name
               </Label>
               <Input
-                placeholder="e.g. Batanes State College 2026 Appendix 60"
+                placeholder="e.g. Standard Institutional 2026 Appendix 60"
                 value={uploadDisplayName}
                 onChange={(e) => setUploadDisplayName(e.target.value)}
                 className="mt-1 h-9 text-xs"

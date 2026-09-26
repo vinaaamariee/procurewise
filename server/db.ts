@@ -1963,7 +1963,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   purchase_request: {
     displayName: "Purchase Request (Appendix 60)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "PURCHASE REQUEST",
       instructionText: "State clearly the purpose, commodity specifications, quantities, and approved unit costs.",
@@ -1974,7 +1974,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   ppmp: {
     displayName: "Project Procurement Management Plan (PPMP)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "PROJECT PROCUREMENT MANAGEMENT PLAN",
       instructionText: "Plan procurement projects, schedules, and estimated budgets per object of expenditure.",
@@ -1984,7 +1984,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   pre_canvass: {
     displayName: "Pre-Canvass / Preliminary Quotation (Annex D/E)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "PRE-CANVASS / MARKET SCOPING",
       instructionText: "Collect three preliminary supplier quotations for market sounding prior to official RFQ.",
@@ -1994,7 +1994,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   rfq: {
     displayName: "Request for Quotation (Official Annex D)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "REQUEST FOR QUOTATION",
       instructionText: "Suppliers must submit quotations within the standard 7 calendar days submission period.",
@@ -2005,7 +2005,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   abstract_of_quotations: {
     displayName: "Abstract of Quotations (Annex F)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit / BAC",
       headerText: "ABSTRACT OF QUOTATIONS",
       instructionText: "Record lowest compliant quotation, supplier comparison, and BAC certification.",
@@ -2015,7 +2015,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   letter_of_notice: {
     displayName: "Letter of Notice / Canvass Letter",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "LETTER OF NOTICE",
       instructionText: "Official transmittal and invitation to participate in price canvass.",
@@ -2025,7 +2025,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   purchase_order: {
     displayName: "Purchase Order (Appendix 61)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Procurement Unit",
       headerText: "PURCHASE ORDER",
       instructionText: "Prescribed government contract for goods and services delivery under RA 9184.",
@@ -2035,7 +2035,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   pmr: {
     displayName: "Procurement Monitoring Report (PMR)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Bids and Awards Committee / Procurement Office",
       headerText: "PROCUREMENT MONITORING REPORT",
       instructionText: "Comprehensive monitoring log of procurement lifecycle from PPMP to inspection.",
@@ -2045,7 +2045,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   supplier_evaluation_goods: {
     displayName: "Supplier Evaluation Form (Goods)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "PROCUREMENT UNIT",
       headerText: "SUPPLIER EVALUATION FORM (Goods)",
       subtitle: "To be accomplished by Procurement Office",
@@ -2056,7 +2056,7 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
   acknowledgement_receipt: {
     displayName: "Acknowledgement Receipt for Property / Inventory (PAR/ICS)",
     configurationJson: {
-      institutionName: "Batanes State College",
+      institutionName: "[Agency / Institution Name]",
       officeUnit: "Property and Supply Unit",
       headerText: "ACKNOWLEDGEMENT RECEIPT FOR PROPERTY",
       instructionText: "Official property acknowledgement of custody and accountability for acquired equipment and supplies.",

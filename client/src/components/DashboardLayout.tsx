@@ -22,7 +22,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["admin"] },
   { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
-  { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user", "procurement_officer", "admin"] },
+  { label: "Pre-Canvass", path: "/rfq", icon: FileSearch, roles: ["end_user"] },
   { label: "Letters of Notice", path: "/officer/notices", icon: FileText, roles: ["procurement_officer", "admin"] },
   { label: "BAC Transmittals", path: "/officer/transmittals", icon: Send, roles: ["procurement_officer", "admin"] },
   { label: "Abstracts, PO & PMR", path: "/purchase-orders", icon: FileCheck2, roles: ["procurement_officer", "administrative_approver", "admin"] },
@@ -81,10 +81,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f3] text-[#202833] dark:bg-[#11161b] dark:text-[#f1f5f8] print:min-h-0 print:bg-white print:p-0 print:m-0">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#f8f7f3] text-[#202833] dark:bg-[#11161b] dark:text-[#f1f5f8] print:min-h-0 print:bg-white print:p-0 print:m-0">
       <NotificationToastListener />
-      <div className="border-b border-[#e4e1da] bg-white dark:border-[#46515c] dark:bg-[#1b2229] print:hidden no-print">
-        <div className="mx-auto flex h-16 max-w-[1560px] items-center gap-4 px-4 sm:px-6">
+      <div className="w-full border-b border-[#e4e1da] bg-white dark:border-[#46515c] dark:bg-[#1b2229] print:hidden no-print">
+        <div className="mx-auto flex h-16 w-full max-w-[1560px] items-center gap-4 px-4 sm:px-6">
           <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} className="h-9 w-9 rounded-[4px] lg:hidden dark:text-[#d1dae2]" aria-label="Toggle navigation">
             <Menu className="h-4.5 w-4.5" />
           </Button>
@@ -200,7 +200,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-[1560px] print:block print:w-full print:max-w-none print:m-0 print:p-0">
+      <div className="mx-auto flex w-full max-w-[1560px] min-w-0 overflow-x-hidden print:block print:w-full print:max-w-none print:m-0 print:p-0">
         <aside className={`fixed inset-x-0 top-16 z-20 border-b border-[#e4e1da] bg-white p-3 lg:static lg:block lg:min-h-[calc(100vh-64px)] lg:w-[252px] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#e4e1da] lg:p-4 print:hidden no-print dark:border-[#46515c] dark:bg-[#1b2229] ${menuOpen ? "block" : "hidden"}`}>
           <p className="mb-2.5 px-2 text-xs font-bold uppercase tracking-[0.14em] text-[#868f9a] dark:text-[#aeb9c4]">Procurement workspace</p>
           <nav className="grid gap-0.5">
@@ -232,7 +232,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7 print:p-0 print:m-0 print:w-full print:max-w-none">{children}</main>
+        <main className="min-w-0 flex-1 w-full max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-7 print:p-0 print:m-0 print:w-full print:max-w-none print:overflow-visible">{children}</main>
       </div>
     </div>
   );

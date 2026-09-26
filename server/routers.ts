@@ -10,6 +10,7 @@ import { BEST_VALUE_CRITERION_KEYS } from "../shared/bestValuePolicy";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
 import {
   createMasterExcelWorkbook,
+  generateResilientHtmlPreview,
   getSampleFormData,
   injectDataIntoExcelTemplate,
   parseExcelTemplate,
@@ -427,7 +428,32 @@ export const appRouter = router({
           ? input.customData
           : getSampleFormData(key);
 
-        const injected = await injectDataIntoExcelTemplate(templateBuffer, key, transactionData);
+        let injected;
+        try {
+          injected = await injectDataIntoExcelTemplate(templateBuffer, key, transactionData);
+        } catch (injectionErr) {
+          // If custom uploaded template failed, fallback to master built-in template
+          try {
+            const masterWb = await createMasterExcelWorkbook(key);
+            const masterBuf = Buffer.from(await masterWb.xlsx.writeBuffer());
+            injected = await injectDataIntoExcelTemplate(masterBuf, key, transactionData);
+          } catch (masterErr) {
+            // Absolute resilient fallback: generate standard institutional HTML preview
+            const htmlTable = generateResilientHtmlPreview(key, transactionData);
+            injected = {
+              xlsxBuffer: Buffer.from([]),
+              xlsxBase64: "",
+              htmlTable,
+              sheetName: meta.displayName,
+              meta: {
+                injectedTokensCount: Object.keys(transactionData).length,
+                itemsCount: Array.isArray(transactionData.items) ? transactionData.items.length : 0,
+                templateKey: key,
+              },
+            };
+          }
+        }
+
         return {
           ...injected,
           metaInfo: meta,

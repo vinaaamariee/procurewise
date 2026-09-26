@@ -36,18 +36,19 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
     description: "Official government purchase request for supplies, materials, and equipment requisitions.",
     sampleFileName: "Purchase_Request_Template.xlsx",
     placeholders: [
+      { token: "{{entity_name}}", label: "Entity / Institution Name", example: "[Agency / Institution Name]", description: "Official name of the procuring entity or government agency" },
       { token: "{{pr_no}}", label: "PR Number", example: "PR-2026-03-014", description: "System generated Purchase Request tracking number" },
-      { token: "{{office}}", label: "Office / Department", example: "ICT Unit", description: "Requesting department or operating unit" },
+      { token: "{{office}}", label: "Office / Department", example: "[Office / Department]", description: "Requesting department or operating unit" },
       { token: "{{date}}", label: "Request Date", example: "March 26, 2026", description: "Official requisition submission date" },
       { token: "{{fund_cluster}}", label: "Fund Cluster", example: "Regular Agency Fund (01101101)", description: "Funding source / GAA allotment" },
-      { token: "{{responsibility_code}}", label: "Responsibility Center Code", example: "BSC-ICT-2026", description: "Accounting responsibility center" },
-      { token: "{{purpose}}", label: "Purpose", example: "Procurement of office and IT supplies for 1st Quarter", description: "Justification and requisition purpose" },
+      { token: "{{responsibility_code}}", label: "Responsibility Center Code", example: "RESP-CENTER-001", description: "Accounting responsibility center" },
+      { token: "{{purpose}}", label: "Purpose", example: "Procurement of office and operational supplies for 1st Quarter", description: "Justification and requisition purpose" },
       { token: "{{abc_amount}}", label: "Total ABC Amount", example: "₱145,250.00", description: "Approved Budget for the Contract total" },
       { token: "{{amount_in_words}}", label: "Amount in Words", example: "One Hundred Forty-Five Thousand Two Hundred Fifty Pesos Only", description: "Spelled-out total monetary value" },
-      { token: "{{signatory_1_name}}", label: "Requested By (Name)", example: "Prof. Maria Santos", description: "End-user requisitioner full name" },
-      { token: "{{signatory_1_title}}", label: "Requested By (Title)", example: "Head, ICT Unit", description: "Requisitioner official position" },
-      { token: "{{signatory_2_name}}", label: "Approved By (Name)", example: "Dr. Roberto C. Reyes", description: "Authorizing administrative official" },
-      { token: "{{signatory_2_title}}", label: "Approved By (Title)", example: "College President / VP Administration", description: "Authorizing official title" },
+      { token: "{{signatory_1_name}}", label: "Requested By (Name)", example: "Maria Santos", description: "End-user requisitioner full name" },
+      { token: "{{signatory_1_title}}", label: "Requested By (Title)", example: "Unit Head / Division Chief", description: "Requisitioner official position" },
+      { token: "{{signatory_2_name}}", label: "Approved By (Name)", example: "Roberto C. Reyes", description: "Authorizing administrative official" },
+      { token: "{{signatory_2_title}}", label: "Approved By (Title)", example: "Head of Procuring Entity (HoPE)", description: "Authorizing official title" },
       // Table repeating placeholders
       { token: "{{item_no}}", label: "Item / Stock No.", example: "1", description: "Line item sequence number" },
       { token: "{{unit}}", label: "Unit of Issue", example: "ream", description: "Unit of measurement" },
@@ -66,14 +67,15 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
     description: "Prescribed request for quotation sent to eligible commercial suppliers for price sounding.",
     sampleFileName: "Request_For_Quotation_Template.xlsx",
     placeholders: [
+      { token: "{{entity_name}}", label: "Entity / Institution Name", example: "[Agency / Institution Name]", description: "Official name of the procuring entity" },
       { token: "{{rfq_no}}", label: "RFQ Number", example: "RFQ-2026-03-088", description: "Official Request for Quotation sequence code" },
       { token: "{{pr_no}}", label: "Associated PR No.", example: "PR-2026-03-014", description: "Linked Purchase Request identification" },
       { token: "{{date}}", label: "Issuance Date", example: "March 26, 2026", description: "Date of RFQ transmission" },
       { token: "{{deadline}}", label: "Submission Deadline", example: "April 02, 2026 (5:00 PM)", description: "Deadline for supplier quotation submission" },
       { token: "{{delivery_term}}", label: "Delivery Period", example: "15 Calendar Days", description: "Required days to deliver post-PO" },
-      { token: "{{place_of_delivery}}", label: "Place of Delivery", example: "Batanes State College, San Antonio, Basco", description: "Designated receiving location" },
-      { token: "{{supplier_name}}", label: "Supplier / Bidder Name", example: "Batanes Commercial Hub", description: "Name of invited or responding supplier" },
-      { token: "{{supplier_address}}", label: "Supplier Address", example: "National Road, Basco, Batanes", description: "Supplier business address" },
+      { token: "{{place_of_delivery}}", label: "Place of Delivery", example: "[Agency / Institution Name] Supply Office", description: "Designated receiving location" },
+      { token: "{{supplier_name}}", label: "Supplier / Bidder Name", example: "Universal Commercial Supplies", description: "Name of invited or responding supplier" },
+      { token: "{{supplier_address}}", label: "Supplier Address", example: "123 Commercial Avenue, City Center", description: "Supplier business address" },
       { token: "{{philgeps_no}}", label: "PhilGEPS Registration No.", example: "2024-89312", description: "Supplier PhilGEPS registry code" },
       { token: "{{abc_amount}}", label: "Total ABC Amount", example: "₱145,250.00", description: "Maximum budget limit for the procurement" },
       { token: "{{canvasser_name}}", label: "Canvasser Name", example: "Juan Dela Cruz", description: "Procurement staff / canvasser" },
@@ -97,29 +99,30 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
     description: "Official comparison matrix evaluating commercial quotations to establish the lowest calculated bid.",
     sampleFileName: "Abstract_Of_Quotations_Template.xlsx",
     placeholders: [
+      { token: "{{entity_name}}", label: "Entity / Institution Name", example: "[Agency / Institution Name]", description: "Official name of the procuring entity" },
       { token: "{{aoq_no}}", label: "Abstract Number", example: "AOQ-2026-03-042", description: "Official BAC Abstract identification" },
       { token: "{{rfq_no}}", label: "RFQ Number", example: "RFQ-2026-03-088", description: "Associated quotation canvass reference" },
       { token: "{{pr_no}}", label: "PR Number", example: "PR-2026-03-014", description: "Originating Purchase Request number" },
       { token: "{{date}}", label: "Opening Date", example: "April 03, 2026", description: "Date of official canvass opening" },
-      { token: "{{opening_location}}", label: "Opening Location", example: "Procurement Office / BAC Conference Room", description: "Canvass opening room" },
+      { token: "{{opening_location}}", label: "Opening Location", example: "BAC Conference Room, [Agency / Institution Name]", description: "Canvass opening room" },
       { token: "{{abc_amount}}", label: "Approved Budget (ABC)", example: "₱145,250.00", description: "Approved budget threshold" },
-      { token: "{{recommended_supplier}}", label: "Recommended Awardee", example: "Ivatan Trading & General Supplies", description: "Supplier evaluated as lowest calculated compliant bid" },
+      { token: "{{recommended_supplier}}", label: "Recommended Awardee", example: "Universal Commercial Supplies", description: "Supplier evaluated as lowest calculated compliant bid" },
       { token: "{{awarded_amount}}", label: "Awarded Contract Total", example: "₱138,400.00", description: "Recommended contract price" },
       { token: "{{savings}}", label: "Government Savings", example: "₱6,850.00", description: "Difference between ABC and Awarded Amount" },
       { token: "{{recommendation_reason}}", label: "Evaluation Basis / Reason", example: "Lowest calculated responsive quotation complying with all specifications.", description: "Justification for award recommendation" },
-      { token: "{{bac_chairperson}}", label: "BAC Chairperson", example: "Dr. Elena G. Martinez", description: "Chairperson of Bids and Awards Committee" },
-      { token: "{{bac_vice_chair}}", label: "BAC Vice-Chairperson", example: "Engr. Leo V. Fernandez", description: "Vice-Chairperson of BAC" },
-      { token: "{{bac_members}}", label: "BAC Members", example: "Atty. Clara Ramos, Dr. Samuel Cruz", description: "Participating BAC Committee Members" },
+      { token: "{{bac_chairperson}}", label: "BAC Chairperson", example: "Elena G. Martinez", description: "Chairperson of Bids and Awards Committee" },
+      { token: "{{bac_vice_chair}}", label: "BAC Vice-Chairperson", example: "Leo V. Fernandez", description: "Vice-Chairperson of BAC" },
+      { token: "{{bac_members}}", label: "BAC Members", example: "Clara Ramos, Samuel Cruz", description: "Participating BAC Committee Members" },
       // Table repeating placeholders
       { token: "{{item_no}}", label: "Item No.", example: "1", description: "Item sequence number" },
       { token: "{{item_desc}}", label: "Item Description", example: "Multi-purpose Bond Paper A4 (70gsm)", description: "Article or commodity specification" },
       { token: "{{qty}}", label: "Quantity", example: "50", description: "Quantity" },
       { token: "{{unit}}", label: "Unit", example: "ream", description: "Measurement unit" },
-      { token: "{{supplier_1_name}}", label: "Supplier 1 Name", example: "Ivatan Trading", description: "First evaluated bidder name" },
+      { token: "{{supplier_1_name}}", label: "Supplier 1 Name", example: "Universal Commercial Supplies", description: "First evaluated bidder name" },
       { token: "{{supplier_1_bid}}", label: "Supplier 1 Bid", example: "₱13,750.00", description: "First bidder total quote" },
-      { token: "{{supplier_2_name}}", label: "Supplier 2 Name", example: "Northern Goods Co.", description: "Second evaluated bidder name" },
+      { token: "{{supplier_2_name}}", label: "Supplier 2 Name", example: "Standard Goods Enterprise", description: "Second evaluated bidder name" },
       { token: "{{supplier_2_bid}}", label: "Supplier 2 Bid", example: "₱14,100.00", description: "Second bidder total quote" },
-      { token: "{{lowest_bidder}}", label: "Lowest Bidder for Item", example: "Ivatan Trading", description: "Winning item offer" },
+      { token: "{{lowest_bidder}}", label: "Lowest Bidder for Item", example: "Universal Commercial Supplies", description: "Winning item offer" },
     ],
   },
   purchase_order: {
@@ -131,24 +134,25 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
     description: "Prescribed government contract binding the institution and awarded supplier for goods delivery.",
     sampleFileName: "Purchase_Order_Template.xlsx",
     placeholders: [
+      { token: "{{entity_name}}", label: "Entity / Institution Name", example: "[Agency / Institution Name]", description: "Official name of the procuring entity" },
       { token: "{{po_no}}", label: "PO Number", example: "PO-2026-03-019", description: "Legally binding Purchase Order number" },
       { token: "{{date}}", label: "PO Date", example: "April 05, 2026", description: "Contract issuance date" },
       { token: "{{pr_no}}", label: "Linked PR Number", example: "PR-2026-03-014", description: "Associated Purchase Request" },
-      { token: "{{supplier_name}}", label: "Supplier Name", example: "Ivatan Trading & General Supplies", description: "Awarded contractor business name" },
-      { token: "{{supplier_address}}", label: "Supplier Address", example: "National Road, San Antonio, Basco, Batanes", description: "Contractor official address" },
+      { token: "{{supplier_name}}", label: "Supplier Name", example: "Universal Commercial Supplies", description: "Awarded contractor business name" },
+      { token: "{{supplier_address}}", label: "Supplier Address", example: "123 Commercial Avenue, City Center", description: "Contractor official address" },
       { token: "{{tin_no}}", label: "TIN", example: "123-456-789-000", description: "Taxpayer Identification Number" },
       { token: "{{philgeps_no}}", label: "PhilGEPS Registration No.", example: "2024-89312", description: "PhilGEPS merchant identification" },
       { token: "{{procurement_mode}}", label: "Mode of Procurement", example: "NP-53.9 Small Value Procurement", description: "RA 9184 statutory method" },
-      { token: "{{place_of_delivery}}", label: "Place of Delivery", example: "Batanes State College Supply Office", description: "Physical delivery destination" },
+      { token: "{{place_of_delivery}}", label: "Place of Delivery", example: "[Agency / Institution Name] Supply Office", description: "Physical delivery destination" },
       { token: "{{delivery_date}}", label: "Delivery Date", example: "Within 15 days upon receipt of NTP/PO", description: "Expected delivery deadline" },
       { token: "{{delivery_term}}", label: "Delivery Term", example: "FOB Destination", description: "Shipping and risk transfer term" },
       { token: "{{payment_term}}", label: "Payment Term", example: "Government Terms (Check / LDDAP upon inspection)", description: "Payment processing terms" },
       { token: "{{total_amount}}", label: "Total PO Amount", example: "₱138,400.00", description: "Total contract value in Philippine Peso" },
       { token: "{{amount_in_words}}", label: "Amount in Words", example: "One Hundred Thirty-Eight Thousand Four Hundred Pesos Only", description: "Spelled out total amount" },
-      { token: "{{authorized_official}}", label: "Authorized Official (HOPE)", example: "Dr. Roberto C. Reyes", description: "Head of Procuring Entity full name" },
-      { token: "{{authorized_official_title}}", label: "HOPE Title", example: "College President", description: "Title of signing official" },
-      { token: "{{accountant_name}}", label: "Chief Accountant", example: "Ms. Teresa M. Valiente, CPA", description: "Head of Accounting Unit certifying funds" },
-      { token: "{{supplier_representative}}", label: "Supplier Conforme (Name)", example: "Mr. Arnold B. Gomez", description: "Authorized representative of contractor" },
+      { token: "{{authorized_official}}", label: "Authorized Official (HOPE)", example: "Roberto C. Reyes", description: "Head of Procuring Entity full name" },
+      { token: "{{authorized_official_title}}", label: "HOPE Title", example: "Head of Procuring Entity (HoPE)", description: "Title of signing official" },
+      { token: "{{accountant_name}}", label: "Chief Accountant", example: "Teresa M. Valiente, CPA", description: "Head of Accounting Unit certifying funds" },
+      { token: "{{supplier_representative}}", label: "Supplier Conforme (Name)", example: "Arnold B. Gomez", description: "Authorized representative of contractor" },
       // Table repeating placeholders
       { token: "{{item_no}}", label: "Stock / Property No.", example: "1", description: "Sequence number" },
       { token: "{{unit}}", label: "Unit", example: "ream", description: "Unit of issue" },
@@ -167,18 +171,19 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
     description: "Official acknowledgement certificate documenting receipt, custody, and physical handover of procured goods.",
     sampleFileName: "Acknowledgement_Receipt_Template.xlsx",
     placeholders: [
+      { token: "{{entity_name}}", label: "Entity / Institution Name", example: "[Agency / Institution Name]", description: "Official name of the procuring entity" },
       { token: "{{receipt_no}}", label: "Receipt / PAR No.", example: "AR-2026-04-007", description: "Property acknowledgement tracking number" },
       { token: "{{date}}", label: "Receipt Date", example: "April 18, 2026", description: "Date items were physically accepted" },
       { token: "{{po_no}}", label: "Linked PO Number", example: "PO-2026-03-019", description: "Originating Purchase Order" },
-      { token: "{{supplier_name}}", label: "Supplier Name", example: "Ivatan Trading & General Supplies", description: "Delivering contractor" },
-      { token: "{{receiving_office}}", label: "Receiving Office / Custodian", example: "ICT Unit", description: "End-user office accepting property custody" },
+      { token: "{{supplier_name}}", label: "Supplier Name", example: "Universal Commercial Supplies", description: "Delivering contractor" },
+      { token: "{{receiving_office}}", label: "Receiving Office / Custodian", example: "[Office / Department]", description: "End-user office accepting property custody" },
       { token: "{{fund_cluster}}", label: "Fund Cluster", example: "Regular Agency Fund (01101101)", description: "Funding code" },
-      { token: "{{physical_location}}", label: "Physical Location", example: "College Library & Computer Laboratories", description: "Physical deployment area" },
+      { token: "{{physical_location}}", label: "Physical Location", example: "Property Custodian Storage Facility", description: "Physical deployment area" },
       { token: "{{total_amount}}", label: "Total Asset Value", example: "₱138,400.00", description: "Cumulative valuation of accepted assets" },
-      { token: "{{received_by_name}}", label: "Received By (Custodian)", example: "Prof. Maria Santos", description: "End-user custodian receiving property" },
-      { token: "{{received_by_designation}}", label: "Custodian Title", example: "Head, ICT Unit", description: "Custodian job designation" },
+      { token: "{{received_by_name}}", label: "Received By (Custodian)", example: "Maria Santos", description: "End-user custodian receiving property" },
+      { token: "{{received_by_designation}}", label: "Custodian Title", example: "Property Custodian / End-User", description: "Custodian job designation" },
       { token: "{{received_date}}", label: "Received Date", example: "April 18, 2026", description: "Custodian signing date" },
-      { token: "{{issued_by_name}}", label: "Issued By (Supply Officer)", example: "Engr. Michael D. Tan", description: "Property & Supply Officer" },
+      { token: "{{issued_by_name}}", label: "Issued By (Supply Officer)", example: "Michael D. Tan", description: "Property & Supply Officer" },
       { token: "{{issued_by_designation}}", label: "Supply Officer Title", example: "Administrative Officer V (Supply)", description: "Supply officer designation" },
       { token: "{{issued_date}}", label: "Issued Date", example: "April 18, 2026", description: "Issuing officer date" },
       // Table repeating placeholders
@@ -186,7 +191,7 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
       { token: "{{qty}}", label: "Quantity", example: "50", description: "Accepted quantity" },
       { token: "{{unit}}", label: "Unit", example: "ream", description: "Unit of issue" },
       { token: "{{item_desc}}", label: "Description", example: "Multi-purpose Bond Paper A4 (70gsm)", description: "Commodity description" },
-      { token: "{{property_no}}", label: "Property / Inventory Tag No.", example: "BSC-INV-2026-0041", description: "Institutional inventory sticker number" },
+      { token: "{{property_no}}", label: "Property / Inventory Tag No.", example: "PROP-TAG-2026-0041", description: "Institutional inventory sticker number" },
       { token: "{{date_acquired}}", label: "Date Acquired", example: "2026-04-18", description: "Official acquisition date" },
       { token: "{{unit_cost}}", label: "Unit Value", example: "₱275.00", description: "Unit capitalization cost" },
       { token: "{{total_cost}}", label: "Total Value", example: "₱13,750.00", description: "Extended item valuation" },
@@ -199,41 +204,43 @@ export const SUPPORTED_FORM_TEMPLATES: Record<FormTemplateKey, FormTemplateMeta>
 // ============================================================================
 export function getSampleFormData(key: FormTemplateKey): Record<string, any> {
   const commonItems = [
-    { item_no: 1, unit: "ream", item_desc: "Multi-purpose Bond Paper A4 (70gsm, 500 sheets/ream)", qty: 50, unit_cost: "₱285.00", total_cost: "₱14,250.00", property_no: "BSC-PROP-2026-001", date_acquired: "2026-04-15" },
-    { item_no: 2, unit: "cartridge", item_desc: "Original HP Toner Cartridge 85A Black", qty: 4, unit_cost: "₱3,450.00", total_cost: "₱13,800.00", property_no: "BSC-PROP-2026-002", date_acquired: "2026-04-15" },
-    { item_no: 3, unit: "unit", item_desc: "Heavy-Duty 2-Hole Paper Puncher (Metal Chassis)", qty: 6, unit_cost: "₱750.00", total_cost: "₱4,500.00", property_no: "BSC-PROP-2026-003", date_acquired: "2026-04-15" },
-    { item_no: 4, unit: "box", item_desc: "Permanent Marker Pen (Black, Fine Bullet Tip, 12s)", qty: 10, unit_cost: "₱420.00", total_cost: "₱4,200.00", property_no: "BSC-PROP-2026-004", date_acquired: "2026-04-15" },
-    { item_no: 5, unit: "unit", item_desc: "Uninterruptible Power Supply (UPS 650VA / 360W)", qty: 8, unit_cost: "₱3,200.00", total_cost: "₱25,600.00", property_no: "BSC-PROP-2026-005", date_acquired: "2026-04-15" },
+    { item_no: 1, unit: "ream", item_desc: "Multi-purpose Bond Paper A4 (70gsm, 500 sheets/ream)", qty: 50, unit_cost: "₱285.00", total_cost: "₱14,250.00", property_no: "PROP-TAG-2026-001", date_acquired: "2026-04-15" },
+    { item_no: 2, unit: "cartridge", item_desc: "Original HP Toner Cartridge 85A Black", qty: 4, unit_cost: "₱3,450.00", total_cost: "₱13,800.00", property_no: "PROP-TAG-2026-002", date_acquired: "2026-04-15" },
+    { item_no: 3, unit: "unit", item_desc: "Heavy-Duty 2-Hole Paper Puncher (Metal Chassis)", qty: 6, unit_cost: "₱750.00", total_cost: "₱4,500.00", property_no: "PROP-TAG-2026-003", date_acquired: "2026-04-15" },
+    { item_no: 4, unit: "box", item_desc: "Permanent Marker Pen (Black, Fine Bullet Tip, 12s)", qty: 10, unit_cost: "₱420.00", total_cost: "₱4,200.00", property_no: "PROP-TAG-2026-004", date_acquired: "2026-04-15" },
+    { item_no: 5, unit: "unit", item_desc: "Uninterruptible Power Supply (UPS 650VA / 360W)", qty: 8, unit_cost: "₱3,200.00", total_cost: "₱25,600.00", property_no: "PROP-TAG-2026-005", date_acquired: "2026-04-15" },
   ];
 
   switch (key) {
     case "purchase_request":
       return {
+        entity_name: "[Agency / Institution Name]",
         pr_no: "PR-2026-03-014",
-        office: "ICT Unit / Office of the Vice President for Administration",
+        office: "[Office / Department]",
         date: "March 26, 2026",
         fund_cluster: "Regular Agency Fund (01101101)",
-        responsibility_code: "BSC-ICT-2026",
-        purpose: "Urgent procurement of standard office, printing, and ICT supplies for 1st Semester operations.",
+        responsibility_code: "RESP-CENTER-001",
+        purpose: "Urgent procurement of standard office, printing, and operational supplies for 1st Semester operations.",
         abc_amount: "₱62,350.00",
         amount_in_words: "Sixty-Two Thousand Three Hundred Fifty Pesos Only",
-        signatory_1_name: "Prof. Maria Santos",
-        signatory_1_title: "Head, ICT Unit",
-        signatory_2_name: "Dr. Roberto C. Reyes",
-        signatory_2_title: "College President / Authorized HOPE",
+        signatory_1_name: "Maria Santos",
+        signatory_1_title: "Unit Head / Division Chief",
+        signatory_2_name: "Roberto C. Reyes",
+        signatory_2_title: "Head of Procuring Entity (HoPE)",
         items: commonItems,
       };
 
     case "rfq":
       return {
+        entity_name: "[Agency / Institution Name]",
         rfq_no: "RFQ-2026-03-088",
         pr_no: "PR-2026-03-014",
         date: "March 26, 2026",
         deadline: "April 02, 2026 (5:00 PM)",
         delivery_term: "15 Calendar Days",
-        place_of_delivery: "Batanes State College Supply & Property Office, San Antonio, Basco",
-        supplier_name: "Ivatan Trading & General Supplies",
-        supplier_address: "National Road, San Antonio, Basco, Batanes",
+        place_of_delivery: "[Agency / Institution Name] Supply Office",
+        supplier_name: "Universal Commercial Supplies",
+        supplier_address: "123 Commercial Avenue, City Center",
         philgeps_no: "2024-89312",
         abc_amount: "₱62,350.00",
         canvasser_name: "Juan Dela Cruz",
@@ -248,66 +255,69 @@ export function getSampleFormData(key: FormTemplateKey): Record<string, any> {
 
     case "abstract_of_quotations":
       return {
+        entity_name: "[Agency / Institution Name]",
         aoq_no: "AOQ-2026-03-042",
         rfq_no: "RFQ-2026-03-088",
         pr_no: "PR-2026-03-014",
         date: "April 03, 2026",
-        opening_location: "BAC Conference Room, Administration Building, Batanes State College",
+        opening_location: "BAC Conference Room, Administration Building, [Agency / Institution Name]",
         abc_amount: "₱62,350.00",
-        recommended_supplier: "Ivatan Trading & General Supplies",
+        recommended_supplier: "Universal Commercial Supplies",
         awarded_amount: "₱59,800.00",
         savings: "₱2,550.00",
         recommendation_reason: "Evaluated as the Lowest Calculated Responsive Quotation meeting all technical specifications and compliance criteria.",
-        bac_chairperson: "Dr. Elena G. Martinez",
-        bac_vice_chair: "Engr. Leo V. Fernandez",
-        bac_members: "Atty. Clara Ramos, Dr. Samuel Cruz, Prof. Alan Perez",
+        bac_chairperson: "Elena G. Martinez",
+        bac_vice_chair: "Leo V. Fernandez",
+        bac_members: "Clara Ramos, Samuel Cruz, Alan Perez",
         items: commonItems.map((item, idx) => ({
           ...item,
-          supplier_1_name: "Ivatan Trading",
+          supplier_1_name: "Universal Commercial Supplies",
           supplier_1_bid: item.total_cost,
-          supplier_2_name: "Northern Goods",
+          supplier_2_name: "Standard Goods Enterprise",
           supplier_2_bid: `₱${(Number(item.total_cost.replace(/[^0-9.]/g, "")) * 1.05).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-          lowest_bidder: "Ivatan Trading",
+          lowest_bidder: "Universal Commercial Supplies",
         })),
       };
 
     case "purchase_order":
       return {
+        entity_name: "[Agency / Institution Name]",
         po_no: "PO-2026-03-019",
         date: "April 05, 2026",
         pr_no: "PR-2026-03-014",
-        supplier_name: "Ivatan Trading & General Supplies",
-        supplier_address: "National Road, San Antonio, Basco, Batanes",
+        supplier_name: "Universal Commercial Supplies",
+        supplier_address: "123 Commercial Avenue, City Center",
         tin_no: "123-456-789-000",
         philgeps_no: "2024-89312",
         procurement_mode: "NP-53.9 Small Value Procurement (RA 9184)",
-        place_of_delivery: "Batanes State College Supply Office, San Antonio, Basco",
+        place_of_delivery: "[Agency / Institution Name] Supply Office",
         delivery_date: "Within 15 days upon receipt of PO",
         delivery_term: "FOB Destination",
         payment_term: "Government Terms (Check / LDDAP after final inspection)",
         total_amount: "₱59,800.00",
         amount_in_words: "Fifty-Nine Thousand Eight Hundred Pesos Only",
-        authorized_official: "Dr. Roberto C. Reyes",
-        authorized_official_title: "College President",
-        accountant_name: "Ms. Teresa M. Valiente, CPA",
-        supplier_representative: "Mr. Arnold B. Gomez",
+        authorized_official: "Roberto C. Reyes",
+        authorized_official_title: "Head of Procuring Entity (HoPE)",
+        accountant_name: "Teresa M. Valiente, CPA",
+        supplier_representative: "Arnold B. Gomez",
         items: commonItems,
       };
 
     case "acknowledgement_receipt":
       return {
+        entity_name: "[Agency / Institution Name]",
         receipt_no: "AR-2026-04-007",
         date: "April 18, 2026",
         po_no: "PO-2026-03-019",
-        supplier_name: "Ivatan Trading & General Supplies",
-        receiving_office: "ICT Unit / Department of Information Technology",
+        supplier_name: "Universal Commercial Supplies",
+        receiving_office: "[Office / Department]",
         fund_cluster: "Regular Agency Fund (01101101)",
-        physical_location: "College Library & Computer Laboratory 2",
+        physical_location: "Property Custodian Storage Facility",
         total_amount: "₱59,800.00",
-        received_by_name: "Prof. Maria Santos",
-        received_by_designation: "Head, ICT Unit",
+        received_by_name: "Maria Santos",
+        received_by_designation: "Property Custodian / End-User",
         received_date: "April 18, 2026",
-        issued_by_name: "Engr. Michael D. Tan",
+        issued_by_name: "Michael D. Tan",
         issued_by_designation: "Administrative Officer V (Property & Supply)",
         issued_date: "April 18, 2026",
         items: commonItems,
@@ -389,7 +399,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       ws.getCell("A1").alignment = { horizontal: "center" };
 
       ws.mergeCells("A2:F2");
-      ws.getCell("A2").value = "BATANES STATE COLLEGE";
+      ws.getCell("A2").value = "[AGENCY / INSTITUTION NAME]";
       ws.getCell("A2").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF7B1E1E" } };
       ws.getCell("A2").alignment = { horizontal: "center" };
 
@@ -401,7 +411,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       // Row 5-7: Requisition Metadata Block
       ws.getCell("A5").value = "Entity Name:";
       ws.getCell("A5").font = boldText;
-      ws.getCell("B5").value = "Batanes State College";
+      ws.getCell("B5").value = "{{entity_name}}";
       ws.getCell("B5").font = normalText;
 
       ws.getCell("E5").value = "Fund Cluster:";
@@ -524,7 +534,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       ];
 
       ws.mergeCells("A1:G1");
-      ws.getCell("A1").value = "BATANES STATE COLLEGE — PROCUREMENT UNIT";
+      ws.getCell("A1").value = "[AGENCY / INSTITUTION NAME] — PROCUREMENT UNIT";
       ws.getCell("A1").font = { name: "Arial", size: 11, bold: true, color: { argb: "FF7B1E1E" } };
       ws.getCell("A1").alignment = { horizontal: "center" };
 
@@ -633,7 +643,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       ];
 
       ws.mergeCells("A1:H1");
-      ws.getCell("A1").value = "BATANES STATE COLLEGE — BIDS AND AWARDS COMMITTEE";
+      ws.getCell("A1").value = "[AGENCY / INSTITUTION NAME] — BIDS AND AWARDS COMMITTEE";
       ws.getCell("A1").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF7B1E1E" } };
       ws.getCell("A1").alignment = { horizontal: "center" };
 
@@ -741,7 +751,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       ws.getCell("A1").alignment = { horizontal: "center" };
 
       ws.mergeCells("A2:F2");
-      ws.getCell("A2").value = "BATANES STATE COLLEGE";
+      ws.getCell("A2").value = "[AGENCY / INSTITUTION NAME]";
       ws.getCell("A2").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF7B1E1E" } };
       ws.getCell("A2").alignment = { horizontal: "center" };
 
@@ -858,7 +868,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
       ws.getCell("A1").alignment = { horizontal: "center" };
 
       ws.mergeCells("A2:H2");
-      ws.getCell("A2").value = "BATANES STATE COLLEGE";
+      ws.getCell("A2").value = "[AGENCY / INSTITUTION NAME]";
       ws.getCell("A2").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF7B1E1E" } };
       ws.getCell("A2").alignment = { horizontal: "center" };
 
@@ -869,7 +879,7 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
 
       ws.getCell("A5").value = "Entity Name:";
       ws.getCell("A5").font = boldText;
-      ws.getCell("B5").value = "Batanes State College";
+      ws.getCell("B5").value = "{{entity_name}}";
       ws.getCell("B5").font = normalText;
 
       ws.getCell("F5").value = "Fund Cluster:";
@@ -1015,6 +1025,28 @@ export interface InjectedDocumentResult {
   };
 }
 
+export function getCellDisplayValue(cell: any): string {
+  if (!cell) return "";
+  if (cell.text !== undefined && cell.text !== null && typeof cell.text === "string") {
+    return cell.text;
+  }
+  const val = cell.value;
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (val instanceof Date) return val.toLocaleDateString();
+  if (typeof val === "object") {
+    if (val.result !== undefined && val.result !== null) return String(val.result);
+    if (Array.isArray(val.richText)) {
+      return val.richText.map((t: any) => t.text || "").join("");
+    }
+    if (val.error) return String(val.error);
+    if (val.text) return String(val.text);
+    if (val.hyperlink && val.text) return String(val.text);
+  }
+  return "";
+}
+
 export async function injectDataIntoExcelTemplate(
   templateBuffer: Buffer,
   templateKey: FormTemplateKey,
@@ -1026,19 +1058,19 @@ export async function injectDataIntoExcelTemplate(
   await wb.xlsx.load(templateBuffer);
 
   const ws = wb.worksheets[0];
-  if (!ws) throw new Error("No worksheet found in template");
+  if (!ws) {
+    throw new Error("Invalid template: No worksheets found in the Excel workbook.");
+  }
 
   let injectedTokensCount = 0;
-  const items: Array<Record<string, any>> = Array.isArray(data.items) && data.items.length > 0
-    ? data.items
-    : (getSampleFormData(templateKey).items || []);
+  const items = Array.isArray(data.items) ? data.items : [];
 
   // 1. Locate repeating item row if present
   let templateItemRowNumber: number | null = null;
   ws.eachRow({ includeEmpty: false }, (row: any, rowNumber: number) => {
     if (templateItemRowNumber !== null) return;
     row.eachCell((cell: any) => {
-      const text = cell.text ?? String(cell.value ?? "");
+      const text = getCellDisplayValue(cell);
       if (text.includes("{{item_no}}") || text.includes("{{item_desc}}")) {
         templateItemRowNumber = rowNumber;
       }
@@ -1057,7 +1089,8 @@ export async function injectDataIntoExcelTemplate(
       templateText: string;
     }> = [];
 
-    const colCount = Math.max(ws.columnCount, 8);
+    const declaredCols = ws.columns && ws.columns.length > 0 ? ws.columns.length : 0;
+    const colCount = Math.max(declaredCols, ws.actualColumnCount, 1);
     for (let c = 1; c <= colCount; c++) {
       const cell = templateRow.getCell(c);
       templateCellFormats.push({
@@ -1066,7 +1099,7 @@ export async function injectDataIntoExcelTemplate(
         border: cell.border ? { ...cell.border } : undefined,
         fill: cell.fill ? { ...cell.fill } : undefined,
         numFmt: cell.numFmt,
-        templateText: cell.text ?? String(cell.value ?? ""),
+        templateText: getCellDisplayValue(cell),
       });
     }
 
@@ -1100,12 +1133,17 @@ export async function injectDataIntoExcelTemplate(
   }
 
   // 3. Inject scalar placeholders throughout the entire worksheet
+  const normalizedData: Record<string, any> = {
+    entity_name: "[Agency / Institution Name]",
+    ...data,
+  };
+
   ws.eachRow({ includeEmpty: false }, (row: any) => {
     row.eachCell({ includeEmpty: false }, (cell: any) => {
-      const text = cell.text ?? String(cell.value ?? "");
+      const text = getCellDisplayValue(cell);
       if (typeof text === "string" && text.includes("{{")) {
         let updated = text;
-        Object.entries(data).forEach(([key, val]) => {
+        Object.entries(normalizedData).forEach(([key, val]) => {
           if (key === "items") return;
           const token = `{{${key}}}`;
           if (updated.includes(token)) {
@@ -1143,34 +1181,47 @@ function convertWorksheetToHtml(ws: ExcelJS.Worksheet): string {
   const mergedMap = new Map<string, { rowspan: number; colspan: number }>();
   const skipCells = new Set<string>();
 
-  // Process merged cells
+  // Process merged cells with safety guard
   if ((ws as any)._merges) {
-    const merges = (ws as any)._merges;
-    Object.keys(merges).forEach((key) => {
-      const range = merges[key];
-      const model = range.model;
-      if (model) {
-        const { top, bottom, left, right } = model;
-        const rowspan = bottom - top + 1;
-        const colspan = right - left + 1;
-        const masterKey = `${top}:${left}`;
-        mergedMap.set(masterKey, { rowspan, colspan });
+    try {
+      const merges = (ws as any)._merges;
+      Object.keys(merges).forEach((key) => {
+        const range = merges[key];
+        const model = range?.model || range;
+        if (
+          model &&
+          typeof model.top === "number" &&
+          typeof model.bottom === "number" &&
+          typeof model.left === "number" &&
+          typeof model.right === "number"
+        ) {
+          const { top, bottom, left, right } = model;
+          const rowspan = Math.max(1, bottom - top + 1);
+          const colspan = Math.max(1, right - left + 1);
+          const masterKey = `${top}:${left}`;
+          mergedMap.set(masterKey, { rowspan, colspan });
 
-        for (let r = top; r <= bottom; r++) {
-          for (let c = left; c <= right; c++) {
-            if (!(r === top && c === left)) {
-              skipCells.add(`${r}:${c}`);
+          for (let r = top; r <= bottom; r++) {
+            for (let c = left; c <= right; c++) {
+              if (!(r === top && c === left)) {
+                skipCells.add(`${r}:${c}`);
+              }
             }
           }
         }
-      }
-    });
+      });
+    } catch {
+      // Safe fallback if worksheet merge structure is irregular
+    }
   }
 
   const rowsHtml: string[] = [];
-  const maxCols = Math.max(ws.columnCount, 6);
+  const declaredCols = ws.columns && ws.columns.length > 0 ? ws.columns.length : 0;
+  const maxCols = Math.max(declaredCols, ws.actualColumnCount, 1);
+  const totalRows = Math.min(Math.max(ws.rowCount, ws.actualRowCount, 20), 120);
 
-  ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+  for (let rowNumber = 1; rowNumber <= totalRows; rowNumber++) {
+    const row = ws.getRow(rowNumber);
     const cellsHtml: string[] = [];
     let hasContentInRow = false;
 
@@ -1181,7 +1232,7 @@ function convertWorksheetToHtml(ws: ExcelJS.Worksheet): string {
       }
 
       const cell = row.getCell(colNumber);
-      const val = cell.text ?? String(cell.value ?? "");
+      const val = getCellDisplayValue(cell);
       if (val.trim()) hasContentInRow = true;
 
       const mergeInfo = mergedMap.get(cellKey);
@@ -1194,10 +1245,10 @@ function convertWorksheetToHtml(ws: ExcelJS.Worksheet): string {
 
       // Borders
       if (cell.border) {
-        if (cell.border.top) styles.push("border-top: 1px solid #202833");
-        if (cell.border.bottom) styles.push("border-bottom: 1px solid #202833");
-        if (cell.border.left) styles.push("border-left: 1px solid #202833");
-        if (cell.border.right) styles.push("border-right: 1px solid #202833");
+        if (cell.border.top) styles.push("border-top: 1px solid #1e293b");
+        if (cell.border.bottom) styles.push("border-bottom: 1px solid #1e293b");
+        if (cell.border.left) styles.push("border-left: 1px solid #1e293b");
+        if (cell.border.right) styles.push("border-right: 1px solid #1e293b");
       }
 
       // Font styles
@@ -1234,17 +1285,87 @@ function convertWorksheetToHtml(ws: ExcelJS.Worksheet): string {
       cellsHtml.push(`<td${spanAttrs}${styleStr}>${escapeHtml(val)}</td>`);
     }
 
-    if (hasContentInRow || rowNumber <= 20) {
+    if (hasContentInRow || rowNumber <= 15) {
       rowsHtml.push(`<tr>${cellsHtml.join("")}</tr>`);
     }
-  });
+  }
 
   return `
-    <table class="excel-rendered-table w-full border-collapse text-xs" style="table-layout: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.35; color: #202833;">
+    <table class="excel-rendered-table w-full border-collapse text-xs" style="table-layout: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.35; color: #1e293b;">
       <tbody>
         ${rowsHtml.join("\n")}
       </tbody>
     </table>
+  `;
+}
+
+export function generateResilientHtmlPreview(templateKey: string, data: Record<string, any>): string {
+  const entityName = data.entity_name || "[Agency / Institution Name]";
+  const items = Array.isArray(data.items) ? data.items : [];
+  const meta = SUPPORTED_FORM_TEMPLATES[templateKey as FormTemplateKey];
+  const title = meta?.displayName || "PROCUREMENT DOCUMENT";
+
+  const rowsHtml = items.map((it: any) => `
+    <tr>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml(String(it.item_no || "1"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml(String(it.unit || "unit"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px;">${escapeHtml(String(it.item_desc || "Item description"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml(String(it.quantity || "1"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml(String(it.unit_cost || it.unit_price || "0.00"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; font-weight: 600;">${escapeHtml(String(it.total_cost || it.total_price || "0.00"))}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; padding: 16px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 11px; font-style: italic; color: #64748b;">Republic of the Philippines</div>
+        <div style="font-size: 16px; font-weight: 800; color: #7B1E1E; margin: 4px 0;">${escapeHtml(entityName)}</div>
+        <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(title)}</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 12px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+        <div><strong>Entity Name:</strong> ${escapeHtml(entityName)}</div>
+        <div><strong>Document Reference:</strong> ${escapeHtml(String(data.pr_no || data.rfq_no || data.po_no || data.aoq_no || "—"))}</div>
+        <div><strong>Office / Section:</strong> ${escapeHtml(String(data.office || "[Office / Department]"))}</div>
+        <div><strong>Date:</strong> ${escapeHtml(String(data.date || new Date().toISOString().split("T")[0]))}</div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px;">
+        <thead>
+          <tr style="background: #f1f5f9; font-weight: 700;">
+            <th style="border: 1px solid #1e293b; padding: 6px; width: 60px;">Item No.</th>
+            <th style="border: 1px solid #1e293b; padding: 6px; width: 60px;">Unit</th>
+            <th style="border: 1px solid #1e293b; padding: 6px;">Description</th>
+            <th style="border: 1px solid #1e293b; padding: 6px; width: 70px;">Qty</th>
+            <th style="border: 1px solid #1e293b; padding: 6px; width: 100px;">Unit Cost</th>
+            <th style="border: 1px solid #1e293b; padding: 6px; width: 110px;">Total Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="6" style="border: 1px solid #1e293b; padding: 12px; text-align: center; color: #64748b;">Standard template with dynamic rows</td></tr>`}
+        </tbody>
+        <tfoot>
+          <tr style="font-weight: 700; background: #fafafa;">
+            <td colspan="5" style="border: 1px solid #1e293b; padding: 6px; text-align: right;">Total Amount:</td>
+            <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; color: #7B1E1E;">${escapeHtml(String(data.total_abc || data.total_amount || "0.00"))}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; font-size: 11px; margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd5e1;">
+        <div>
+          <div style="color: #64748b; margin-bottom: 24px;">Requested / Prepared by:</div>
+          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml(String(data.requestor_name || "[Authorized End-User]"))}</div>
+          <div style="color: #64748b;">${escapeHtml(String(data.requestor_designation || "[Designation]"))}</div>
+        </div>
+        <div>
+          <div style="color: #64748b; margin-bottom: 24px;">Approved by:</div>
+          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml(String(data.approver_name || "[Head of Procuring Entity / Approver]"))}</div>
+          <div style="color: #64748b;">${escapeHtml(String(data.approver_designation || "[Designation]"))}</div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
