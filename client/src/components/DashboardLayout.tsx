@@ -494,7 +494,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ].join(" ")}
         style={{ width: 272 }}
       >
-        <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
           {/* Search */}
           <div className="relative mb-4">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -531,7 +531,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ── DESKTOP SIDEBAR ─────────────────────────────────────────────── */}
         <aside
           className={[
-            "sidebar-rail hidden lg:flex flex-col min-h-screen shrink-0 border-r transition-colors duration-200 print:hidden",
+            "sidebar-rail hidden lg:flex flex-col min-h-screen shrink-0 border-r transition-colors duration-200 print:hidden overflow-x-hidden",
             "bg-white dark:bg-[#0c1322] border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-200",
             isCollapsed ? "w-[72px]" : "w-[272px]",
           ].join(" ")}
@@ -576,7 +576,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
 
           {/* ── Navigation ── */}
-          <div className="flex-1 overflow-y-auto px-2 py-2">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
             {Object.entries(grouped).map(([cat, items]) => {
               const isSectionCollapsed = Boolean(collapsedSections[cat]);
               return (
@@ -607,7 +607,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* ── Footer ── */}
-          <div className="shrink-0 border-t border-slate-200 dark:border-slate-800/80 p-2">
+          <div className="shrink-0 p-2">
             {/* Help & Support row */}
             {!isCollapsed ? (
               <button
@@ -663,7 +663,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Pinned profile card */}
             <div
-              className="rounded-xl border border-slate-200 dark:border-slate-800/80 p-3 bg-slate-50 dark:bg-[#121826] transition-colors"
+              className={`rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#121826] transition-colors ${
+                isCollapsed ? "flex h-12 w-full items-center justify-center p-1.5" : "p-3"
+              }`}
             >
               {isCollapsed ? (
                 <Tooltip>
@@ -671,10 +673,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <button
                       type="button"
                       onClick={() => setEditProfileOpen(true)}
-                      className="relative mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30"
+                      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30 transition hover:ring-[#881337]/60"
+                      title="Edit profile"
                     >
                       <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
-                      <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#111827] bg-emerald-500" />
+                      <span className="absolute top-0 right-0 h-2 w-2 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200 shadow-md">
