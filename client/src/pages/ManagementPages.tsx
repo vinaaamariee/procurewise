@@ -376,7 +376,7 @@ export function AnalyticsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1360px] pb-12">
+    <div className="mx-auto w-full max-w-[1360px] overflow-x-hidden p-4 md:p-6 lg:p-8 pb-12">
       <PageHeader
         eyebrow={isEndUser ? "My procurement activity" : "Procurement intelligence"}
         title={isEndUser ? "My Analytics" : "Analytics & performance"}
@@ -390,7 +390,7 @@ export function AnalyticsPage() {
       {/* Top-Level KPI Summary Cards / Banner (Exclusively for Procurement Staff / Officer and Admin) */}
       {canViewPerformanceAnalytics && (
         <section className="mt-7">
-          <div className="mb-3.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-3.5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a6d19]">
                 Top-Level KPI Summary
@@ -399,7 +399,7 @@ export function AnalyticsPage() {
                 Procurement status indicators for failed quotations, partial delivery shipments, cancellations, and overdue requests.
               </p>
             </div>
-            <div className="flex items-center gap-1.5 self-start rounded-md border border-[#e5dfd5] bg-white p-0.5 text-xs shadow-sm">
+            <div className="flex flex-wrap items-center gap-1.5 self-start rounded-md border border-[#e5dfd5] bg-white p-0.5 text-xs shadow-sm md:self-auto max-w-full">
               <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-[#8b95a1]">Scope:</span>
               <button
                 type="button"
@@ -425,7 +425,7 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <KpiStatusCard
               label="Failed"
               count={performance.data?.kpiSummary.failedCount ?? 0}
@@ -468,10 +468,10 @@ export function AnalyticsPage() {
       {/* End-User Performance Analytics Table (Exclusively for Procurement Staff / Officer and Admin) */}
       {canViewPerformanceAnalytics && (
         <section className="flat-panel mt-6 overflow-hidden">
-          <div className="border-b border-[#ece8df] px-6 py-4">
+          <div className="border-b border-[#ece8df] px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-base font-semibold text-[#2c3644]">
                     End-User Performance Analytics
                   </h3>
@@ -484,14 +484,14 @@ export function AnalyticsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[220px]">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="relative w-full min-w-[200px] sm:w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8b95a1]" />
                   <Input
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     placeholder="Search End User / Office..."
-                    className="h-8 pl-8 text-xs"
+                    className="h-8 w-full pl-8 text-xs"
                   />
                 </div>
                 {search && (
@@ -509,8 +509,8 @@ export function AnalyticsPage() {
             </div>
           ) : filteredRecords.length ? (
             <div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-[700px] text-left text-xs">
                   <thead className="border-b border-[#e5dcce] bg-[#f8f5ee] text-[11px] font-bold uppercase tracking-wider text-[#554433]">
                     <tr>
                       <th
@@ -837,18 +837,23 @@ function KpiStatusCard({
   }[tone];
 
   return (
-    <div className={`flat-panel p-4.5 transition hover:shadow-md ${toneStyles.bg}`}>
-      <div className="flex items-center justify-between">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneStyles.badge}`}>
-          <Icon className="h-3 w-3" />
-          {label}
+    <div className={`flat-panel min-w-0 overflow-hidden p-4 sm:p-4.5 transition hover:shadow-md ${toneStyles.bg}`}>
+      <div className="flex items-center justify-between gap-1">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider truncate ${toneStyles.badge}`}>
+          <Icon className="h-3 w-3 shrink-0" />
+          <span className="truncate">{label}</span>
         </span>
-        <Icon className={`h-4 w-4 ${toneStyles.icon}`} />
+        <Icon className={`h-4 w-4 shrink-0 ${toneStyles.icon}`} />
       </div>
-      <p className={`mt-3 font-display text-2xl font-bold tracking-tight ${toneStyles.value}`}>
+      <p
+        className={`mt-3 truncate font-display text-lg font-bold tracking-tight sm:text-xl xl:text-2xl ${toneStyles.value}`}
+        title={typeof count === "number" ? count.toLocaleString() : String(count)}
+      >
         {typeof count === "number" ? count.toLocaleString() : count}
       </p>
-      <p className="mt-1 text-[11px] leading-4 text-[#73808b]">{subtitle}</p>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[#73808b]" title={subtitle}>
+        {subtitle}
+      </p>
     </div>
   );
 }
