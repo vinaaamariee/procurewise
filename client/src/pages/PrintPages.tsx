@@ -3,12 +3,39 @@ import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 
-const BSC_HEADER_URL = "/manus-storage/bsc-header_31d256ab.png";
-const BSC_FOOTER_URL = "/manus-storage/bsc-footer_9296dc8a.png";
+const BSC_HEADER_URL = "/header.png";
+const BSC_FOOTER_URL = "/footer.png";
 
 function PrintShell({ title, children }: { title: string; children: React.ReactNode }) {
   const [, setLocation] = useLocation();
-  return <div className="mx-auto max-w-[900px] print:max-w-none"><div className="mb-6 flex items-center justify-between print:hidden"><Button variant="outline" onClick={() => setLocation("/dashboard")} className="rounded-[4px] border-[#d8d1c4] text-[#1f2933] hover:bg-[#f1f3f5] dark:border-[#46515c] dark:text-[#f1f5f8] dark:hover:bg-[#232c35]"><ArrowLeft className="mr-1.5 h-4 w-4" />Back to workspace</Button><Button onClick={() => window.print()} className="rounded-[4px] bg-[#7b1e1e] text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:text-white dark:hover:bg-[#eb766a]"><Printer className="mr-1.5 h-4 w-4 text-white" />Print</Button></div><article className="document-canvas print-document relative border border-[#d8d1c4] bg-white p-8 shadow-sm print:border-0 print:px-0 print:pb-[31mm] print:pt-[28mm] print:shadow-none"><div className="hidden print:block print-bsc-header" aria-hidden="true"><img src={BSC_HEADER_URL} alt="" className="block w-full" /></div><header className="border-b-2 border-[#7b1e1e] pb-5 text-center print:hidden"><p className="text-xs font-bold tracking-[0.18em] text-[#9a6d19]">BATANES STATE COLLEGE</p><h1 className="mt-2 font-display text-2xl font-semibold text-[#202833]">{title}</h1><p className="mt-1 text-[11px] text-[#65717e]">ProcureWise controlled offline copy</p></header>{children}<div className="hidden print:block print-bsc-footer" aria-hidden="true"><img src={BSC_FOOTER_URL} alt="" className="block w-full" /></div></article></div>;
+  return (
+    <div className="mx-auto max-w-[900px] print:max-w-none print:m-0 print:p-0">
+      <div className="mb-6 flex items-center justify-between print:hidden no-print">
+        <Button variant="outline" onClick={() => setLocation("/dashboard")} className="rounded-[4px] border-[#d8d1c4] text-[#1f2933] hover:bg-[#f1f3f5] dark:border-[#46515c] dark:text-[#f1f5f8] dark:hover:bg-[#232c35]">
+          <ArrowLeft className="mr-1.5 h-4 w-4" />Back to workspace
+        </Button>
+        <Button onClick={() => window.print()} className="rounded-[4px] bg-[#7b1e1e] text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:text-white dark:hover:bg-[#eb766a]">
+          <Printer className="mr-1.5 h-4 w-4 text-white" />Print
+        </Button>
+      </div>
+      <article className="document-canvas print-document relative border border-[#d8d1c4] bg-white p-8 shadow-sm print:border-0 print:p-0 print:shadow-none">
+        <div className="hidden print:block print-bsc-header" aria-hidden="true">
+          <img src={BSC_HEADER_URL} alt="Batanes State College official header" className="block w-full" />
+        </div>
+        <header className="border-b-2 border-[#7b1e1e] pb-5 text-center print:hidden">
+          <p className="text-xs font-bold tracking-[0.18em] text-[#9a6d19]">BATANES STATE COLLEGE</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-[#202833]">{title}</h1>
+          <p className="mt-1 text-[11px] text-[#65717e]">ProcureWise controlled offline copy</p>
+        </header>
+        <div className="print-document-content print:px-[18mm] print:pt-[34mm] print:pb-[28mm]">
+          {children}
+        </div>
+        <div className="hidden print:block print-bsc-footer" aria-hidden="true">
+          <img src={BSC_FOOTER_URL} alt="Batanes State College official footer" className="block w-full" />
+        </div>
+      </article>
+    </div>
+  );
 }
 function useId(key: string) { return Number(new URLSearchParams(useSearch()).get(key)); }
 function Loading() { return <p className="py-16 text-center text-sm text-[#77818d] dark:text-[#aeb9c4]">Loading printable record…</p>; }
