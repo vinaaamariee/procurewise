@@ -943,13 +943,23 @@ export async function listPurchaseRequests(user: User) {
     const fallbackAuditRejections = prAudits.filter((a) => a.action === "rejected");
     const rejectionCount = Math.max(rejections.length, fallbackAuditRejections.length);
     const latestRejectionReason = rejections.at(-1)?.reason
+      || rejections.at(-1)?.remarks
       || (fallbackAuditRejections.at(-1)?.details?.reason as string | undefined)
+      || null;
+    const returns = prDecisions.filter((d) => d.decisionType === "returned");
+    const fallbackAuditReturns = prAudits.filter((a) => a.action === "returned");
+    const returnCount = Math.max(returns.length, fallbackAuditReturns.length);
+    const latestReturnReason = returns.at(-1)?.reason
+      || returns.at(-1)?.remarks
+      || (fallbackAuditReturns.at(-1)?.details?.reason as string | undefined)
       || null;
     const latestDecisionDate = prDecisions.at(-1)?.createdAt || pr.updatedAt || pr.createdAt;
     return {
       ...pr,
       rejectionCount,
       latestRejectionReason,
+      returnCount,
+      latestReturnReason,
       latestDecisionDate,
     };
   });
