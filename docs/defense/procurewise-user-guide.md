@@ -123,7 +123,7 @@ If the recovery message does not arrive, check the email address, spam folder, S
 
 ### 3.5 Sign out
 
-Select the logout icon in the top-right area of the authenticated workspace. After sign-out, ProcureWise returns to the Access page. For a shared defense computer, always sign out before changing to another role.
+Select your profile in the top-right area of the authenticated workspace, then choose **Sign out** from the dropdown menu. After sign-out, ProcureWise returns to the Access page. For a shared defense computer, always sign out before changing to another role.
 
 ### 3.6 Access problems
 

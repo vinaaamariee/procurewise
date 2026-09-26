@@ -111,9 +111,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="icon" onClick={() => void handleLogout()} className="h-9 w-9 rounded-[4px] text-[#677281] hover:bg-red-50 hover:text-[#9c2525] dark:text-[#aeb9c4] dark:hover:bg-red-950/30 dark:hover:text-[#ff837a]" aria-label="Sign out">
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
