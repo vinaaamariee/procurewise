@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
 import { filterSuppliersByTag } from "../../../shared/supplierTagging";
+import { getValidPreCanvassQuotes, hasRequiredSupplierQuotations } from "../../../shared/procurementRules";
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, ChevronRight, ClipboardCheck, FileCheck2, FileSearch, Info, LoaderCircle, Plus, Send, Sparkles, Store, Trash2 } from "lucide-react";
 
@@ -44,8 +46,9 @@ export function IntegratedPreCanvassModal({
 
   const existingQuotes = useMemo(() => {
     if (!existingPreCanvass) return [];
-    return (dashboard.data?.preCanvassQuotes ?? []).filter(
-      (q) => q.preCanvassId === existingPreCanvass.id
+    return getValidPreCanvassQuotes(
+      dashboard.data?.preCanvassQuotes ?? [],
+      existingPreCanvass.id
     );
   }, [dashboard.data?.preCanvassQuotes, existingPreCanvass]);
 
@@ -154,7 +157,8 @@ export function IntegratedPreCanvassModal({
   };
 
   const quotesCount = existingQuotes.length;
-  const isReadyToForward = quotesCount >= 3;
+  const isReadyToForward = hasRequiredSupplierQuotations(quotesCount);
+  const modalProgress = !existingPreCanvass ? 15 : quotesCount === 0 ? 35 : quotesCount === 1 ? 55 : quotesCount === 2 ? 75 : 100;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,6 +220,17 @@ export function IntegratedPreCanvassModal({
             </span>
             <span>3. Forward Package</span>
           </div>
+        </div>
+
+        {/* Step Progress Bar */}
+        <div className="mt-2.5 space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Canvass Requirement Progress</span>
+            <span className="font-semibold text-foreground">
+              {isReadyToForward ? `Complete (${quotesCount}/3 Quotes Recorded)` : `${quotesCount}/3 Quotes Recorded`}
+            </span>
+          </div>
+          <Progress value={modalProgress} className="h-1.5" />
         </div>
 
         {/* Step 1: Initialize Pre-Canvass if not yet done */}
@@ -449,17 +464,17 @@ export function IntegratedPreCanvassModal({
               </form>
             )}
 
-            {/* Step 3: Forward Package action once 3 quotes exist */}
+            {/* Step 3: Forward Package action once required quotes exist */}
             {isReadyToForward && (
               <div className="rounded-[4px] border border-[#b7d8c4] bg-[#eff9f2] p-4 text-xs dark:border-[#27633b] dark:bg-[#14291a]">
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-5 w-5 text-[#27633b] shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-bold text-[#1f4e2f] dark:text-[#a3e3b7]">
-                      Pre-Canvass Complete! (3/3 Quotes Recorded)
+                      Pre-Canvass Complete! ({quotesCount}/3 Quotes Recorded)
                     </p>
                     <p className="mt-1 leading-5 text-[#2e5d3c] dark:text-[#c4ecd2]">
-                      Your 3-supplier quote package meets government procurement requirements. You can now forward this complete package directly to the Procurement Officer for review and official Abstract preparation.
+                      Your {quotesCount}-supplier quote package meets government procurement requirements. You can now forward this complete package directly to the Procurement Officer for review and official Abstract preparation.
                     </p>
                   </div>
                 </div>

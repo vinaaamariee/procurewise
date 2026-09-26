@@ -21,18 +21,49 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
   it("forwards a PPMP-linked PR with a submitted three-supplier Pre-Canvass to Procurement review and records its commitment", async () => {
     const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "600.00", status: "draft", ppmpEntryId: 5 };
     const preCanvass = { id: 14, purchaseRequestId: 9, status: "submitted" };
+    const quotes = [{ id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" }, { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" }, { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" }];
     const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
-    const fake = fakeDatabase([[pr], [preCanvass], [allotment]]);
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
     const result = await advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit });
     expect(result.status).toBe("procurement_review");
     expect(fake.updates).toHaveLength(2);
   });
 
+  it("forwards a PPMP-linked PR when Pre-Canvass is draft with 4 valid quotes (>= 3), automatically updating Pre-Canvass to submitted", async () => {
+    const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "600.00", status: "draft", ppmpEntryId: 5 };
+    const preCanvass = { id: 14, purchaseRequestId: 9, status: "draft" };
+    const quotes = [
+      { id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" },
+      { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" },
+      { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" },
+      { id: 4, preCanvassId: 14, supplierId: 4, totalPrice: "400.00" },
+    ];
+    const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
+    const result = await advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit });
+    expect(result.status).toBe("procurement_review");
+    expect(fake.updates).toContainEqual(expect.objectContaining({ status: "submitted" }));
+    expect(fake.updates).toContainEqual(expect.objectContaining({ status: "procurement_review" }));
+  });
+
+  it("rejects package forwarding when Pre-Canvass has fewer than 3 valid quotes", async () => {
+    const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "600.00", status: "draft", ppmpEntryId: 5 };
+    const preCanvass = { id: 14, purchaseRequestId: 9, status: "draft" };
+    const quotes = [
+      { id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" },
+      { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" },
+    ];
+    const fake = fakeDatabase([[pr], [preCanvass], quotes]);
+    await expect(advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit })).rejects.toThrow("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
+    expect(fake.updates).toHaveLength(0);
+  });
+
   it("rejects package forwarding when the selected office-object allotment is insufficient", async () => {
     const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "800.00", status: "draft", ppmpEntryId: 5 };
     const preCanvass = { id: 14, purchaseRequestId: 9, status: "submitted" };
+    const quotes = [{ id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" }, { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" }, { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" }];
     const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
-    const fake = fakeDatabase([[pr], [preCanvass], [allotment]]);
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
     await expect(advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit })).rejects.toThrow("exceeds the available office-level budget");
     expect(fake.updates).toHaveLength(0);
   });

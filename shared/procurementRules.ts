@@ -66,7 +66,49 @@ export function selectLowestCompliantQuote<T extends QuoteCandidate>(quotes: T[]
   return compliantQuotes.reduce((lowest, quote) => Number(quote.totalPrice) < Number(lowest.totalPrice) ? quote : lowest);
 }
 
-export function hasRequiredSupplierQuotations(quoteCount: number) {
+export type PreCanvassQuoteCandidate = {
+  id?: number;
+  preCanvassId?: number;
+  supplierId?: number | null;
+  totalPrice?: number | string | null;
+  deliveryDays?: number | null;
+  isCompliant?: number | boolean | null;
+};
+
+/**
+ * Validates whether an individual pre-canvass quote is complete and valid.
+ * A valid quote must have a valid supplier assigned and a positive quoted price (> 0).
+ */
+export function isValidPreCanvassQuote(quote: PreCanvassQuoteCandidate | null | undefined): boolean {
+  if (!quote) return false;
+  const hasSupplier = quote.supplierId !== undefined ? quote.supplierId !== null && Number(quote.supplierId) > 0 : true;
+  const hasPrice = quote.totalPrice !== undefined ? quote.totalPrice !== null && !isNaN(Number(quote.totalPrice)) && Number(quote.totalPrice) > 0 : true;
+  return Boolean(hasSupplier && hasPrice);
+}
+
+/**
+ * Filters a list of quotes to only those that are valid and (optionally) belong to the specified pre-canvass.
+ */
+export function getValidPreCanvassQuotes<T extends PreCanvassQuoteCandidate>(quotes: T[], preCanvassId?: number): T[] {
+  return quotes.filter((q) => {
+    if (preCanvassId !== undefined && q.preCanvassId !== preCanvassId) return false;
+    return isValidPreCanvassQuote(q);
+  });
+}
+
+/**
+ * Unified helper to count valid quotes for a given pre-canvass.
+ * Used identically for the UI badge count and the submit validation.
+ */
+export function countValidPreCanvassQuotes(quotes: PreCanvassQuoteCandidate[], preCanvassId?: number): number {
+  return getValidPreCanvassQuotes(quotes, preCanvassId).length;
+}
+
+/**
+ * Submission guard: Verifies whether the pre-canvass has met or exceeded
+ * the required quotation threshold (quotes >= 3, allowing 3 or more quotes).
+ */
+export function hasRequiredSupplierQuotations(quoteCount: number): boolean {
   return quoteCount >= 3;
 }
 
