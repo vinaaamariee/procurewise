@@ -183,10 +183,12 @@ export default function Access() {
                     <Input id="access-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" autoComplete="name" />
                   </div>
                 )}
-                <div>
-                  <Label htmlFor="access-office" className="text-xs font-semibold text-foreground">Office / Unit</Label>
-                  <Input id="access-office" value={officeName} onChange={(event) => setOfficeName(event.target.value)} required placeholder="Type your office or unit" className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" />
-                </div>
+                {registration && (
+                  <div>
+                    <Label htmlFor="access-office" className="text-xs font-semibold text-foreground">Office / Unit</Label>
+                    <Input id="access-office" value={officeName} onChange={(event) => setOfficeName(event.target.value)} required placeholder="Type your office or unit" className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" />
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="access-email" className="text-xs font-semibold text-foreground">Work email</Label>
                   <Input id="access-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} onBlur={() => setTouched((current) => ({ ...current, email: true }))} required className={`mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground ${emailError ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoComplete="email" aria-invalid={Boolean(emailError)} aria-describedby={emailError ? "access-email-error" : undefined} />

@@ -16,7 +16,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
 
-  if (!isUnauthorized) return;
+  // A stale protected query may settle after the user is already on the public access page.
+  // Do not reload the same route: it causes a visible blank-page flash in Safari.
+  if (!isUnauthorized || window.location.pathname === "/access") return;
 
   window.location.assign("/access");
 };

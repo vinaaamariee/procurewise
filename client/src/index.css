@@ -885,3 +885,16 @@ html.dark input[type="radio"],
 html.dark input[type="checkbox"] {
   accent-color: var(--app-primary);
 }
+
+/* Safari and Chromium otherwise retain their white native autofill paint layer in dark mode. */
+html[data-appearance-theme="dark"] input:-webkit-autofill,
+html[data-appearance-theme="dark"] input:-webkit-autofill:hover,
+html[data-appearance-theme="dark"] input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--app-text) !important;
+  caret-color: var(--app-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--app-surface) inset !important;
+  box-shadow: 0 0 0 1000px var(--app-surface) inset !important;
+}
