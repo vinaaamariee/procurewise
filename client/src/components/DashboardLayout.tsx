@@ -9,7 +9,7 @@ import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
+import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -31,7 +31,7 @@ const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashbo
   { label: "Historical PMR", path: "/pmr-history", icon: ReceiptText, roles: ["procurement_officer", "administrative_approver", "supplier_contractor", "admin"] },
   { label: "Best Value Policy", path: "/best-value-policy", icon: Scale, roles: ["admin"] },
   { label: "System setup", path: "/setup", icon: Settings2, roles: ["admin"] },
-  { label: "Editable forms", path: "/form-templates", icon: FileText, roles: ["admin"] },
+  { label: "Forms Hub (Excel)", path: "/form-templates", icon: FileSpreadsheet, roles: ["procurement_officer", "admin"] },
   { label: "Test records", path: "/test-records", icon: Archive, roles: ["admin"] },
 ];
 

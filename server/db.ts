@@ -1990,6 +1990,16 @@ export const DEFAULT_FORM_TEMPLATES: Record<string, { displayName: string; confi
       requiredFields: ["supplierId", "purchaseOrderId", "respondentName", "criteriaScores"],
     },
   },
+  acknowledgement_receipt: {
+    displayName: "Acknowledgement Receipt for Property / Inventory (PAR/ICS)",
+    configurationJson: {
+      institutionName: "Batanes State College",
+      officeUnit: "Property and Supply Unit",
+      headerText: "ACKNOWLEDGEMENT RECEIPT FOR PROPERTY",
+      instructionText: "Official property acknowledgement of custody and accountability for acquired equipment and supplies.",
+      requiredFields: ["receiptNumber", "receivingOffice", "items"],
+    },
+  },
 };
 
 export async function listFormTemplates(options?: ProcurementWorkflowOptions) {

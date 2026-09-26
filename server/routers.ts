@@ -7,6 +7,14 @@ import { activateFormTemplate, assignPurchaseRequestOfficer, assignRfqNumber, ge
 import { getSupabaseRealtimePublicConfig, publishProcurementRealtimeUpdate } from "./supabaseRealtime";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole } from "../shared/procurementRules";
 import { BEST_VALUE_CRITERION_KEYS } from "../shared/bestValuePolicy";
+import {
+  createMasterExcelWorkbook,
+  getSampleFormData,
+  injectDataIntoExcelTemplate,
+  parseExcelTemplate,
+  SUPPORTED_FORM_TEMPLATES,
+  type FormTemplateKey,
+} from "./excelTemplateEngine";
 
 function assertRole(role: ProcurementRole, permittedRoles: ProcurementRole[]) {
   if (!roleCanAct(role, permittedRoles)) throw new TRPCError({ code: "FORBIDDEN", message: "This procurement action is not permitted for your assigned role." });
@@ -309,6 +317,113 @@ export const appRouter = router({
     templates: router({
       list: protectedProcedure.query(() => listFormTemplates()),
       get: protectedProcedure.input(z.object({ templateKey: z.string() })).query(({ input }) => getActiveFormTemplate(input.templateKey)),
+      listSupportedForms: protectedProcedure.query(() => Object.values(SUPPORTED_FORM_TEMPLATES)),
+      downloadMasterXlsx: protectedProcedure.input(z.object({ templateKey: z.string() })).mutation(async ({ input }) => {
+        const key = input.templateKey as FormTemplateKey;
+        const meta = SUPPORTED_FORM_TEMPLATES[key];
+        if (!meta) throw new TRPCError({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
+        const wb = await createMasterExcelWorkbook(key);
+        const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+        return {
+          fileName: meta.sampleFileName,
+          base64: buffer.toString("base64"),
+          meta,
+        };
+      }),
+      uploadXlsxTemplate: protectedProcedure.input(z.object({
+        templateKey: z.string(),
+        displayName: z.string().min(2).max(180),
+        fileBase64: z.string(),
+        fileName: z.string(),
+        activateNow: z.boolean().optional(),
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const parsed = await parseExcelTemplate(buffer);
+        const key = input.templateKey as FormTemplateKey;
+        const meta = SUPPORTED_FORM_TEMPLATES[key];
+
+        const configurationJson = {
+          templateType: "excel",
+          fileName: input.fileName,
+          fileBase64: input.fileBase64,
+          sheetName: parsed.sheetName,
+          rowCount: parsed.rowCount,
+          columnCount: parsed.columnCount,
+          placeholdersDetected: parsed.placeholdersDetected,
+          repeatingItemRowIndex: parsed.repeatingItemRowIndex,
+          uploadedByName: ctx.user.name || ctx.user.email,
+          updatedAt: new Date().toISOString(),
+          // Preserve mandatory workflow fields expected by db.ts validation
+          requiredFields: meta ? meta.placeholders.slice(0, 3).map((p) => p.token.replace(/[{}]/g, "")) : [],
+        };
+
+        const draft = await saveFormTemplateDraft({
+          templateKey: input.templateKey,
+          displayName: input.displayName.trim(),
+          configurationJson,
+        }, ctx.user);
+
+        if (input.activateNow) {
+          return activateFormTemplate(draft.id, ctx.user);
+        }
+        return draft;
+      }),
+      previewPopulatedTemplate: protectedProcedure.input(z.object({
+        templateKey: z.string(),
+        templateId: z.number().int().optional(),
+        customData: z.record(z.string(), z.unknown()).optional(),
+      })).query(async ({ input }) => {
+        const key = input.templateKey as FormTemplateKey;
+        const meta = SUPPORTED_FORM_TEMPLATES[key];
+        if (!meta) throw new TRPCError({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
+
+        let templateBuffer: Buffer;
+        let activeRecord: any = null;
+
+        if (input.templateId) {
+          try {
+            const list = await listFormTemplates();
+            const target = list.find((t) => t.id === input.templateId);
+            if (target && target.configurationJson && (target.configurationJson as any).fileBase64) {
+              templateBuffer = Buffer.from((target.configurationJson as any).fileBase64, "base64");
+              activeRecord = target;
+            } else {
+              const wb = await createMasterExcelWorkbook(key);
+              templateBuffer = Buffer.from(await wb.xlsx.writeBuffer());
+            }
+          } catch {
+            const wb = await createMasterExcelWorkbook(key);
+            templateBuffer = Buffer.from(await wb.xlsx.writeBuffer());
+          }
+        } else {
+          try {
+            const active = await getActiveFormTemplate(key);
+            if (active && active.configurationJson && (active.configurationJson as any).fileBase64) {
+              templateBuffer = Buffer.from((active.configurationJson as any).fileBase64, "base64");
+              activeRecord = active;
+            } else {
+              const wb = await createMasterExcelWorkbook(key);
+              templateBuffer = Buffer.from(await wb.xlsx.writeBuffer());
+            }
+          } catch {
+            const wb = await createMasterExcelWorkbook(key);
+            templateBuffer = Buffer.from(await wb.xlsx.writeBuffer());
+          }
+        }
+
+        const transactionData = input.customData && Object.keys(input.customData).length > 0
+          ? input.customData
+          : getSampleFormData(key);
+
+        const injected = await injectDataIntoExcelTemplate(templateBuffer, key, transactionData);
+        return {
+          ...injected,
+          metaInfo: meta,
+          activeRecord,
+          sampleData: transactionData,
+        };
+      }),
       saveDraft: protectedProcedure.input(z.object({
         templateKey: z.string(),
         displayName: z.string().min(2).max(180),

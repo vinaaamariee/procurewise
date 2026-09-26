@@ -651,6 +651,33 @@ html[data-appearance-theme="dark"] {
     flex: 1 1 auto !important;
     overflow: visible !important;
   }
+
+  .excel-rendered-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .excel-rendered-table tr {
+    page-break-inside: avoid !important;
+  }
+}
+
+@page landscape-sheet {
+  size: A4 landscape;
+  margin: 0;
+}
+
+.evaluation-document-sheet.landscape {
+  page: landscape-sheet;
+}
+
+.excel-rendered-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.excel-rendered-table td {
+  box-sizing: border-box;
 }
 
 #pr-system-controls > .mt-7 > .overflow-x-auto { overflow-x: visible; }
