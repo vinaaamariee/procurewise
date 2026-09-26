@@ -85,6 +85,13 @@
       "when": 1790292000000,
       "tag": "0011_historical_pmr_records",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790399000000,
+      "tag": "0012_add_foreign_keys",
+      "breakpoints": true
     }
   ]
 }

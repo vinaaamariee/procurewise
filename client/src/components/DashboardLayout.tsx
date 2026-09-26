@@ -7,14 +7,18 @@ import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OfficeSelect } from "@/components/OfficeSelect";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole } from "../../../shared/procurementRules";
-import { Archive, Bell, BookOpenText, Boxes, ClipboardList, FileCheck2, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, LineChart, LogOut, Menu, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UsersRound, WalletCards } from "lucide-react";
+import { Archive, Bell, BookOpenText, Boxes, Building2, ClipboardList, FileCheck2, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, LineChart, LoaderCircle, LogOut, Menu, PackageSearch, Paperclip, ReceiptText, Scale, Search, Send, Settings2, ShieldCheck, Star, UserCog, UsersRound, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { toast } from "sonner";
 
 const navigation: Array<{ label: string; path: string; icon: typeof LayoutDashboard; roles: ProcurementRole[] }> = [
   { label: "Overview", path: "/dashboard", icon: LayoutDashboard, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
+  { label: "Procurement Catalog", path: "/catalog", icon: PackageSearch, roles: ["end_user", "procurement_officer", "admin"] },
   { label: "PPMP Planning", path: "/plans", icon: BookOpenText, roles: ["admin"] },
   { label: "PPMP & Purchase Requests", path: "/purchase-requests", icon: ClipboardList, roles: ["end_user", "procurement_officer", "administrative_approver", "admin"] },
   { label: "Suppliers", path: "/suppliers", icon: UsersRound, roles: ["procurement_officer", "admin"] },
@@ -39,6 +43,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { loading, user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [selectedOfficeName, setSelectedOfficeName] = useState(user?.officeName || "");
+  const utils = trpc.useUtils();
+  const updateMyOfficeMutation = trpc.auth.updateMyOffice.useMutation({
+    onSuccess: () => {
+      toast.success("Profile office assignment updated.");
+      setEditProfileOpen(false);
+      void utils.auth.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const procurementRole = user ? normalizeProcurementRole(user.role) : "end_user";
   const roleLabel = user ? OFFICIAL_ROLE_LABELS[user.role as ProcurementRole] ?? OFFICIAL_ROLE_LABELS[procurementRole] : OFFICIAL_ROLE_LABELS.end_user;
   const visibleNavigation = navigation.filter((item) => item.roles.includes(procurementRole));
@@ -105,12 +121,81 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {user.officeName && <p className="mt-1 truncate text-[11px] text-[#52606d] dark:text-[#d1dae2]">{user.officeName}</p>}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-[#e4e1da] dark:bg-[#46515c]" />
+                <DropdownMenuItem onSelect={() => setEditProfileOpen(true)} className="cursor-pointer">
+                  <UserCog className="h-4 w-4 mr-2 text-[#7b1e1e] dark:text-[#ff837a]" />
+                  <span>Edit Profile / Department</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onSelect={() => void handleLogout()} className="cursor-pointer">
                   <LogOut className="h-4 w-4 mr-2" />
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+              <DialogContent className="max-w-md border border-border dark:border-[#46515c] dark:bg-[#1b2229]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <UserCog className="h-4 w-4 text-[#7b1e1e] dark:text-[#ff837a]" />
+                    <span>My Profile & Office Assignment</span>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Assign your active institutional office or department. This office will be prefilled on your Purchase Requests and procurement forms.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="mt-4 space-y-4 text-xs">
+                  <div>
+                    <label className="font-semibold text-foreground">Full Name</label>
+                    <p className="mt-1 font-medium text-foreground">{user.name || "Procurement User"}</p>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-foreground">Account Email</label>
+                    <p className="mt-1 text-muted-foreground">{user.email || "—"}</p>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-foreground">Workflow Role</label>
+                    <p className="mt-1 font-semibold text-[#8a6a2e] dark:text-[#f0c36a]">{roleLabel}</p>
+                  </div>
+                  <div>
+                    <label htmlFor="user-office-select" className="font-semibold text-foreground">Assigned Office / Unit</label>
+                    <div className="mt-1.5">
+                      <OfficeSelect
+                        id="user-office-select"
+                        value={selectedOfficeName}
+                        valueMode="name"
+                        onChange={setSelectedOfficeName}
+                        placeholder="Search & select your institutional office..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditProfileOpen(false)}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={updateMyOfficeMutation.isPending}
+                    onClick={() => {
+                      updateMyOfficeMutation.mutate({ officeName: selectedOfficeName });
+                    }}
+                    className="bg-[#7b1e1e] text-xs text-white hover:bg-[#641818] dark:bg-[#9a2828]"
+                  >
+                    {updateMyOfficeMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                    Save Office Assignment
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

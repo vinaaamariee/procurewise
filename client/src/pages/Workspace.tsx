@@ -11,9 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { OfficeSelect } from "@/components/OfficeSelect";
+import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
-import { CircleAlert, Info, LoaderCircle, Plus, Search, Star, Trash2 } from "lucide-react";
+import { CircleAlert, FileSearch, Info, LoaderCircle, Plus, Search, Send, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -38,6 +40,8 @@ export function PurchaseRequestsPage() {
   const [catalogSelection] = useState<Array<{ id: number; quantity: string }>>(() => { try { return JSON.parse(sessionStorage.getItem("procurewise.catalogSelection") || "[]") as Array<{ id: number; quantity: string }>; } catch { return []; } });
   const catalogItemIds = useMemo(() => catalogSelection.map((item) => item.id), [catalogSelection]);
   const [isCreating, setIsCreating] = useState(() => searchParams.get("create") === "1");
+  const [activeCanvassPr, setActiveCanvassPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string } | null>(null);
+
   useEffect(() => {
     const count = Number(sessionStorage.getItem("procurewise.catalogSelectionNotice") || 0);
     if (!count) return;
@@ -59,10 +63,19 @@ export function PurchaseRequestsPage() {
   const createRequest = trpc.procurement.purchaseRequests.create.useMutation({
     onSuccess: (created) => {
       void navigator.clipboard?.writeText(created.trackingToken);
-      toast.success("Purchase Request created. Its public tracking token was copied to your clipboard.");
+      toast.success("Purchase Request created! Now complete the 3 supplier quotations below.");
       setIsCreating(false);
       void utils.procurement.purchaseRequests.list.invalidate();
       void utils.procurement.dashboard.invalidate();
+      // Prompt user to immediately complete the required 3-supplier canvass
+      setActiveCanvassPr({
+        id: created.id,
+        prNumber: created.prNumber,
+        purpose: created.purpose,
+        totalEstimate: created.totalEstimate,
+        officeId: created.officeId,
+        status: created.status,
+      });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -71,18 +84,99 @@ export function PurchaseRequestsPage() {
     <PageHeader eyebrow="End-User package" title="PPMP-linked Purchase Requests" description="Create an itemized Purchase Request with a Linked PPMP entry, then prepare the three-file package: PR, PPMP, and preliminary quotations from the completed pre-canvass." action={{ label: "New Purchase Request", onClick: () => setIsCreating(!isCreating) }} />
     {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={createRequest.isPending} onCancel={() => setIsCreating(false)} onCreate={(input) => createRequest.mutate(input)} /> : (
       <div className="mt-7">
-        {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <><PurchaseRequestTable records={purchaseRequests.data} canReject={Boolean(user && ["procurement_officer", "administrative_approver", "admin"].includes(normalizeProcurementRole(user.role)))} onSubmit={(purchaseRequestId) => submitRequest.mutate({ purchaseRequestId })} onReject={(purchaseRequestId, reason) => rejectRequest.mutate({ purchaseRequestId, reason })} submittingId={submitRequest.isPending ? submitRequest.variables?.purchaseRequestId : undefined} /><WorkflowTimeline status={purchaseRequests.data[0]?.status ?? "draft"} /></> : <EmptyWorkspace eyebrow="Purchase Request register" title="No PPMP-linked Purchase Requests have been submitted." description="Start with PPMP planning, prepare the PR and PPMP, complete the preliminary pre-canvass quotations, then submit the three-file package to Procurement." actionLabel="Create your first PR" actionOnClick={() => setIsCreating(true)} />}
+        {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <>
+          <PurchaseRequestTable
+            records={purchaseRequests.data}
+            preCanvasses={dashboard.data?.preCanvasses ?? []}
+            preCanvassQuotes={dashboard.data?.preCanvassQuotes ?? []}
+            canReject={Boolean(user && ["procurement_officer", "administrative_approver", "admin"].includes(normalizeProcurementRole(user.role)))}
+            onSubmit={(purchaseRequestId) => submitRequest.mutate({ purchaseRequestId })}
+            onReject={(purchaseRequestId, reason) => rejectRequest.mutate({ purchaseRequestId, reason })}
+            onOpenCanvass={(pr) => setActiveCanvassPr(pr)}
+            submittingId={submitRequest.isPending ? submitRequest.variables?.purchaseRequestId : undefined}
+          />
+          <WorkflowTimeline status={purchaseRequests.data[0]?.status ?? "draft"} />
+        </> : <EmptyWorkspace eyebrow="Purchase Request register" title="No PPMP-linked Purchase Requests have been submitted." description="Start with PPMP planning, prepare the PR and PPMP, complete the preliminary pre-canvass quotations, then submit the three-file package to Procurement." actionLabel="Create your first PR" actionOnClick={() => setIsCreating(true)} />}
       </div>
+    )}
+
+    {activeCanvassPr && (
+      <IntegratedPreCanvassModal
+        open={Boolean(activeCanvassPr)}
+        onOpenChange={(open) => {
+          if (!open) setActiveCanvassPr(null);
+        }}
+        purchaseRequest={activeCanvassPr}
+        onCompleted={() => {
+          setActiveCanvassPr(null);
+          void utils.procurement.purchaseRequests.list.invalidate();
+          void utils.procurement.dashboard.invalidate();
+        }}
+      />
     )}
   </div>;
 }
 
-function PurchaseRequestTable({ records, canReject, onSubmit, onReject, submittingId }: { records: Array<{ id: number; prNumber: string; purpose: string; totalEstimate: string; status: string; createdAt: Date; rejectionCount?: number; rejectionReason?: string | null }>; canReject: boolean; onSubmit: (purchaseRequestId: number) => void; onReject: (purchaseRequestId: number, reason: string) => void; submittingId?: number }) {
+function PurchaseRequestTable({
+  records,
+  preCanvasses,
+  preCanvassQuotes,
+  canReject,
+  onSubmit,
+  onReject,
+  onOpenCanvass,
+  submittingId,
+}: {
+  records: Array<{ id: number; prNumber: string; purpose: string; totalEstimate: string; status: string; createdAt: Date; rejectionCount?: number; rejectionReason?: string | null; officeId?: number }>;
+  preCanvasses: Array<{ id: number; purchaseRequestId: number }>;
+  preCanvassQuotes: Array<{ id: number; preCanvassId: number }>;
+  canReject: boolean;
+  onSubmit: (purchaseRequestId: number) => void;
+  onReject: (purchaseRequestId: number, reason: string) => void;
+  onOpenCanvass: (pr: { id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string }) => void;
+  submittingId?: number;
+}) {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const tone = (status: string) => status === "approved" ? "approved" : status === "rejected" ? "returned" : status.includes("review") || ["rfq", "po", "po_issued"].includes(status) ? "pending" : "draft";
   const label = (status: string) => status === "approved" ? "APPROVED" : status === "rejected" ? "REJECTED" : ["draft", "procurement_review", "approval_review", "budget_review", "supply_review", "bac_review", "rfq", "po", "po_issued"].includes(status) ? "IN PROGRESS" : status.replaceAll("_", " ").toUpperCase();
-  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status / history</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4] dark:divide-[#46515c]">{records.map((record) => <tr key={record.id} className="hover:bg-[#fdfcf9] dark:hover:bg-[#232c35]"><td className="px-4 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{label(record.status)}</StatusBadge>{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525] dark:text-[#ff837a]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c] dark:text-[#d1dae2]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] text-white hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && <Button size="sm" onClick={() => onSubmit(record.id)} disabled={submittingId === record.id} className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[10px] text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:text-white dark:hover:bg-[#eb766a]">{submittingId === record.id && <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" />}Submit</Button>}{canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && <Button size="sm" variant="outline" onClick={() => setRejectingId(record.id)} className="h-7 border-[#d8a7a7] px-2.5 text-[10px] text-[#9c2525] dark:border-[#ff837a] dark:text-[#ff837a]">Reject</Button>}{record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">In progress</span>}</div>}</td></tr>)}</tbody></RecordTable>;
+
+  // Helper to count quotes for a PR
+  const getQuotesCount = (prId: number) => {
+    const pc = preCanvasses.find((item) => item.purchaseRequestId === prId);
+    if (!pc) return 0;
+    return preCanvassQuotes.filter((q) => q.preCanvassId === pc.id).length;
+  };
+
+  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status / history</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4] dark:divide-[#46515c]">{records.map((record) => {
+    const quotesCount = getQuotesCount(record.id);
+    const hasEnoughQuotes = quotesCount >= 3;
+
+    return <tr key={record.id} className="hover:bg-[#fdfcf9] dark:hover:bg-[#232c35]"><td className="px-4 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{label(record.status)}</StatusBadge>{record.status === "draft" && <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${hasEnoughQuotes ? "bg-[#eff9f2] text-[#27633b] dark:bg-[#1a3824] dark:text-[#8ce6aa]" : "bg-[#fffaf0] text-[#9a6d19] dark:bg-[#342817] dark:text-[#f0c36a]"}`}>{quotesCount}/3 Canvass Quotes</span>}{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525] dark:text-[#ff837a]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c] dark:text-[#d1dae2]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] text-white hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && (
+      <>
+        <Button
+          size="sm"
+          variant={hasEnoughQuotes ? "outline" : "default"}
+          onClick={() => onOpenCanvass(record)}
+          className={`h-7 rounded-[4px] px-2.5 text-[10px] ${!hasEnoughQuotes ? "bg-[#7b1e1e] text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:text-white dark:hover:bg-[#eb766a]" : "border-[#b5a995] text-[#4b5563] dark:text-[#d1dae2]"}`}
+        >
+          <FileSearch className="mr-1 h-3 w-3" />
+          {hasEnoughQuotes ? `Canvass Quotes (${quotesCount}/3)` : `Complete Canvass (${quotesCount}/3)`}
+        </Button>
+        {hasEnoughQuotes && (
+          <Button
+            size="sm"
+            onClick={() => onSubmit(record.id)}
+            disabled={submittingId === record.id}
+            className="h-7 rounded-[4px] bg-[#27633b] px-2.5 text-[10px] text-white hover:bg-[#1f5030] dark:bg-[#348e53] dark:text-white"
+          >
+            {submittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <Send className="mr-1 h-3 w-3" />}
+            Forward Package
+          </Button>
+        )}
+      </>
+    )}{canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && <Button size="sm" variant="outline" onClick={() => setRejectingId(record.id)} className="h-7 border-[#d8a7a7] px-2.5 text-[10px] text-[#9c2525] dark:border-[#ff837a] dark:text-[#ff837a]">Reject</Button>}{record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">In progress</span>}</div>}</td></tr>;
+  })}</tbody></RecordTable>;
 }
 
 function PurchaseRequestForm({ setup, ppmpEntries, catalogItemIds, catalogSelection, isSaving, onCancel, onCreate }: { setup?: { offices: Array<{ id: number; code: string; name: string }>; objectsOfExpenditure: Array<{ id: number; code: string; name: string }> }; ppmpEntries?: Array<{ id: number; description: string; fiscalYear: number }>; catalogItemIds: number[]; catalogSelection: Array<{ id: number; quantity: string }>; isSaving: boolean; onCancel: () => void; onCreate: (input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }) => void }) {
@@ -152,7 +246,19 @@ function PurchaseRequestForm({ setup, ppmpEntries, catalogItemIds, catalogSelect
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2"><Label className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Linked PPMP entry</Label><Select value={ppmpEntryId} onValueChange={setPpmpEntryId} disabled={!ppmpEntries?.length}><SelectTrigger className="mt-2 h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"><SelectValue placeholder="Select your PPMP entry" /></SelectTrigger><SelectContent className="dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]">{ppmpEntries?.map((entry) => <SelectItem key={entry.id} value={String(entry.id)}>FY {entry.fiscalYear} — {entry.description}</SelectItem>)}</SelectContent></Select>{!ppmpEntries?.length && <p className="mt-1.5 text-[11px] text-[#9a6d19] dark:text-[#f0c36a]">Create a PPMP entry before opening a Purchase Request.</p>}</div>
           <div className="sm:col-span-2"><Label htmlFor="pr-purpose" className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Purpose</Label><Textarea id="pr-purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="State the official purpose and intended use." className="mt-2 min-h-20 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-sm focus-visible:ring-[#7b1e1e]" /></div>
-          <div><Label className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Office/Section</Label><Select value={officeId} onValueChange={setOfficeId} disabled={!configurationReady}><SelectTrigger className="mt-2 h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"><SelectValue placeholder="Select office" /></SelectTrigger><SelectContent className="dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]">{setup?.offices.map((office) => <SelectItem key={office.id} value={String(office.id)}>{office.code} — {office.name}</SelectItem>)}</SelectContent></Select></div>
+          <div>
+            <Label className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Requesting Office / Department</Label>
+            <div className="mt-2">
+              <OfficeSelect
+                value={officeId}
+                valueMode="id"
+                onChange={setOfficeId}
+                disabled={!configurationReady}
+                placeholder="Search and select requesting office"
+                triggerClassName="h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
+              />
+            </div>
+          </div>
           <div><Label className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Object of expenditure</Label><Select value={objectId} onValueChange={setObjectId} disabled={!configurationReady}><SelectTrigger className="mt-2 h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"><SelectValue placeholder="Select object" /></SelectTrigger><SelectContent className="dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]">{setup?.objectsOfExpenditure.map((object) => <SelectItem key={object.id} value={String(object.id)}>{object.code} — {object.name}</SelectItem>)}</SelectContent></Select></div>
           <div><Label htmlFor="pr-fund-cluster" className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Fund Cluster</Label><Input id="pr-fund-cluster" list="pr-fund-cluster-options" value={fundCluster} onChange={(event) => setFundCluster(event.target.value)} placeholder="Fund cluster" className="mt-2 h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs" /><datalist id="pr-fund-cluster-options"><option value="01101101">01101101</option></datalist><p className="mt-1 text-[10px] leading-4 text-[#77818d] dark:text-[#aeb9c4]">Default: 01101101. Select the recorded alternative or type the authorized Fund Cluster.</p></div>
           <div><Label htmlFor="pr-responsibility-center" className="text-xs font-semibold text-[#4c5664] dark:text-[#f1f5f8]">Responsibility Center Code</Label><Input id="pr-responsibility-center" value={responsibilityCenterCode} onChange={(event) => setResponsibilityCenterCode(event.target.value)} placeholder="Responsibility center code" className="mt-2 h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs" /></div>

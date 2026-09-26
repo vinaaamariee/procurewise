@@ -10,6 +10,7 @@ import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procur
 import { storagePut } from "./storage";
 import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
 import { deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses, type SupplierEvaluationAudience } from "../shared/supplierEvaluationForm";
+import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -156,8 +157,32 @@ export async function writeAuditEvent(input: { entityType: string; entityId: num
   await db.insert(auditTrails).values({ ...input, details: input.details ?? null });
 }
 
+export async function ensureInstitutionalOfficesSeeded() {
+  const db = await requireDb();
+  for (const item of INSTITUTIONAL_OFFICES) {
+    const existing = await db.select().from(offices).where(eq(offices.code, item.code)).limit(1);
+    if (!existing.length) {
+      await db.insert(offices).values({
+        code: item.code,
+        name: item.name,
+        isActive: 1,
+      }).onConflictDoNothing();
+    }
+  }
+}
+
 export async function getWorkspaceSetup() {
   const db = await requireDb();
+  // Ensure default institutional offices exist
+  try {
+    const existingCount = await db.select({ count: sql<number>`count(*)` }).from(offices);
+    if (Number(existingCount[0]?.count ?? 0) < INSTITUTIONAL_OFFICES.length) {
+      await ensureInstitutionalOfficesSeeded();
+    }
+  } catch (err) {
+    console.error("Failed to verify/seed institutional offices:", err);
+  }
+
   const [officeRows, objectRows, supplierRows, allotmentRows, settingsRows] = await Promise.all([
     db.select().from(offices).where(eq(offices.isActive, 1)),
     db.select().from(objectsOfExpenditure).where(eq(objectsOfExpenditure.isActive, 1)),
@@ -693,7 +718,7 @@ export async function createAppPpmpEntry(input: { fiscalYear: number; officeId: 
 
 export async function listUserProfiles() {
   const db = await requireDb();
-  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, lastSignedIn: users.lastSignedIn }).from(users);
+  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, officeName: users.officeName, lastSignedIn: users.lastSignedIn }).from(users);
 }
 
 export async function updateUserProcurementRole(userId: number, role: ProcurementRole, actor: User) {
@@ -701,6 +726,20 @@ export async function updateUserProcurementRole(userId: number, role: Procuremen
   await db.update(users).set({ role }).where(eq(users.id, userId));
   await writeAuditEvent({ entityType: "user_profile", entityId: userId, action: "role_updated", performedById: actor.id, performedByRole: normalizeProcurementRole(actor.role), details: { assignedRole: role } });
 }
+
+export async function updateUserOffice(userId: number, officeName: string, actor: User) {
+  const db = await requireDb();
+  await db.update(users).set({ officeName: officeName.trim() || null }).where(eq(users.id, userId));
+  await writeAuditEvent({ entityType: "user_profile", entityId: userId, action: "office_assigned", performedById: actor.id, performedByRole: normalizeProcurementRole(actor.role), details: { assignedOffice: officeName.trim() } });
+}
+
+export async function updateMyOffice(officeName: string, user: User) {
+  const db = await requireDb();
+  const [updated] = await db.update(users).set({ officeName: officeName.trim() || null }).where(eq(users.id, user.id)).returning();
+  await writeAuditEvent({ entityType: "user_profile", entityId: user.id, action: "profile_office_updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { officeName: officeName.trim() } });
+  return updated;
+}
+
 
 async function getDocumentEntityRequesterId(entityType: DocumentEntityType, entityId: number, db: ReturnType<typeof drizzle>) {
   if (entityType === "app_ppmp_entry") {

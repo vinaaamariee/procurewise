@@ -245,12 +245,12 @@ var objectsOfExpenditure = procurewiseSchema.table("objects_of_expenditure", {
 });
 var budgetAllotments = procurewiseSchema.table("budget_allotments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  officeId: integer("officeId").notNull(),
-  objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
+  officeId: integer("officeId").notNull().references(() => offices.id, { onDelete: "restrict" }),
+  objectOfExpenditureId: integer("objectOfExpenditureId").notNull().references(() => objectsOfExpenditure.id, { onDelete: "restrict" }),
   fiscalYear: integer("fiscalYear").notNull(),
   allottedAmount: decimal("allottedAmount", { precision: 14, scale: 2 }).notNull(),
   committedAmount: decimal("committedAmount", { precision: 14, scale: 2 }).default("0.00").notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [
@@ -272,7 +272,7 @@ var suppliers = procurewiseSchema.table("suppliers", {
   offerings: text("offerings"),
   accreditationStatus: varchar("accreditationStatus", { length: 64 }).default("pending").notNull(),
   isActive: integer("isActive").default(1).notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("supplier_company_idx").on(table.companyName)]);
 var supplierTags = procurewiseSchema.table("supplier_tags", {
@@ -280,14 +280,14 @@ var supplierTags = procurewiseSchema.table("supplier_tags", {
   name: varchar("name", { length: 120 }).notNull().unique(),
   description: varchar("description", { length: 320 }),
   isActive: integer("isActive").default(1).notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("supplier_tag_active_idx").on(table.isActive)]);
 var supplierTagAssignments = procurewiseSchema.table("supplier_tag_assignments", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  supplierId: integer("supplierId").notNull(),
-  supplierTagId: integer("supplierTagId").notNull(),
-  assignedById: integer("assignedById").notNull(),
+  supplierId: integer("supplierId").notNull().references(() => suppliers.id, { onDelete: "cascade" }),
+  supplierTagId: integer("supplierTagId").notNull().references(() => supplierTags.id, { onDelete: "cascade" }),
+  assignedById: integer("assignedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [
   uniqueIndex("supplier_tag_assignment_unique").on(table.supplierId, table.supplierTagId),
@@ -310,8 +310,8 @@ var procurementCatalogItems = procurewiseSchema.table("procurement_catalog_items
 }, (table) => [index("procurement_catalog_active_idx").on(table.isActive)]);
 var procurementCatalogFavorites = procurewiseSchema.table("procurement_catalog_favorites", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  userId: integer("userId").notNull(),
-  catalogItemId: integer("catalogItemId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  catalogItemId: integer("catalogItemId").notNull().references(() => procurementCatalogItems.id, { onDelete: "cascade" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [
   uniqueIndex("procurement_catalog_favorite_user_item_unique").on(table.userId, table.catalogItemId),
@@ -320,8 +320,8 @@ var procurementCatalogFavorites = procurewiseSchema.table("procurement_catalog_f
 ]);
 var procurementCatalogSavedItems = procurewiseSchema.table("procurement_catalog_saved_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  userId: integer("userId").notNull(),
-  catalogItemId: integer("catalogItemId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  catalogItemId: integer("catalogItemId").notNull().references(() => procurementCatalogItems.id, { onDelete: "cascade" }),
   quantity: decimal("quantity", { precision: 12, scale: 2 }).default("1.00").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
@@ -333,9 +333,9 @@ var procurementCatalogSavedItems = procurewiseSchema.table("procurement_catalog_
 var appPpmpEntries = procurewiseSchema.table("app_ppmp_entries", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   fiscalYear: integer("fiscalYear").notNull(),
-  officeId: integer("officeId").notNull(),
-  objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
-  catalogItemId: integer("catalogItemId"),
+  officeId: integer("officeId").notNull().references(() => offices.id, { onDelete: "restrict" }),
+  objectOfExpenditureId: integer("objectOfExpenditureId").notNull().references(() => objectsOfExpenditure.id, { onDelete: "restrict" }),
+  catalogItemId: integer("catalogItemId").references(() => procurementCatalogItems.id, { onDelete: "set null" }),
   description: text("description").notNull(),
   papCode: varchar("papCode", { length: 80 }),
   projectTitle: varchar("projectTitle", { length: 220 }),
@@ -346,18 +346,28 @@ var appPpmpEntries = procurewiseSchema.table("app_ppmp_entries", {
   plannedAmount: decimal("plannedAmount", { precision: 14, scale: 2 }).notNull(),
   actualAmount: decimal("actualAmount", { precision: 14, scale: 2 }).default("0.00").notNull(),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  preparedById: integer("preparedById").notNull(),
+  preparedById: integer("preparedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 }, (table) => [index("app_ppmp_office_year_idx").on(table.officeId, table.fiscalYear)]);
 var testRecordArchives = procurewiseSchema.table("test_record_archives", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  ppmpEntryId: integer("ppmpEntryId").notNull().unique(),
-  archivedById: integer("archivedById").notNull(),
+  ppmpEntryId: integer("ppmpEntryId").notNull().unique().references(() => appPpmpEntries.id, { onDelete: "cascade" }),
+  archivedById: integer("archivedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   archiveReason: text("archiveReason").notNull(),
   archivedAt: timestamp("archivedAt").defaultNow().notNull(),
   cleanedAt: timestamp("cleanedAt")
 }, (table) => [index("test_record_archive_status_idx").on(table.cleanedAt, table.archivedAt)]);
+var procurementSignatories = procurewiseSchema.table("procurement_signatories", {
+  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
+  fullName: varchar("fullName", { length: 180 }).notNull(),
+  designation: varchar("designation", { length: 160 }).notNull(),
+  mayRequest: integer("mayRequest").default(0).notNull(),
+  mayApprove: integer("mayApprove").default(0).notNull(),
+  isActive: integer("isActive").default(1).notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull()
+}, (table) => [index("procurement_signatory_active_idx").on(table.isActive, table.mayRequest, table.mayApprove)]);
 var purchaseRequests = procurewiseSchema.table("purchase_requests", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   prNumber: varchar("prNumber", { length: 40 }).notNull().unique(),
@@ -367,24 +377,24 @@ var purchaseRequests = procurewiseSchema.table("purchase_requests", {
   fundCluster: varchar("fundCluster", { length: 80 }).default("01101101").notNull(),
   responsibilityCenterCode: varchar("responsibilityCenterCode", { length: 80 }),
   requesterDesignation: varchar("requesterDesignation", { length: 160 }),
-  requestedSignatoryId: integer("requestedSignatoryId"),
+  requestedSignatoryId: integer("requestedSignatoryId").references(() => procurementSignatories.id, { onDelete: "set null" }),
   requestedSignatoryName: varchar("requestedSignatoryName", { length: 180 }),
-  approvedSignatoryId: integer("approvedSignatoryId"),
+  approvedSignatoryId: integer("approvedSignatoryId").references(() => procurementSignatories.id, { onDelete: "set null" }),
   approvedSignatoryName: varchar("approvedSignatoryName", { length: 180 }),
   approvedSignatoryDesignation: varchar("approvedSignatoryDesignation", { length: 160 }),
-  officeId: integer("officeId").notNull(),
-  objectOfExpenditureId: integer("objectOfExpenditureId").notNull(),
+  officeId: integer("officeId").notNull().references(() => offices.id, { onDelete: "restrict" }),
+  objectOfExpenditureId: integer("objectOfExpenditureId").notNull().references(() => objectsOfExpenditure.id, { onDelete: "restrict" }),
   totalEstimate: decimal("totalEstimate", { precision: 14, scale: 2 }).notNull(),
   status: varchar("status", { length: 64 }).$type().default("draft").notNull(),
-  requestedById: integer("requestedById").notNull(),
+  requestedById: integer("requestedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   trackingToken: varchar("trackingToken", { length: 48 }).notNull().unique(),
-  ppmpEntryId: integer("ppmpEntryId"),
-  procurementReviewedById: integer("procurementReviewedById"),
-  assignedOfficerId: integer("assignedOfficerId"),
-  administrativeApprovedById: integer("administrativeApprovedById"),
-  budgetReviewedById: integer("budgetReviewedById"),
-  supplyReviewedById: integer("supplyReviewedById"),
-  bacReviewedById: integer("bacReviewedById"),
+  ppmpEntryId: integer("ppmpEntryId").references(() => appPpmpEntries.id, { onDelete: "set null" }),
+  procurementReviewedById: integer("procurementReviewedById").references(() => users.id, { onDelete: "set null" }),
+  assignedOfficerId: integer("assignedOfficerId").references(() => users.id, { onDelete: "set null" }),
+  administrativeApprovedById: integer("administrativeApprovedById").references(() => users.id, { onDelete: "set null" }),
+  budgetReviewedById: integer("budgetReviewedById").references(() => users.id, { onDelete: "set null" }),
+  supplyReviewedById: integer("supplyReviewedById").references(() => users.id, { onDelete: "set null" }),
+  bacReviewedById: integer("bacReviewedById").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   submittedAt: timestamp("submittedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
@@ -394,8 +404,8 @@ var purchaseRequests = procurewiseSchema.table("purchase_requests", {
 ]);
 var purchaseRequestItems = procurewiseSchema.table("purchase_request_items", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  purchaseRequestId: integer("purchaseRequestId").notNull(),
-  catalogItemId: integer("catalogItemId"),
+  purchaseRequestId: integer("purchaseRequestId").notNull().references(() => purchaseRequests.id, { onDelete: "cascade" }),
+  catalogItemId: integer("catalogItemId").references(() => procurementCatalogItems.id, { onDelete: "set null" }),
   description: text("description").notNull(),
   stockPropertyNo: varchar("stockPropertyNo", { length: 80 }),
   specification: text("specification"),
@@ -407,20 +417,20 @@ var purchaseRequestItems = procurewiseSchema.table("purchase_request_items", {
 var preCanvasses = procurewiseSchema.table("pre_canvasses", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   preCanvassNumber: varchar("preCanvassNumber", { length: 40 }).notNull().unique(),
-  purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
+  purchaseRequestId: integer("purchaseRequestId").notNull().unique().references(() => purchaseRequests.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
   approvedBudget: decimal("approvedBudget", { precision: 14, scale: 2 }),
   quotationDeadline: timestamp("quotationDeadline"),
   deliveryPeriodDays: integer("deliveryPeriodDays"),
   priceEvaluationMode: varchar("priceEvaluationMode", { length: 80 }).default("lot_basis"),
-  preparedById: integer("preparedById").notNull(),
+  preparedById: integer("preparedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
 var preCanvassQuotes = procurewiseSchema.table("pre_canvass_quotes", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  preCanvassId: integer("preCanvassId").notNull(),
-  supplierId: integer("supplierId").notNull(),
+  preCanvassId: integer("preCanvassId").notNull().references(() => preCanvasses.id, { onDelete: "cascade" }),
+  supplierId: integer("supplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   totalPrice: decimal("totalPrice", { precision: 14, scale: 2 }).notNull(),
   deliveryDays: integer("deliveryDays").notNull(),
   isCompliant: integer("isCompliant").default(1).notNull(),
@@ -434,15 +444,15 @@ var preCanvassQuotes = procurewiseSchema.table("pre_canvass_quotes", {
 var abstractsOfCanvass = procurewiseSchema.table("abstracts_of_canvass", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   abstractNumber: varchar("abstractNumber", { length: 40 }).notNull().unique(),
-  preCanvassId: integer("preCanvassId").notNull().unique(),
-  recommendedSupplierId: integer("recommendedSupplierId").notNull(),
+  preCanvassId: integer("preCanvassId").notNull().unique().references(() => preCanvasses.id, { onDelete: "cascade" }),
+  recommendedSupplierId: integer("recommendedSupplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   recommendationReason: text("recommendationReason").notNull(),
   openingDate: timestamp("openingDate").defaultNow().notNull(),
   openingLocation: varchar("openingLocation", { length: 160 }).default("Basco, Batanes").notNull(),
   procurementCategory: varchar("procurementCategory", { length: 120 }).default("Supplies and materials").notNull(),
   status: varchar("status", { length: 64 }).default("recommended").notNull(),
-  preparedById: integer("preparedById").notNull(),
-  decidedById: integer("decidedById"),
+  preparedById: integer("preparedById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  decidedById: integer("decidedById").references(() => users.id, { onDelete: "set null" }),
   decisionRemarks: text("decisionRemarks"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
@@ -450,16 +460,16 @@ var abstractsOfCanvass = procurewiseSchema.table("abstracts_of_canvass", {
 var rfqs = procurewiseSchema.table("rfqs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   rfqNumber: varchar("rfqNumber", { length: 40 }).notNull().unique(),
-  purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
+  purchaseRequestId: integer("purchaseRequestId").notNull().unique().references(() => purchaseRequests.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
 var supplierQuotations = procurewiseSchema.table("supplier_quotations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  rfqId: integer("rfqId").notNull(),
-  supplierId: integer("supplierId").notNull(),
+  rfqId: integer("rfqId").notNull().references(() => rfqs.id, { onDelete: "cascade" }),
+  supplierId: integer("supplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   totalPrice: decimal("totalPrice", { precision: 14, scale: 2 }).notNull(),
   deliveryDays: integer("deliveryDays").notNull(),
   isCompliant: integer("isCompliant").default(1).notNull(),
@@ -468,22 +478,22 @@ var supplierQuotations = procurewiseSchema.table("supplier_quotations", {
 }, (table) => [uniqueIndex("supplier_quote_rfq_supplier_unique").on(table.rfqId, table.supplierId)]);
 var quotationAbstracts = procurewiseSchema.table("quotation_abstracts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  rfqId: integer("rfqId").notNull().unique(),
-  recommendedSupplierId: integer("recommendedSupplierId").notNull(),
+  rfqId: integer("rfqId").notNull().unique().references(() => rfqs.id, { onDelete: "cascade" }),
+  recommendedSupplierId: integer("recommendedSupplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   recommendationReason: text("recommendationReason").notNull(),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  preparedById: integer("preparedById").notNull(),
-  approvedById: integer("approvedById"),
+  preparedById: integer("preparedById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  approvedById: integer("approvedById").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
 var purchaseOrders = procurewiseSchema.table("purchase_orders", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   poNumber: varchar("poNumber", { length: 40 }).notNull().unique(),
-  purchaseRequestId: integer("purchaseRequestId").notNull().unique(),
-  rfqId: integer("rfqId").unique(),
-  preCanvassId: integer("preCanvassId").unique(),
-  supplierId: integer("supplierId").notNull(),
+  purchaseRequestId: integer("purchaseRequestId").notNull().unique().references(() => purchaseRequests.id, { onDelete: "restrict" }),
+  rfqId: integer("rfqId").unique().references(() => rfqs.id, { onDelete: "set null" }),
+  preCanvassId: integer("preCanvassId").unique().references(() => preCanvasses.id, { onDelete: "set null" }),
+  supplierId: integer("supplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   totalAmount: decimal("totalAmount", { precision: 14, scale: 2 }).notNull(),
   placeOfDelivery: varchar("placeOfDelivery", { length: 220 }),
   scheduledDeliveryDate: timestamp("scheduledDeliveryDate"),
@@ -497,17 +507,17 @@ var purchaseOrders = procurewiseSchema.table("purchase_orders", {
   authorizedOfficialDesignation: varchar("authorizedOfficialDesignation", { length: 160 }),
   chiefAccountantName: varchar("chiefAccountantName", { length: 180 }),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  generatedById: integer("generatedById").notNull(),
-  approvedById: integer("approvedById"),
+  generatedById: integer("generatedById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  approvedById: integer("approvedById").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
 var deliveryReceipts = procurewiseSchema.table("delivery_receipts", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
+  purchaseOrderId: integer("purchaseOrderId").notNull().unique().references(() => purchaseOrders.id, { onDelete: "cascade" }),
   receiptNumber: varchar("receiptNumber", { length: 40 }).notNull().unique(),
   deliveredAt: timestamp("deliveredAt").defaultNow().notNull(),
-  receivedById: integer("receivedById").notNull(),
+  receivedById: integer("receivedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   receivedByName: varchar("receivedByName", { length: 180 }),
   deliveryStatus: varchar("deliveryStatus", { length: 64 }).default("complete").notNull(),
   signatureReference: text("signatureReference"),
@@ -516,10 +526,10 @@ var deliveryReceipts = procurewiseSchema.table("delivery_receipts", {
 });
 var pmrLogs = procurewiseSchema.table("pmr_logs", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  purchaseOrderId: integer("purchaseOrderId").notNull().unique(),
+  purchaseOrderId: integer("purchaseOrderId").notNull().unique().references(() => purchaseOrders.id, { onDelete: "cascade" }),
   pmrNumber: varchar("pmrNumber", { length: 40 }).notNull().unique(),
   remarks: text("remarks"),
-  loggedById: integer("loggedById").notNull(),
+  loggedById: integer("loggedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   loggedAt: timestamp("loggedAt").defaultNow().notNull()
 });
 var pmrHistoricalRecords = procurewiseSchema.table("pmr_historical_records", {
@@ -581,19 +591,9 @@ var procurementSettings = procurewiseSchema.table("procurement_settings", {
   appearanceAccent: varchar("appearanceAccent", { length: 16 }).default("maroon").notNull(),
   appearanceCorners: varchar("appearanceCorners", { length: 16 }).default("sharp").notNull(),
   appearanceReducedMotion: integer("appearanceReducedMotion").default(0).notNull(),
-  updatedById: integer("updatedById"),
+  updatedById: integer("updatedById").references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var procurementSignatories = procurewiseSchema.table("procurement_signatories", {
-  id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  fullName: varchar("fullName", { length: 180 }).notNull(),
-  designation: varchar("designation", { length: 160 }).notNull(),
-  mayRequest: integer("mayRequest").default(0).notNull(),
-  mayApprove: integer("mayApprove").default(0).notNull(),
-  isActive: integer("isActive").default(1).notNull(),
-  createdById: integer("createdById").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull()
-}, (table) => [index("procurement_signatory_active_idx").on(table.isActive, table.mayRequest, table.mayApprove)]);
 var procurementDocuments = procurewiseSchema.table("procurement_documents", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
@@ -604,15 +604,15 @@ var procurementDocuments = procurewiseSchema.table("procurement_documents", {
   storageKey: varchar("storageKey", { length: 512 }).notNull().unique(),
   storageUrl: varchar("storageUrl", { length: 512 }).notNull(),
   fileSize: integer("fileSize").notNull(),
-  uploadedById: integer("uploadedById").notNull(),
+  uploadedById: integer("uploadedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("document_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("document_uploader_created_idx").on(table.uploadedById, table.createdAt)]);
 var workflowCorrections = procurewiseSchema.table("workflow_corrections", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
-  requestedById: integer("requestedById").notNull(),
-  assignedToId: integer("assignedToId").notNull(),
+  requestedById: integer("requestedById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  assignedToId: integer("assignedToId").notNull().references(() => users.id, { onDelete: "restrict" }),
   reason: text("reason").notNull(),
   status: varchar("status", { length: 64 }).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -620,7 +620,7 @@ var workflowCorrections = procurewiseSchema.table("workflow_corrections", {
 }, (table) => [index("correction_entity_created_idx").on(table.entityType, table.entityId, table.createdAt), index("correction_assignee_status_idx").on(table.assignedToId, table.status)]);
 var workflowNotifications = procurewiseSchema.table("workflow_notifications", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  recipientUserId: integer("recipientUserId").notNull(),
+  recipientUserId: integer("recipientUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   kind: varchar("kind", { length: 64 }).notNull(),
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
@@ -633,12 +633,12 @@ var lettersOfNotice = procurewiseSchema.table("letters_of_notice", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   noticeNumber: varchar("noticeNumber", { length: 48 }).notNull().unique(),
   noticeType: varchar("noticeType", { length: 64 }).default("other").notNull(),
-  purchaseRequestId: integer("purchaseRequestId"),
-  supplierId: integer("supplierId"),
+  purchaseRequestId: integer("purchaseRequestId").references(() => purchaseRequests.id, { onDelete: "cascade" }),
+  supplierId: integer("supplierId").references(() => suppliers.id, { onDelete: "set null" }),
   subject: varchar("subject", { length: 220 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  issuedById: integer("issuedById").notNull(),
+  issuedById: integer("issuedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   issuedAt: timestamp("issuedAt"),
   demandDueDate: timestamp("demandDueDate"),
   demandReminderDate: timestamp("demandReminderDate"),
@@ -649,13 +649,13 @@ var lettersOfNotice = procurewiseSchema.table("letters_of_notice", {
 var bacTransmittals = procurewiseSchema.table("bac_transmittals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   transmittalNumber: varchar("transmittalNumber", { length: 48 }).notNull().unique(),
-  purchaseRequestId: integer("purchaseRequestId"),
+  purchaseRequestId: integer("purchaseRequestId").references(() => purchaseRequests.id, { onDelete: "cascade" }),
   fromOffice: varchar("fromOffice", { length: 180 }).notNull(),
   toOffice: varchar("toOffice", { length: 180 }).notNull(),
   subject: varchar("subject", { length: 220 }).notNull(),
   remarks: text("remarks"),
   status: varchar("status", { length: 64 }).default("draft").notNull(),
-  preparedById: integer("preparedById").notNull(),
+  preparedById: integer("preparedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   sentAt: timestamp("sentAt"),
   acknowledgedByName: varchar("acknowledgedByName", { length: 180 }),
   acknowledgedAt: timestamp("acknowledgedAt"),
@@ -664,14 +664,14 @@ var bacTransmittals = procurewiseSchema.table("bac_transmittals", {
 }, (table) => [index("transmittal_pr_created_idx").on(table.purchaseRequestId, table.createdAt)]);
 var supplierEvaluations = procurewiseSchema.table("supplier_evaluations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  supplierId: integer("supplierId").notNull(),
-  purchaseOrderId: integer("purchaseOrderId"),
-  purchaseRequestId: integer("purchaseRequestId"),
+  supplierId: integer("supplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  purchaseOrderId: integer("purchaseOrderId").references(() => purchaseOrders.id, { onDelete: "set null" }),
+  purchaseRequestId: integer("purchaseRequestId").references(() => purchaseRequests.id, { onDelete: "set null" }),
   reportedPurchaseRequestNumber: varchar("reportedPurchaseRequestNumber", { length: 80 }),
   urgentPurchaseRequestReason: text("urgentPurchaseRequestReason"),
-  urgentPurchaseRequestUpdatedById: integer("urgentPurchaseRequestUpdatedById"),
+  urgentPurchaseRequestUpdatedById: integer("urgentPurchaseRequestUpdatedById").references(() => users.id, { onDelete: "set null" }),
   urgentPurchaseRequestUpdatedAt: timestamp("urgentPurchaseRequestUpdatedAt"),
-  officeId: integer("officeId"),
+  officeId: integer("officeId").references(() => offices.id, { onDelete: "set null" }),
   evaluationAudience: varchar("evaluationAudience", { length: 32 }).$type().default("procurement_office").notNull(),
   goodsServicesType: varchar("goodsServicesType", { length: 220 }),
   supplierRegistryReference: varchar("supplierRegistryReference", { length: 160 }),
@@ -685,13 +685,13 @@ var supplierEvaluations = procurewiseSchema.table("supplier_evaluations", {
   remarks: text("remarks"),
   respondentName: varchar("respondentName", { length: 180 }),
   respondentSignedAt: timestamp("respondentSignedAt"),
-  evaluatedById: integer("evaluatedById").notNull(),
+  evaluatedById: integer("evaluatedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull()
 }, (table) => [index("supplier_evaluation_supplier_date_idx").on(table.supplierId, table.evaluatedAt)]);
 var supplierEvaluationApprovals = procurewiseSchema.table("supplier_evaluation_approvals", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  supplierEvaluationId: integer("supplierEvaluationId").notNull().unique(),
-  approvedById: integer("approvedById").notNull(),
+  supplierEvaluationId: integer("supplierEvaluationId").notNull().unique().references(() => supplierEvaluations.id, { onDelete: "cascade" }),
+  approvedById: integer("approvedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   approverName: varchar("approverName", { length: 180 }).notNull(),
   approverDesignation: varchar("approverDesignation", { length: 180 }).notNull(),
   consentStatement: text("consentStatement").notNull(),
@@ -700,14 +700,14 @@ var supplierEvaluationApprovals = procurewiseSchema.table("supplier_evaluation_a
 }, (table) => [index("supplier_evaluation_approval_approver_date_idx").on(table.approvedById, table.approvedAt)]);
 var mcdmRecommendations = procurewiseSchema.table("mcdm_recommendations", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  preCanvassId: integer("preCanvassId").notNull().unique(),
-  recommendedSupplierId: integer("recommendedSupplierId").notNull(),
+  preCanvassId: integer("preCanvassId").notNull().unique().references(() => preCanvasses.id, { onDelete: "cascade" }),
+  recommendedSupplierId: integer("recommendedSupplierId").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
   priceScore: decimal("priceScore", { precision: 7, scale: 2 }).notNull(),
   deliveryScore: decimal("deliveryScore", { precision: 7, scale: 2 }).notNull(),
   complianceScore: decimal("complianceScore", { precision: 7, scale: 2 }).notNull(),
   totalScore: decimal("totalScore", { precision: 7, scale: 2 }).notNull(),
   rationale: text("rationale").notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
 var bestValuePolicies = procurewiseSchema.table("best_value_policies", {
@@ -717,7 +717,7 @@ var bestValuePolicies = procurewiseSchema.table("best_value_policies", {
   version: integer("version").notNull(),
   isActive: integer("isActive").default(1).notNull(),
   totalWeight: decimal("totalWeight", { precision: 7, scale: 2 }).notNull(),
-  createdById: integer("createdById").notNull(),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   deactivatedAt: timestamp("deactivatedAt")
 }, (table) => [
@@ -726,7 +726,7 @@ var bestValuePolicies = procurewiseSchema.table("best_value_policies", {
 ]);
 var bestValuePolicyCriteria = procurewiseSchema.table("best_value_policy_criteria", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  policyId: integer("policyId").notNull(),
+  policyId: integer("policyId").notNull().references(() => bestValuePolicies.id, { onDelete: "cascade" }),
   criterionKey: varchar("criterionKey", { length: 80 }).notNull(),
   label: varchar("label", { length: 180 }).notNull(),
   description: text("description"),
@@ -742,32 +742,32 @@ var historicalPrices = procurewiseSchema.table("historical_prices", {
   itemDescription: varchar("itemDescription", { length: 220 }).notNull(),
   unit: varchar("unit", { length: 40 }).notNull(),
   unitPrice: decimal("unitPrice", { precision: 14, scale: 2 }).notNull(),
-  supplierId: integer("supplierId"),
-  purchaseOrderId: integer("purchaseOrderId"),
+  supplierId: integer("supplierId").references(() => suppliers.id, { onDelete: "set null" }),
+  purchaseOrderId: integer("purchaseOrderId").references(() => purchaseOrders.id, { onDelete: "set null" }),
   observedAt: timestamp("observedAt").defaultNow().notNull(),
-  recordedById: integer("recordedById").notNull()
+  recordedById: integer("recordedById").notNull().references(() => users.id, { onDelete: "restrict" })
 }, (table) => [index("historical_price_item_observed_idx").on(table.itemDescription, table.observedAt)]);
 var auditTrails = procurewiseSchema.table("audit_trails", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
   entityType: varchar("entityType", { length: 64 }).notNull(),
   entityId: integer("entityId").notNull(),
   action: varchar("action", { length: 100 }).notNull(),
-  performedById: integer("performedById").notNull(),
+  performedById: integer("performedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   performedByRole: varchar("performedByRole", { length: 64 }).notNull(),
   details: json("details").$type(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [index("audit_entity_created_idx").on(table.entityType, table.entityId, table.createdAt)]);
 var purchaseRequestDecisions = procurewiseSchema.table("purchase_request_decisions", {
   id: integer("id").generatedByDefaultAsIdentity().primaryKey(),
-  purchaseRequestId: integer("purchaseRequestId").notNull(),
+  purchaseRequestId: integer("purchaseRequestId").notNull().references(() => purchaseRequests.id, { onDelete: "cascade" }),
   decisionType: varchar("decisionType", { length: 64 }).notNull(),
   fromStatus: varchar("fromStatus", { length: 64 }).notNull(),
   toStatus: varchar("toStatus", { length: 64 }).notNull(),
   reason: text("reason").notNull(),
   remarks: text("remarks"),
-  performedById: integer("performedById").notNull(),
+  performedById: integer("performedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   performedByRole: varchar("performedByRole", { length: 64 }).notNull(),
-  documentId: integer("documentId"),
+  documentId: integer("documentId").references(() => procurementDocuments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 }, (table) => [
   index("pr_decision_pr_idx").on(table.purchaseRequestId, table.createdAt)
@@ -779,10 +779,10 @@ var rfqNumberAssignments = procurewiseSchema.table("rfq_number_assignments", {
   formattedRfqNumber: varchar("formattedRfqNumber", { length: 48 }).notNull().unique(),
   assignmentMode: varchar("assignmentMode", { length: 32 }).notNull(),
   urgentReason: text("urgentReason"),
-  assignedById: integer("assignedById").notNull(),
+  assignedById: integer("assignedById").notNull().references(() => users.id, { onDelete: "restrict" }),
   assignedAt: timestamp("assignedAt").defaultNow().notNull(),
-  purchaseRequestId: integer("purchaseRequestId"),
-  rfqId: integer("rfqId"),
+  purchaseRequestId: integer("purchaseRequestId").references(() => purchaseRequests.id, { onDelete: "cascade" }),
+  rfqId: integer("rfqId").references(() => rfqs.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 32 }).default("active").notNull()
 }, (table) => [
   index("rfq_num_year_seq_idx").on(table.fiscalYear, table.sequenceNumber),
@@ -795,9 +795,9 @@ var formTemplates = procurewiseSchema.table("form_templates", {
   displayName: varchar("displayName", { length: 180 }).notNull(),
   status: varchar("status", { length: 32 }).$type().default("draft").notNull(),
   configurationJson: json("configurationJson").$type().notNull(),
-  createdById: integer("createdById").notNull(),
-  updatedById: integer("updatedById").notNull(),
-  approvedById: integer("approvedById"),
+  createdById: integer("createdById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  updatedById: integer("updatedById").notNull().references(() => users.id, { onDelete: "restrict" }),
+  approvedById: integer("approvedById").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   activatedAt: timestamp("activatedAt")
@@ -1074,6 +1074,165 @@ function deriveSupplierEvaluationSummary(audience, responses) {
   };
 }
 
+// shared/institutionalOffices.ts
+var INSTITUTIONAL_OFFICES = [
+  // Executive & Administrative
+  {
+    code: "OOP",
+    name: "Office of the President (OOP)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "OVP",
+    name: "Office of the Vice President (OVP)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "OVPAA",
+    name: "Office of the Vice President for Academic Affairs (OVPAA)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "OVPA",
+    name: "Office of the Vice President for Administration (OVPA)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "PROC",
+    name: "Procurement Office",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "BAC",
+    name: "Bids and Awards Committee (BAC)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "LEGAL",
+    name: "Legal Affairs Office",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "PLANNING",
+    name: "Planning and Development Office",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "DAFS",
+    name: "Department of Accounting & Financial Services (DAFS)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "GSO",
+    name: "General Services Office (GSO)",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "ICT",
+    name: "Information & Communications Technology (ICT) Unit",
+    category: "Executive & Administrative"
+  },
+  {
+    code: "GAD",
+    name: "Gender and Development (GAD)",
+    category: "Executive & Administrative"
+  },
+  // Academic & Departments
+  {
+    code: "CBAO",
+    name: "College of Business and Accountancy (CBAO)",
+    category: "Academic & Departments"
+  },
+  {
+    code: "TED",
+    name: "Teacher Education Department (TED)",
+    category: "Academic & Departments"
+  },
+  {
+    code: "HTM",
+    name: "Hospitality & Tourism Management (HTM)",
+    category: "Academic & Departments"
+  },
+  {
+    code: "AGRI",
+    name: "Department of Agriculture",
+    category: "Academic & Departments"
+  },
+  {
+    code: "IT",
+    name: "Information Technology Department (IT)",
+    category: "Academic & Departments"
+  },
+  {
+    code: "DI",
+    name: "Department of Instruction (DI)",
+    category: "Academic & Departments"
+  },
+  // Research & Extension
+  {
+    code: "RDET",
+    name: "Research, Development, Extension & Training (RDET)",
+    category: "Research & Extension"
+  },
+  {
+    code: "RDET-ST",
+    name: "RDET - Science & Technology",
+    category: "Research & Extension"
+  },
+  {
+    code: "RDET-FT",
+    name: "RDET - Futures Thinking",
+    category: "Research & Extension"
+  },
+  {
+    code: "RDET-TOUR",
+    name: "RDET - Sustainable Tourism",
+    category: "Research & Extension"
+  },
+  {
+    code: "DOST-PCAARRD",
+    name: "Agriculture - DOST PCAARRD Projects",
+    category: "Research & Extension"
+  },
+  // Student & Support Services
+  {
+    code: "REG",
+    name: "Office of the College Registrar",
+    category: "Student & Support Services"
+  },
+  {
+    code: "LIB",
+    name: "College Library",
+    category: "Student & Support Services"
+  },
+  {
+    code: "SSC",
+    name: "Supreme Student Council (SSC)",
+    category: "Student & Support Services"
+  },
+  {
+    code: "PUB",
+    name: "Student Publication Office",
+    category: "Student & Support Services"
+  },
+  {
+    code: "SSO-MED",
+    name: "Student Services - Medical Clinic",
+    category: "Student & Support Services"
+  },
+  {
+    code: "SOCIO-CUL",
+    name: "Socio-Cultural Affairs Office",
+    category: "Student & Support Services"
+  },
+  // Auxiliary & Projects
+  {
+    code: "CBAO-IGP",
+    name: "CBAO - Income Generating Projects",
+    category: "Auxiliary & Projects"
+  }
+];
+
 // server/db.ts
 var _db = null;
 var _pool = null;
@@ -1158,8 +1317,29 @@ async function writeAuditEvent(input) {
   const db = await requireDb();
   await db.insert(auditTrails).values({ ...input, details: input.details ?? null });
 }
+async function ensureInstitutionalOfficesSeeded() {
+  const db = await requireDb();
+  for (const item of INSTITUTIONAL_OFFICES) {
+    const existing = await db.select().from(offices).where(eq(offices.code, item.code)).limit(1);
+    if (!existing.length) {
+      await db.insert(offices).values({
+        code: item.code,
+        name: item.name,
+        isActive: 1
+      }).onConflictDoNothing();
+    }
+  }
+}
 async function getWorkspaceSetup() {
   const db = await requireDb();
+  try {
+    const existingCount = await db.select({ count: sql`count(*)` }).from(offices);
+    if (Number(existingCount[0]?.count ?? 0) < INSTITUTIONAL_OFFICES.length) {
+      await ensureInstitutionalOfficesSeeded();
+    }
+  } catch (err) {
+    console.error("Failed to verify/seed institutional offices:", err);
+  }
   const [officeRows, objectRows, supplierRows, allotmentRows, settingsRows] = await Promise.all([
     db.select().from(offices).where(eq(offices.isActive, 1)),
     db.select().from(objectsOfExpenditure).where(eq(objectsOfExpenditure.isActive, 1)),
@@ -1643,12 +1823,23 @@ async function createAppPpmpEntry(input, user) {
 }
 async function listUserProfiles() {
   const db = await requireDb();
-  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, lastSignedIn: users.lastSignedIn }).from(users);
+  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, officeName: users.officeName, lastSignedIn: users.lastSignedIn }).from(users);
 }
 async function updateUserProcurementRole(userId, role, actor) {
   const db = await requireDb();
   await db.update(users).set({ role }).where(eq(users.id, userId));
   await writeAuditEvent({ entityType: "user_profile", entityId: userId, action: "role_updated", performedById: actor.id, performedByRole: normalizeProcurementRole(actor.role), details: { assignedRole: role } });
+}
+async function updateUserOffice(userId, officeName, actor) {
+  const db = await requireDb();
+  await db.update(users).set({ officeName: officeName.trim() || null }).where(eq(users.id, userId));
+  await writeAuditEvent({ entityType: "user_profile", entityId: userId, action: "office_assigned", performedById: actor.id, performedByRole: normalizeProcurementRole(actor.role), details: { assignedOffice: officeName.trim() } });
+}
+async function updateMyOffice(officeName, user) {
+  const db = await requireDb();
+  const [updated] = await db.update(users).set({ officeName: officeName.trim() || null }).where(eq(users.id, user.id)).returning();
+  await writeAuditEvent({ entityType: "user_profile", entityId: user.id, action: "profile_office_updated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { officeName: officeName.trim() } });
+  return updated;
 }
 async function getDocumentEntityRequesterId(entityType, entityId, db) {
   if (entityType === "app_ppmp_entry") {
@@ -4408,7 +4599,8 @@ var appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(() => ({ success: true }))
+    logout: publicProcedure.mutation(() => ({ success: true })),
+    updateMyOffice: protectedProcedure.input(z2.object({ officeName: z2.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user))
   }),
   procurement: router({
     dashboard: protectedProcedure.query(({ ctx }) => getProcurementDashboard(ctx.user)),
@@ -4460,6 +4652,14 @@ var appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
         return updateProcurementSettings(input, ctx.user);
       }),
+      offices: publicProcedure.query(async () => {
+        try {
+          const setup = await getWorkspaceSetup();
+          return setup.offices;
+        } catch {
+          return INSTITUTIONAL_OFFICES.map((o, idx) => ({ id: idx + 1, code: o.code, name: o.name, isActive: 1 }));
+        }
+      }),
       users: protectedProcedure.query(({ ctx }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin", "procurement_officer"]);
         return listUserProfiles();
@@ -4467,6 +4667,10 @@ var appRouter = router({
       updateUserRole: protectedProcedure.input(z2.object({ userId: z2.number().int().positive(), role: z2.enum(["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "administrative_approver", "bac_secretariat", "bac", "hope", "budget_officer", "supplier_contractor", "admin"]) })).mutation(({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
         return updateUserProcurementRole(input.userId, input.role, ctx.user);
+      }),
+      updateUserOffice: protectedProcedure.input(z2.object({ userId: z2.number().int().positive(), officeName: z2.string().max(180) })).mutation(({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
+        return updateUserOffice(input.userId, input.officeName, ctx.user);
       })
     }),
     bestValuePolicy: router({

@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
+import { OfficeSelect } from "@/components/OfficeSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,7 +187,16 @@ export default function Access() {
                 {registration && (
                   <div>
                     <Label htmlFor="access-office" className="text-xs font-semibold text-foreground">Office / Unit</Label>
-                    <Input id="access-office" value={officeName} onChange={(event) => setOfficeName(event.target.value)} required placeholder="Type your office or unit" className="mt-1.5 h-10 border border-border dark:border-border bg-background dark:bg-[#151c24] text-foreground placeholder:text-muted-foreground" />
+                    <div className="mt-1.5">
+                      <OfficeSelect
+                        id="access-office"
+                        value={officeName}
+                        valueMode="name"
+                        onChange={setOfficeName}
+                        placeholder="Search and select your office or unit"
+                        triggerClassName="h-10 text-xs border border-border dark:border-border bg-background dark:bg-[#151c24]"
+                      />
+                    </div>
                   </div>
                 )}
                 <div>

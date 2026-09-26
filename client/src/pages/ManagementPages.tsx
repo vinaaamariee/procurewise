@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { OfficeSelect } from "@/components/OfficeSelect";
 import { buildPpmpCsv, downloadCsv } from "@/lib/procurementExports";
 import { downloadPpmpPdf } from "@/lib/procurementPdf";
 import { trpc } from "@/lib/trpc";
@@ -126,7 +127,16 @@ function PlanForm({ setup, isSaving, onCancel, onCreate }: { setup?: { offices: 
       <Field label="Project title"><Input value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Project title" /></Field>
       <Field label="Planned amount"><Input type="number" min="0.01" step="0.01" value={plannedAmount} onChange={(event) => setPlannedAmount(event.target.value)} placeholder="0.00" /></Field>
       <div className="sm:col-span-2 lg:col-span-4"><div className="border border-[#e4d4ae] bg-[#fffaf0] p-3"><Label htmlFor="ppmp-catalog-search" className="text-[11px] font-semibold text-[#72561d]">PhilGEPS common-use catalog <span className="font-normal">(optional)</span></Label><div className="mt-2 grid gap-2 lg:grid-cols-[1fr_.9fr_1.25fr_auto]"><Input id="ppmp-catalog-search" value={catalogSearch} onChange={(event) => setCatalogSearch(event.target.value)} placeholder="Search code or description" className="h-9 border-[#e4d4ae] bg-white text-xs" /><Select value={catalogCodeFamily} onValueChange={setCatalogCodeFamily}><SelectTrigger className="h-9 border-[#e4d4ae] bg-white text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All source code families</SelectItem>{codeFamilies.data?.map((family) => <SelectItem key={family.codeFamily} value={family.codeFamily}>{family.label} · {family.itemCount}</SelectItem>)}</SelectContent></Select><Select value={catalogItemId || "manual-plan-item"} onValueChange={selectCatalogItem}><SelectTrigger className="h-9 border-[#e4d4ae] bg-white text-xs"><SelectValue placeholder="Select catalog item" /></SelectTrigger><SelectContent><SelectItem value="manual-plan-item">Manual PPMP entry — no catalog reference</SelectItem>{catalogItems.map((item) => <SelectItem key={item.id} value={String(item.id)}>{favoriteIds.has(item.id) ? "★ " : ""}{item.productCode} — {item.description}</SelectItem>)}</SelectContent></Select><Button type="button" variant={favoritesOnly ? "default" : "outline"} onClick={() => setFavoritesOnly((current) => !current)} className={favoritesOnly ? "h-9 rounded-[4px] bg-[#7b1e1e] px-3 text-xs hover:bg-[#641818]" : "h-9 rounded-[4px] border-[#e4d4ae] bg-white px-3 text-xs"}><Star className={favoritesOnly ? "mr-1 h-3.5 w-3.5 fill-current" : "mr-1 h-3.5 w-3.5"} />{favorites.data?.length ?? 0}</Button></div>{catalogItemId && <div className="mt-2 flex items-center justify-between gap-2"><p className="text-[10px] text-[#856a35]">Reference price copied from the supplied catalog; the planned PPMP amount remains editable.</p><Button type="button" variant="ghost" size="sm" disabled={toggleFavorite.isPending} onClick={() => toggleFavorite.mutate({ catalogItemId: Number(catalogItemId), isFavorite: !favoriteIds.has(Number(catalogItemId)) })} className="h-7 px-2 text-[10px] text-[#8a6520] hover:bg-[#f9efd7]"><Star className={favoriteIds.has(Number(catalogItemId)) ? "mr-1 h-3.5 w-3.5 fill-current" : "mr-1 h-3.5 w-3.5"} />{favoriteIds.has(Number(catalogItemId)) ? "Saved favorite" : "Save favorite"}</Button></div>}<p className="mt-1.5 text-[10px] text-[#856a35]">{catalog.isLoading || codeFamilies.isLoading ? "Searching the active catalog…" : `${favoritesOnly ? catalogItems.length : catalog.data?.total ?? 0} available item(s). Source code families preserve the supplied product-code grouping; no new categories were invented.`}</p></div></div>
-      <Field label="Office"><Select value={officeId} onValueChange={setOfficeId} disabled={!setup?.offices.length}><SelectTrigger><SelectValue placeholder={setup?.offices.length ? "Select managed office" : "No managed offices available"} /></SelectTrigger><SelectContent>{setup?.offices.map((office) => <SelectItem key={office.id} value={String(office.id)}>{office.code} — {office.name}</SelectItem>)}</SelectContent></Select>{!setup?.offices.length && <p className="mt-1.5 text-[10px] leading-4 text-[#9a6d19]">An Admin must enter the managed office in System Setup before a PPMP entry can be saved.</p>}</Field>
+      <Field label="Requesting Office / Department">
+        <OfficeSelect
+          value={officeId}
+          valueMode="id"
+          onChange={setOfficeId}
+          placeholder={setup?.offices.length ? "Select requesting office" : "No managed offices available"}
+          triggerClassName="h-9 border-[#ded8cc] bg-white text-xs"
+        />
+        {!setup?.offices.length && <p className="mt-1.5 text-[10px] leading-4 text-[#9a6d19]">An Admin must enter the managed office in System Setup before a PPMP entry can be saved.</p>}
+      </Field>
       <Field label="Object of expenditure"><Select value={objectId} onValueChange={setObjectId} disabled={!setup?.objectsOfExpenditure.length}><SelectTrigger><SelectValue placeholder={setup?.objectsOfExpenditure.length ? "Select managed expenditure object" : "No expenditure objects available"} /></SelectTrigger><SelectContent>{setup?.objectsOfExpenditure.map((object) => <SelectItem key={object.id} value={String(object.id)}>{object.code} — {object.name}</SelectItem>)}</SelectContent></Select>{!setup?.objectsOfExpenditure.length && <p className="mt-1.5 text-[10px] leading-4 text-[#9a6d19]">An Admin must enter the managed expenditure object in System Setup before a PPMP entry can be saved.</p>}</Field>
       <Field label="Mode of procurement"><Select value={modeOfProcurement} onValueChange={setModeOfProcurement}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Small Value Procurement">Small Value Procurement</SelectItem><SelectItem value="Shopping">Shopping</SelectItem><SelectItem value="Public Bidding">Public Bidding</SelectItem><SelectItem value="Direct Contracting">Direct Contracting</SelectItem><SelectItem value="Emergency Procurement">Emergency Procurement</SelectItem><SelectItem value="other">Other — enter manually</SelectItem></SelectContent></Select>{modeOfProcurement === "other" && <Input value={manualModeOfProcurement} onChange={(event) => setManualModeOfProcurement(event.target.value)} placeholder="Enter the applicable mode of procurement" className="mt-2" />}</Field>
       <Field label="Funding source"><Select value={fundSource} onValueChange={setFundSource}><SelectTrigger><SelectValue placeholder="Select fund source" /></SelectTrigger><SelectContent><SelectItem value="GAA">GAA — General Appropriations Act</SelectItem></SelectContent></Select></Field>
@@ -317,6 +327,7 @@ export function AnalyticsPage() {
   // Performance Analytics Data (Restricted to Procurement Staff/Officer and Admin)
   const [source, setSource] = useState<"all" | "live" | "historical">("all");
   const [search, setSearch] = useState("");
+  const [selectedOffice, setSelectedOffice] = useState("");
   const [sortField, setSortField] = useState<"endUser" | "prCount" | "totalAbc" | "totalContract" | "savings" | "delayedPrs">("prCount");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pageSize, setPageSize] = useState<number>(25);
@@ -331,6 +342,15 @@ export function AnalyticsPage() {
 
   const filteredRecords = useMemo(() => {
     let records = rawRecords;
+    if (selectedOffice.trim()) {
+      const officeKey = selectedOffice.trim().toLowerCase();
+      records = records.filter(
+        (r) =>
+          r.endUser.toLowerCase() === officeKey ||
+          r.endUser.toLowerCase().includes(officeKey) ||
+          officeKey.includes(r.endUser.toLowerCase())
+      );
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       records = records.filter((r) => r.endUser.toLowerCase().includes(q));
@@ -342,7 +362,7 @@ export function AnalyticsPage() {
       }
       return (Number(a[sortField]) - Number(b[sortField])) * dir;
     });
-  }, [rawRecords, search, sortField, sortDirection]);
+  }, [rawRecords, selectedOffice, search, sortField, sortDirection]);
 
   const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const paginatedRecords = useMemo(() => {
@@ -484,18 +504,30 @@ export function AnalyticsPage() {
                 </p>
               </div>
 
-              <div className="flex w-full items-center gap-2 sm:w-auto shrink-0">
-                <div className="relative w-full sm:w-72">
+              <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:w-auto shrink-0">
+                <div className="w-full sm:w-64 shrink-0">
+                  <OfficeSelect
+                    value={selectedOffice}
+                    valueMode="name"
+                    onChange={(val) => { setSelectedOffice(val); setCurrentPage(1); }}
+                    allowAll
+                    allLabel="All Offices / Units"
+                    allowClear
+                    placeholder="Filter by Office..."
+                    triggerClassName="h-8 text-xs bg-white border-[#d8d3ca]"
+                  />
+                </div>
+                <div className="relative w-full sm:w-64">
                   <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8b95a1]" />
                   <Input
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     placeholder="Search End User / Office..."
-                    className="h-8 w-full pl-8 text-xs"
+                    className="h-8 w-full pl-8 text-xs bg-white border-[#d8d3ca]"
                   />
                 </div>
-                {search && (
-                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setCurrentPage(1); }} className="h-8 text-xs shrink-0">
+                {(search || selectedOffice) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSelectedOffice(""); setCurrentPage(1); }} className="h-8 text-xs shrink-0">
                     Reset
                   </Button>
                 )}
@@ -889,7 +921,17 @@ export function HistoricalPmrPage() {
     <div className="mt-6 flat-panel p-5">
       <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto]">
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search PR, item, end-user, or supplier" aria-label="Search historical PMR" />
-        <Select value={office || "all"} onValueChange={(value) => setOffice(value === "all" ? "" : value)}><SelectTrigger><SelectValue placeholder="All offices" /></SelectTrigger><SelectContent><SelectItem value="all">All offices</SelectItem>{offices.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
+        <OfficeSelect
+          value={office}
+          valueMode="name"
+          onChange={setOffice}
+          allowAll
+          allLabel="All offices"
+          allowClear
+          placeholder="Filter by office..."
+          customOffices={offices.map((o) => ({ code: o.split(" ")[0] || "OFFICE", name: o }))}
+          triggerClassName="h-9"
+        />
         <Select value={status || "all"} onValueChange={(value) => setStatus(value === "all" ? "" : value)}><SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{statuses.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
         <Button variant="outline" onClick={() => { setSearch(""); setOffice(""); setStatus(""); }}>Clear</Button>
       </div>

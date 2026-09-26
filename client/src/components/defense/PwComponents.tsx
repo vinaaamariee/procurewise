@@ -102,16 +102,16 @@ type BadgeVariant =
   | "planned";
 
 const badgeStyles: Record<BadgeVariant, { bg: string; text: string; border: string; label: string }> = {
-  neutral:        { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border)", label: "Neutral" },
-  review:         { bg: "var(--pw-warning-surface)", text: "var(--pw-warning-text)", border: "#FBBF24", label: "Needs review" },
+  neutral: { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border)", label: "Neutral" },
+  review: { bg: "var(--pw-warning-surface)", text: "var(--pw-warning-text)", border: "#FBBF24", label: "Needs review" },
   "pending-approval": { bg: "var(--pw-info-surface)", text: "var(--pw-info-text)", border: "#93C5FD", label: "Pending approval" },
-  approved:       { bg: "var(--pw-success-surface)", text: "var(--pw-success-text)", border: "#6EE7B7", label: "Approved" },
-  rejected:       { bg: "var(--pw-danger-surface)", text: "var(--pw-danger-text)", border: "#FCA5A5", label: "Rejected" },
+  approved: { bg: "var(--pw-success-surface)", text: "var(--pw-success-text)", border: "#6EE7B7", label: "Approved" },
+  rejected: { bg: "var(--pw-danger-surface)", text: "var(--pw-danger-text)", border: "#FCA5A5", label: "Rejected" },
   "missing-evidence": { bg: "var(--pw-danger-surface)", text: "var(--pw-danger-text)", border: "#FCA5A5", label: "Missing evidence" },
-  synthetic:      { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border-strong)", label: "Synthetic" },
-  prototype:      { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border-strong)", label: "Prototype" },
-  simulated:      { bg: "var(--pw-brand-100)", text: "var(--pw-brand-900)", border: "var(--pw-brand-500)", label: "Simulated" },
-  planned:        { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border)", label: "Planned" },
+  synthetic: { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border-strong)", label: "Synthetic" },
+  prototype: { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border-strong)", label: "Prototype" },
+  simulated: { bg: "var(--pw-brand-100)", text: "var(--pw-brand-900)", border: "var(--pw-brand-500)", label: "Simulated" },
+  planned: { bg: "var(--pw-surface-strong)", text: "var(--pw-text-muted)", border: "var(--pw-border)", label: "Planned" },
 };
 
 // Icon glyphs (text-only, accessible via aria-hidden + text content)
@@ -149,10 +149,10 @@ export function PwStatusBadge({
 type AlertVariant = "info" | "success" | "warning" | "error";
 
 const alertConfig: Record<AlertVariant, { bg: string; border: string; accent: string; text: string; title: string }> = {
-  info:    { bg: "var(--pw-info-surface)",    border: "var(--pw-border)",        accent: "var(--pw-info-text)",    text: "var(--pw-info-text)",    title: "Information" },
-  success: { bg: "var(--pw-success-surface)", border: "var(--pw-border)",        accent: "var(--pw-success-text)", text: "var(--pw-success-text)", title: "Success" },
-  warning: { bg: "var(--pw-warning-surface)", border: "#FBBF24",                 accent: "var(--pw-warning-text)", text: "var(--pw-warning-text)", title: "Warning" },
-  error:   { bg: "var(--pw-danger-surface)",  border: "var(--pw-danger-text)",   accent: "var(--pw-danger-text)",  text: "var(--pw-danger-text)",  title: "Error" },
+  info: { bg: "var(--pw-info-surface)", border: "var(--pw-border)", accent: "var(--pw-info-text)", text: "var(--pw-info-text)", title: "Information" },
+  success: { bg: "var(--pw-success-surface)", border: "var(--pw-border)", accent: "var(--pw-success-text)", text: "var(--pw-success-text)", title: "Success" },
+  warning: { bg: "var(--pw-warning-surface)", border: "#FBBF24", accent: "var(--pw-warning-text)", text: "var(--pw-warning-text)", title: "Warning" },
+  error: { bg: "var(--pw-danger-surface)", border: "var(--pw-danger-text)", accent: "var(--pw-danger-text)", text: "var(--pw-danger-text)", title: "Error" },
 };
 
 export function PwAlert({
@@ -201,11 +201,11 @@ export function PwAlert({
 type PanelVariant = "default" | "subtle" | "selected" | "warning" | "error";
 
 const panelConfig: Record<PanelVariant, React.CSSProperties> = {
-  default:  { background: "var(--pw-surface)",        border: "1px solid var(--pw-border)",        borderRadius: "var(--pw-radius-lg)" },
-  subtle:   { background: "var(--pw-surface-subtle)", border: "1px solid var(--pw-border)",        borderRadius: "var(--pw-radius-lg)" },
-  selected: { background: "var(--pw-surface)",        border: "2px solid var(--pw-brand-500)",     borderRadius: "var(--pw-radius-lg)" },
-  warning:  { background: "var(--pw-warning-surface)", border: "1px solid #FBBF24",               borderRadius: "var(--pw-radius-lg)" },
-  error:    { background: "var(--pw-danger-surface)", border: "1px solid var(--pw-danger-text)",  borderRadius: "var(--pw-radius-lg)" },
+  default: { background: "var(--pw-surface)", border: "1px solid var(--pw-border)", borderRadius: "var(--pw-radius-lg)" },
+  subtle: { background: "var(--pw-surface-subtle)", border: "1px solid var(--pw-border)", borderRadius: "var(--pw-radius-lg)" },
+  selected: { background: "var(--pw-surface)", border: "2px solid var(--pw-brand-500)", borderRadius: "var(--pw-radius-lg)" },
+  warning: { background: "var(--pw-warning-surface)", border: "1px solid #FBBF24", borderRadius: "var(--pw-radius-lg)" },
+  error: { background: "var(--pw-danger-surface)", border: "1px solid var(--pw-danger-text)", borderRadius: "var(--pw-radius-lg)" },
 };
 
 export function PwPanel({

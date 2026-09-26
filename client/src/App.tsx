@@ -21,6 +21,7 @@ import { ExecutionPage, PreCanvassPage } from "./pages/WorkflowPages";
 import SetupPage from "./pages/Setup";
 import TestRecordManagementPage from "./pages/TestRecordManagement";
 import FormTemplatesPage from "./pages/FormTemplates";
+import CatalogPage from "./pages/Catalog";
 import { PurchaseRequestsPage, WorkspacePage } from "./pages/Workspace";
 // Defense workspace — no authentication required
 import DemoEntryPage from "./pages/demo/DemoEntry";
@@ -39,6 +40,7 @@ function Router() {
       <Route path={"/access"} component={Access} />
       <Route path={"/track"} component={PublicTrackingPage} />
       <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
+      <Route path={"/catalog"}>{protectedPage(<CatalogPage />)}</Route>
       <Route path={"/purchase-requests"}>{protectedPage(<PurchaseRequestsPage />)}</Route>
       <Route path={"/rfq"}>{protectedPage(<PreCanvassPage />)}</Route>
       <Route path={"/purchase-orders"}>{protectedPage(<ExecutionPage />)}</Route>
