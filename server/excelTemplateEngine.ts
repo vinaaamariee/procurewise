@@ -384,141 +384,207 @@ export async function createMasterExcelWorkbook(key: FormTemplateKey): Promise<E
   switch (key) {
     case "purchase_request": {
       ws.columns = [
-        { width: 12 }, // A: Item No.
+        { width: 14 }, // A: Stock/Property No.
         { width: 10 }, // B: Unit
-        { width: 38 }, // C: Description
-        { width: 10 }, // D: Qty
-        { width: 16 }, // E: Unit Cost
-        { width: 18 }, // F: Total Cost
+        { width: 36 }, // C: Item Description
+        { width: 12 }, // D: Quantity
+        { width: 14 }, // E: Unit Cost
+        { width: 14 }, // F: Total Cost
       ];
 
-      // Row 1-3: Institution Header Title
-      ws.mergeCells("A1:F1");
-      ws.getCell("A1").value = "Republic of the Philippines";
-      ws.getCell("A1").font = { name: "Arial", size: 9, italic: true };
-      ws.getCell("A1").alignment = { horizontal: "center" };
+      const plain: Partial<ExcelJS.Font> = { name: "Arial", size: 9, color: { argb: "FF000000" } };
+      const plainBold: Partial<ExcelJS.Font> = { name: "Arial", size: 9, bold: true, color: { argb: "FF000000" } };
+      const plainBorder: Partial<ExcelJS.Borders> = {
+        top: { style: "thin", color: { argb: "FF000000" } },
+        bottom: { style: "thin", color: { argb: "FF000000" } },
+        left: { style: "thin", color: { argb: "FF000000" } },
+        right: { style: "thin", color: { argb: "FF000000" } },
+      };
+      const bottomOnly: Partial<ExcelJS.Borders> = {
+        bottom: { style: "thin", color: { argb: "FF000000" } },
+      };
+      const alignCenter: Partial<ExcelJS.Alignment> = { horizontal: "center", vertical: "middle" };
+      const alignLeft: Partial<ExcelJS.Alignment> = { horizontal: "left", vertical: "middle" };
+      const alignRight: Partial<ExcelJS.Alignment> = { horizontal: "right", vertical: "middle" };
 
-      ws.mergeCells("A2:F2");
-      ws.getCell("A2").value = "[AGENCY / INSTITUTION NAME]";
-      ws.getCell("A2").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF7B1E1E" } };
-      ws.getCell("A2").alignment = { horizontal: "center" };
+      // ── Row 1: "Appendix 60" label top-right ──
+      ws.getRow(1).height = 14;
+      ws.getCell("F1").value = "Appendix 60";
+      ws.getCell("F1").font = { name: "Arial", size: 9, italic: true, color: { argb: "FF000000" } };
+      ws.getCell("F1").alignment = alignRight;
 
-      ws.mergeCells("A3:F3");
-      ws.getCell("A3").value = "PURCHASE REQUEST (Appendix 60)";
-      ws.getCell("A3").font = { name: "Arial", size: 11, bold: true };
-      ws.getCell("A3").alignment = { horizontal: "center" };
+      // ── Row 2-3: blank spacers ──
+      ws.getRow(2).height = 8;
+      ws.getRow(3).height = 8;
 
-      // Row 5-7: Requisition Metadata Block
+      // ── Row 4: PURCHASE REQUEST title ──
+      ws.mergeCells("A4:F4");
+      ws.getCell("A4").value = "PURCHASE REQUEST";
+      ws.getCell("A4").font = { name: "Arial", size: 12, bold: true, color: { argb: "FF000000" } };
+      ws.getCell("A4").alignment = alignCenter;
+      ws.getRow(4).height = 20;
+
+      // ── Row 5: Entity Name + Fund Cluster ──
+      ws.getRow(5).height = 16;
       ws.getCell("A5").value = "Entity Name:";
-      ws.getCell("A5").font = boldText;
+      ws.getCell("A5").font = plain;
+      ws.getCell("A5").border = plainBorder;
+      ws.mergeCells("B5:C5");
       ws.getCell("B5").value = "{{entity_name}}";
-      ws.getCell("B5").font = normalText;
+      ws.getCell("B5").font = plain;
+      ws.getCell("B5").border = plainBorder;
+      ws.getCell("D5").value = "Fund Cluster:";
+      ws.getCell("D5").font = plain;
+      ws.getCell("D5").border = plainBorder;
+      ws.mergeCells("E5:F5");
+      ws.getCell("E5").value = "{{fund_cluster}}";
+      ws.getCell("E5").font = plain;
+      ws.getCell("E5").border = plainBorder;
 
-      ws.getCell("E5").value = "Fund Cluster:";
-      ws.getCell("E5").font = boldText;
-      ws.getCell("F5").value = "{{fund_cluster}}";
-      ws.getCell("F5").font = normalText;
-
+      // ── Row 6: Office/Section + PR No. + Date ──
+      ws.getRow(6).height = 16;
       ws.getCell("A6").value = "Office/Section:";
-      ws.getCell("A6").font = boldText;
-      ws.mergeCells("B6:C6");
+      ws.getCell("A6").font = plain;
+      ws.getCell("A6").border = plainBorder;
       ws.getCell("B6").value = "{{office}}";
-      ws.getCell("B6").font = normalText;
+      ws.getCell("B6").font = plain;
+      ws.getCell("B6").border = plainBorder;
+      ws.getCell("C6").value = "PR No.:";
+      ws.getCell("C6").font = plain;
+      ws.getCell("C6").border = plainBorder;
+      ws.getCell("D6").value = "{{pr_no}}";
+      ws.getCell("D6").font = plain;
+      ws.getCell("D6").border = plainBorder;
+      ws.getCell("E6").value = "Date:";
+      ws.getCell("E6").font = plain;
+      ws.getCell("E6").border = plainBorder;
+      ws.getCell("F6").value = "{{date}}";
+      ws.getCell("F6").font = plain;
+      ws.getCell("F6").border = plainBorder;
 
-      ws.getCell("E6").value = "PR No.:";
-      ws.getCell("E6").font = boldText;
-      ws.getCell("F6").value = "{{pr_no}}";
-      ws.getCell("F6").font = normalText;
+      // ── Row 7: Responsibility Center Code ──
+      ws.getRow(7).height = 16;
+      ws.mergeCells("A7:B7");
+      ws.getCell("A7").value = "Responsibility Center Code:";
+      ws.getCell("A7").font = plain;
+      ws.getCell("A7").border = plainBorder;
+      ws.mergeCells("C7:F7");
+      ws.getCell("C7").value = "{{responsibility_code}}";
+      ws.getCell("C7").font = plain;
+      ws.getCell("C7").border = plainBorder;
 
-      ws.getCell("A7").value = "Responsibility:";
-      ws.getCell("A7").font = boldText;
-      ws.getCell("B7").value = "{{responsibility_code}}";
-      ws.getCell("B7").font = normalText;
-
-      ws.getCell("E7").value = "Date:";
-      ws.getCell("E7").font = boldText;
-      ws.getCell("F7").value = "{{date}}";
-      ws.getCell("F7").font = normalText;
-
-      // Row 9: Table Column Headers
-      const colHeaders = ["Stock / Item No.", "Unit", "Item Description & Specifications", "Quantity", "Estimated Unit Cost", "Estimated Total Cost"];
-      const headerRow = ws.getRow(9);
-      colHeaders.forEach((title, idx) => {
-        const cell = headerRow.getCell(idx + 1);
+      // ── Row 8: Column Headers ──
+      const prColHeaders = ["Stock/ Property\nNo.", "Unit", "Item Description", "Quantity", "Unit\nCost", "Total Cost"];
+      const prHeaderRow = ws.getRow(8);
+      prHeaderRow.height = 30;
+      prColHeaders.forEach((title, idx) => {
+        const cell = prHeaderRow.getCell(idx + 1);
         cell.value = title;
-        cell.font = maroonText;
-        cell.fill = headerFill;
-        cell.border = thinBorder;
+        cell.font = plainBold;
+        cell.border = plainBorder;
         cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       });
-      headerRow.height = 24;
 
-      // Row 10: Dynamic Items Template Row (Cloned during data injection)
-      const itemRow = ws.getRow(10);
-      itemRow.getCell(1).value = "{{item_no}}";
-      itemRow.getCell(1).alignment = { horizontal: "center" };
-      itemRow.getCell(2).value = "{{unit}}";
-      itemRow.getCell(2).alignment = { horizontal: "center" };
-      itemRow.getCell(3).value = "{{item_desc}}";
-      itemRow.getCell(3).alignment = { horizontal: "left" };
-      itemRow.getCell(4).value = "{{qty}}";
-      itemRow.getCell(4).alignment = { horizontal: "center" };
-      itemRow.getCell(5).value = "{{unit_cost}}";
-      itemRow.getCell(5).alignment = { horizontal: "right" };
-      itemRow.getCell(6).value = "{{total_cost}}";
-      itemRow.getCell(6).alignment = { horizontal: "right" };
+      // ── Row 9: token item row (injected during data fill) ──
+      const prItemRow = ws.getRow(9);
+      prItemRow.height = 16;
+      prItemRow.getCell(1).value = "{{item_no}}";
+      prItemRow.getCell(1).alignment = alignCenter;
+      prItemRow.getCell(2).value = "{{unit}}";
+      prItemRow.getCell(2).alignment = alignCenter;
+      prItemRow.getCell(3).value = "{{item_desc}}";
+      prItemRow.getCell(3).alignment = alignLeft;
+      prItemRow.getCell(4).value = "{{qty}}";
+      prItemRow.getCell(4).alignment = alignCenter;
+      prItemRow.getCell(5).value = "{{unit_cost}}";
+      prItemRow.getCell(5).alignment = alignRight;
+      prItemRow.getCell(6).value = "{{total_cost}}";
+      prItemRow.getCell(6).alignment = alignRight;
       for (let c = 1; c <= 6; c++) {
-        itemRow.getCell(c).border = thinBorder;
-        itemRow.getCell(c).font = normalText;
+        prItemRow.getCell(c).border = plainBorder;
+        prItemRow.getCell(c).font = plain;
       }
 
-      // Row 11: Total ABC Summary
-      ws.mergeCells("A11:E11");
-      ws.getCell("A11").value = "TOTAL APPROVED BUDGET FOR THE CONTRACT (ABC):";
-      ws.getCell("A11").font = boldText;
-      ws.getCell("A11").alignment = { horizontal: "right" };
-      ws.getCell("A11").border = thinBorder;
-      ws.getCell("F11").value = "{{abc_amount}}";
-      ws.getCell("F11").font = { ...boldText, color: { argb: "FF7B1E1E" } };
-      ws.getCell("F11").alignment = { horizontal: "right" };
-      ws.getCell("F11").border = thinBorder;
+      // ── Rows 10–22: blank item rows ──
+      for (let r = 10; r <= 22; r++) {
+        const row = ws.getRow(r);
+        row.height = 16;
+        for (let c = 1; c <= 6; c++) {
+          const cell = row.getCell(c);
+          cell.value = "";
+          cell.border = plainBorder;
+          cell.font = plain;
+        }
+      }
 
-      // Row 12: Purpose Block
-      ws.mergeCells("A12:F12");
-      ws.getCell("A12").value = "Purpose: {{purpose}}";
-      ws.getCell("A12").font = normalText;
-      ws.getCell("A12").alignment = { horizontal: "left", wrapText: true };
-      ws.getCell("A12").border = thinBorder;
-      ws.getRow(12).height = 30;
+      // ── Row 23: Purpose ──
+      ws.getRow(23).height = 20;
+      ws.mergeCells("A23:F23");
+      ws.getCell("A23").value = "Purpose: {{purpose}}";
+      ws.getCell("A23").font = plain;
+      ws.getCell("A23").alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      ws.getCell("A23").border = plainBorder;
 
-      // Row 14-17: Signatories
-      ws.mergeCells("A14:C14");
-      ws.getCell("A14").value = "Requested by:";
-      ws.getCell("A14").font = boldText;
+      // ── Row 24: blank spacer ──
+      ws.getRow(24).height = 10;
 
-      ws.mergeCells("D14:F14");
-      ws.getCell("D14").value = "Approved by:";
-      ws.getCell("D14").font = boldText;
+      // ── Row 25: Requested by / Approved by labels ──
+      ws.getRow(25).height = 16;
+      ws.mergeCells("A25:C25");
+      ws.getCell("A25").value = "Requested by:";
+      ws.getCell("A25").font = plain;
+      ws.getCell("A25").alignment = alignCenter;
+      ws.mergeCells("D25:F25");
+      ws.getCell("D25").value = "Approved by:";
+      ws.getCell("D25").font = plain;
+      ws.getCell("D25").alignment = alignCenter;
 
-      ws.mergeCells("A16:C16");
-      ws.getCell("A16").value = "{{signatory_1_name}}";
-      ws.getCell("A16").font = { ...boldText, underline: true };
-      ws.getCell("A16").alignment = { horizontal: "center" };
+      // ── Row 26: blank ──
+      ws.getRow(26).height = 14;
 
-      ws.mergeCells("D16:F16");
-      ws.getCell("D16").value = "{{signatory_2_name}}";
-      ws.getCell("D16").font = { ...boldText, underline: true };
-      ws.getCell("D16").alignment = { horizontal: "center" };
+      // ── Row 27: Signature line ──
+      ws.getRow(27).height = 16;
+      ws.getCell("A27").value = "Signature :";
+      ws.getCell("A27").font = plain;
+      ws.mergeCells("B27:C27");
+      ws.getCell("B27").value = "";
+      ws.getCell("B27").border = bottomOnly;
+      ws.getCell("D27").value = "Signature :";
+      ws.getCell("D27").font = plain;
+      ws.mergeCells("E27:F27");
+      ws.getCell("E27").value = "";
+      ws.getCell("E27").border = bottomOnly;
 
-      ws.mergeCells("A17:C17");
-      ws.getCell("A17").value = "{{signatory_1_title}}";
-      ws.getCell("A17").font = normalText;
-      ws.getCell("A17").alignment = { horizontal: "center" };
+      // ── Row 28: Printed Name ──
+      ws.getRow(28).height = 16;
+      ws.getCell("A28").value = "Printed Name :";
+      ws.getCell("A28").font = plain;
+      ws.mergeCells("B28:C28");
+      ws.getCell("B28").value = "{{signatory_1_name}}";
+      ws.getCell("B28").font = plain;
+      ws.getCell("B28").border = bottomOnly;
+      ws.getCell("D28").value = "Printed Name :";
+      ws.getCell("D28").font = plain;
+      ws.mergeCells("E28:F28");
+      ws.getCell("E28").value = "{{signatory_2_name}}";
+      ws.getCell("E28").font = plain;
+      ws.getCell("E28").border = bottomOnly;
 
-      ws.mergeCells("D17:F17");
-      ws.getCell("D17").value = "{{signatory_2_title}}";
-      ws.getCell("D17").font = normalText;
-      ws.getCell("D17").alignment = { horizontal: "center" };
+      // ── Row 29: Designation ──
+      ws.getRow(29).height = 16;
+      ws.getCell("A29").value = "Designation :";
+      ws.getCell("A29").font = plain;
+      ws.mergeCells("B29:C29");
+      ws.getCell("B29").value = "{{signatory_1_title}}";
+      ws.getCell("B29").font = plain;
+      ws.getCell("B29").border = bottomOnly;
+      ws.getCell("D29").value = "Designation :";
+      ws.getCell("D29").font = plain;
+      ws.mergeCells("E29:F29");
+      ws.getCell("E29").value = "{{signatory_2_title}}";
+      ws.getCell("E29").font = plain;
+      ws.getCell("E29").border = bottomOnly;
+
       break;
     }
 
