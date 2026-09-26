@@ -7,12 +7,12 @@ import { OfficeSelect } from "@/components/OfficeSelect";
 import { trpc } from "@/lib/trpc";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole, type PersistedUserRole } from "../../../shared/procurementRules";
 import {
-  Archive, Bell, BookOpenText, Boxes, ChevronLeft, ChevronRight,
+  Archive, Bell, BookOpenText, Boxes, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, FileCheck2, FileSearch, FileSpreadsheet, FileText,
   LayoutDashboard, LifeBuoy, LineChart, LoaderCircle, LogOut, Menu,
   Moon, PackageSearch, Paperclip, ReceiptText, Scale, Search,
   Send, Settings2, ShieldCheck, Star, Sun, UserCog, UsersRound,
-  WalletCards, Zap,
+  WalletCards,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -231,7 +231,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const SIDEBAR_STORAGE_KEY = "procurewise_sidebar_collapsed";
 
-// ─── Inline theme toggle (institutional maroon highlight) ─────────────────────
+// ─── Inline theme toggle (seamless light/dark transition) ──────────────────────
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -241,7 +241,7 @@ function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/60 text-slate-400 transition-colors hover:bg-[#881337]/25 hover:text-[#fda4af]"
+      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:bg-[#881337]/25 dark:hover:text-[#fda4af] transition-colors"
     >
       {isDark
         ? <Sun  className="h-4 w-4" />
@@ -260,7 +260,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Hydration-safe collapse state
+  // Collapsible category sections state (all expanded by default)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (cat: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [cat]: !prev[cat],
+    }));
+  };
+
+  // Hydration-safe sidebar collapse state
   const [isCollapsed, setIsCollapsed] = useState(false);
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -288,7 +298,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const rawRole = (user?.role || "end_user") as PersistedUserRole;
   const currentRole = (user?.role || "end_user") as ProcurementRole;
   const roleLabel = user
-    ? OFFICIAL_ROLE_LABELS[currentRole] ?? OFFICIAL_ROLE_LABELS[normalizeProcurementRole(rawRole)] ?? "End-User"
+    ? (currentRole === "hope" ? "HoPE (College President)" : OFFICIAL_ROLE_LABELS[currentRole] ?? OFFICIAL_ROLE_LABELS[normalizeProcurementRole(rawRole)] ?? "End-User")
     : OFFICIAL_ROLE_LABELS.end_user;
 
   // Strict role filter per Section 5 specification
@@ -348,20 +358,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userInitials = (user?.name || "U").split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 
   // ── Loading state ──────────────────────────────────────────────────────────
-  if (loading) return <div className="min-h-screen bg-[#090d16]" />;
+  if (loading) return <div className="min-h-screen bg-slate-50 dark:bg-[#090d16]" />;
 
   // ── Unauthenticated guard ──────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#090d16] px-5">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f172a] p-8 text-center shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
-          {/* Logo badge */}
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-[#881337] shadow-lg shadow-[#881337]/30">
-            <Zap className="h-7 w-7 text-white" />
+      <div className="grid min-h-screen place-items-center bg-slate-50 dark:bg-[#090d16] px-5 transition-colors">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f172a] p-8 text-center shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
+          {/* Institutional BSC Logo */}
+          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[#d2b058]/50 bg-white p-1 shadow-md">
+            <img src="/bsc-logo.jpg" alt="Batanes State College" className="h-full w-full rounded-xl object-contain" />
           </div>
-          <ShieldCheck className="mx-auto mt-6 h-8 w-8 text-[#fda4af]" />
-          <h1 className="mt-4 font-['Plus_Jakarta_Sans'] text-2xl font-bold text-white">Authorized access only</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">Sign in to access your assigned procurement workspace and workflow actions.</p>
+          <ShieldCheck className="mx-auto mt-6 h-8 w-8 text-[#881337] dark:text-[#fda4af]" />
+          <h1 className="mt-4 font-['Plus_Jakarta_Sans'] text-2xl font-bold text-slate-900 dark:text-white">Authorized access only</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Sign in to access your assigned procurement workspace and workflow actions.</p>
           <Link
             href="/access"
             className="mt-7 flex h-11 w-full items-center justify-center rounded-xl bg-[#881337] text-sm font-semibold text-white shadow-lg shadow-[#881337]/30 transition hover:bg-[#9f1239]"
@@ -384,13 +394,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         type="button"
         onClick={() => { setLocation(item.path); setMenuOpen(false); }}
         aria-current={active ? "page" : undefined}
-        style={active ? { boxShadow: "0 0 16px rgba(136,19,55,0.38)" } : undefined}
+        style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
         className={[
           "group relative flex w-full items-center gap-0 rounded-xl py-2 text-left text-[13px] font-medium transition-all duration-150",
           isCollapsed ? "justify-center px-2" : "px-3",
           active
-            ? "border border-[#881337]/50 bg-[#881337]/25 text-white font-semibold before:bg-[#d5ab55]"
-            : "border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-200",
+            ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
+            : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
         ].join(" ")}
       >
         {/* Active top accent hairline */}
@@ -407,8 +417,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
             isCollapsed ? "" : "mr-3",
             active
-              ? "bg-[#881337]/35 text-[#fda4af]"
-              : "bg-slate-800/80 text-slate-400 group-hover:bg-slate-700/80 group-hover:text-slate-200",
+              ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]"
+              : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
           ].join(" ")}
         >
           <item.icon className="h-[15px] w-[15px]" />
@@ -421,7 +431,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return isCollapsed ? (
       <Tooltip key={item.path}>
         <TooltipTrigger asChild>{btn}</TooltipTrigger>
-        <TooltipContent side="right" className="rounded-lg border-white/10 bg-[#0f172a] text-xs font-medium text-slate-200">
+        <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs font-medium text-slate-800 dark:text-slate-200 shadow-md">
           {label}
         </TooltipContent>
       </Tooltip>
@@ -431,34 +441,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground print:bg-white">
+    <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground transition-colors duration-200 print:bg-white">
       <NotificationToastListener />
 
       {/* ── Mobile top bar ────────────────────────────────────────────────── */}
       <div
-        className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-white/10 px-4 lg:hidden print:hidden"
-        style={{ background: "linear-gradient(180deg, #111827 0%, #090d16 100%)" }}
+        className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0c1322]/95 backdrop-blur px-4 lg:hidden print:hidden transition-colors"
       >
         <button
           type="button"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle navigation"
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/60 text-slate-400 hover:text-slate-200"
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400 dark:hover:text-slate-200"
         >
           <Menu className="h-4.5 w-4.5" />
         </button>
 
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#881337] shadow-md shadow-[#881337]/30">
-          <Zap className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
+          <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-md object-contain" />
         </div>
-        <span className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-white">ProcureWise</span>
+        <span className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-slate-900 dark:text-white">ProcureWise</span>
 
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={() => setLocation("/notifications")}
             aria-label="Notifications"
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/60 text-slate-400"
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400"
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
@@ -480,21 +489,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/10 pt-14 transition-transform duration-300 lg:hidden print:hidden",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1322] text-slate-800 dark:text-slate-200 pt-14 transition-transform duration-300 lg:hidden print:hidden",
           menuOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
-        style={{ width: 260, background: "linear-gradient(180deg, #111827 0%, #090d16 100%)" }}
+        style={{ width: 272 }}
       >
         <div className="flex-1 overflow-y-auto px-3 py-4">
           {/* Search */}
           <div className="relative mb-4">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-700/50 bg-slate-800/50 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]"
+              className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-850 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]"
             />
           </div>
           <MobileNavContent
@@ -503,6 +512,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             location={location}
             setLocation={setLocation}
             setMenuOpen={setMenuOpen}
+            collapsedSections={collapsedSections}
+            toggleSection={toggleSection}
           />
         </div>
         <MobileProfileFooter
@@ -520,26 +531,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ── DESKTOP SIDEBAR ─────────────────────────────────────────────── */}
         <aside
           className={[
-            "sidebar-rail hidden lg:flex flex-col min-h-screen shrink-0 border-r border-white/10 print:hidden",
+            "sidebar-rail hidden lg:flex flex-col min-h-screen shrink-0 border-r transition-colors duration-200 print:hidden",
+            "bg-white dark:bg-[#0c1322] border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-200",
             isCollapsed ? "w-[72px]" : "w-[272px]",
           ].join(" ")}
-          style={{ background: "linear-gradient(180deg, #111827 0%, #090d16 100%)" }}
         >
           {/* ── Header ── */}
-          <div className={`flex h-16 shrink-0 items-center border-b border-white/10 ${isCollapsed ? "justify-center px-3" : "justify-between px-4"}`}>
+          <div className={`flex h-16 shrink-0 items-center border-b border-slate-200 dark:border-slate-800/80 ${isCollapsed ? "justify-center px-3" : "justify-between px-4"}`}>
             {isCollapsed ? (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#881337] shadow-lg shadow-[#881337]/30">
-                <Zap className="h-5 w-5 text-white" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
+                <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-lg object-contain" />
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#881337] shadow-lg shadow-[#881337]/30">
-                    <Zap className="h-5 w-5 text-white" />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
+                    <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-lg object-contain" />
                   </div>
                   <div>
-                    <p className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-white leading-tight">ProcureWise</p>
-                    <p className="text-[10px] font-medium text-[#fda4af] leading-tight">Gov. Procurement</p>
+                    <p className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-slate-900 dark:text-white leading-tight">ProcureWise</p>
+                    <p className="text-[10px] font-medium text-[#881337] dark:text-[#fda4af] leading-tight">Gov. Procurement</p>
                   </div>
                 </div>
                 <ThemeToggle />
@@ -551,14 +562,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {!isCollapsed && (
             <div className="px-3 pt-4 pb-2">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <input
                   ref={searchRef}
                   type="text"
                   placeholder="Search menu…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-slate-700/50 bg-slate-800/50 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]"
+                  className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/50 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-[#881337]"
                 />
               </div>
             </div>
@@ -566,30 +577,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* ── Navigation ── */}
           <div className="flex-1 overflow-y-auto px-2 py-2">
-            {Object.entries(grouped).map(([cat, items]) => (
-              <div key={cat} className="mb-3">
-                {!isCollapsed && (
-                  <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    {CATEGORY_LABELS[cat] ?? cat}
-                  </p>
-                )}
-                <nav className="grid gap-0.5">
-                  {items.map((item) => <NavItem key={item.path} item={item} />)}
-                </nav>
-              </div>
-            ))}
+            {Object.entries(grouped).map(([cat, items]) => {
+              const isSectionCollapsed = Boolean(collapsedSections[cat]);
+              return (
+                <div key={cat} className="mb-3">
+                  {!isCollapsed && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(cat)}
+                      aria-expanded={!isSectionCollapsed}
+                      className="group mb-1.5 flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <span>{CATEGORY_LABELS[cat] ?? cat}</span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+                          isSectionCollapsed ? "-rotate-90" : "rotate-0"
+                        }`}
+                      />
+                    </button>
+                  )}
+                  {(!isSectionCollapsed || isCollapsed) && (
+                    <nav className="grid gap-0.5 transition-all">
+                      {items.map((item) => <NavItem key={item.path} item={item} />)}
+                    </nav>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* ── Footer ── */}
-          <div className="shrink-0 border-t border-white/10 p-2">
+          <div className="shrink-0 border-t border-slate-200 dark:border-slate-800/80 p-2">
             {/* Help & Support row */}
             {!isCollapsed ? (
               <button
                 type="button"
                 onClick={() => setLocation("/notifications")}
-                className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200"
+                className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-800/80 text-slate-400">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400">
                   <LifeBuoy className="h-[15px] w-[15px]" />
                 </span>
                 <span>Help &amp; Support</span>
@@ -605,14 +631,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <button
                     type="button"
                     onClick={() => setLocation("/notifications")}
-                    className="mb-2 flex w-full items-center justify-center rounded-xl py-2 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                    className="mb-2 flex w-full items-center justify-center rounded-xl py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800/80">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/80">
                       <LifeBuoy className="h-[15px] w-[15px]" />
                     </span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="rounded-lg border-white/10 bg-[#0f172a] text-xs text-slate-200">Help &amp; Support</TooltipContent>
+                <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200">Help &amp; Support</TooltipContent>
               </Tooltip>
             )}
 
@@ -624,12 +650,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     type="button"
                     onClick={toggleSidebar}
                     aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800/60 text-slate-500 transition hover:bg-slate-700/60 hover:text-slate-300"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-500 transition hover:bg-slate-200 dark:hover:bg-slate-700/60 hover:text-slate-800 dark:hover:text-slate-300"
                   >
                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="rounded-lg border-white/10 bg-[#0f172a] text-xs text-slate-200">
+                <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200">
                   {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 </TooltipContent>
               </Tooltip>
@@ -637,8 +663,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Pinned profile card */}
             <div
-              className="rounded-xl border border-white/10 p-3"
-              style={{ background: "linear-gradient(145deg, #151d2e 0%, #0e1420 100%)" }}
+              className="rounded-xl border border-slate-200 dark:border-slate-800/80 p-3 bg-slate-50 dark:bg-[#121826] transition-colors"
             >
               {isCollapsed ? (
                 <Tooltip>
@@ -646,15 +671,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <button
                       type="button"
                       onClick={() => setEditProfileOpen(true)}
-                      className="relative mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#881337]/25 ring-2 ring-[#881337]/35"
+                      className="relative mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30"
                     >
-                      <span className="text-xs font-bold text-[#fda4af]">{userInitials}</span>
-                      <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#111827] bg-emerald-400" />
+                      <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
+                      <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#111827] bg-emerald-500" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="rounded-lg border-white/10 bg-[#0f172a] text-xs text-slate-200">
+                  <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200 shadow-md">
                     {user.name || "Procurement User"}<br />
-                    <span className="text-[#fda4af]">{roleLabel}</span>
+                    <span className="text-[#881337] dark:text-[#fda4af] font-semibold">{roleLabel}</span>
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -663,19 +688,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <button
                     type="button"
                     onClick={() => setEditProfileOpen(true)}
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/25 ring-2 ring-[#881337]/35 transition hover:ring-[#881337]/65"
+                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30 transition hover:ring-[#881337]/60"
                     title="Edit profile"
                   >
-                    <span className="text-xs font-bold text-[#fda4af]">{userInitials}</span>
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#151d2e] bg-emerald-400" />
+                    <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
+                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
                   </button>
 
                   {/* Name + role */}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold leading-tight text-slate-100">
+                    <p className="truncate text-[13px] font-semibold leading-tight text-slate-800 dark:text-slate-100">
                       {user.name || "Procurement User"}
                     </p>
-                    <p className="truncate text-[10px] leading-tight text-[#fda4af]">{roleLabel}</p>
+                    <p className="truncate text-[10px] leading-tight text-[#881337] dark:text-[#fda4af] font-medium">{roleLabel}</p>
                   </div>
 
                   {/* Logout */}
@@ -683,7 +708,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     type="button"
                     onClick={() => void handleLogout()}
                     aria-label="Sign out"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition hover:bg-rose-500/20 hover:text-rose-400"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400"
                     title="Sign out"
                   >
                     <LogOut className="h-3.5 w-3.5" />
@@ -694,9 +719,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        {/* ── Main content ──────────────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 overflow-x-hidden pt-14 lg:pt-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-7 print:p-0">
-          {children}
+        {/* ── Main content (proper padding & breathing room) ────────────────── */}
+        <main className="min-w-0 flex-1 overflow-x-hidden pt-20 md:pt-10 px-6 md:px-10 pb-12 print:p-0 transition-colors">
+          <div className="mx-auto w-full max-w-[1440px]">
+            {children}
+          </div>
         </main>
       </div>
 
@@ -724,7 +751,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div>
               <label className="font-semibold text-foreground">Workflow Role</label>
-              <p className="mt-1 font-semibold text-[#fda4af]">{roleLabel}</p>
+              <p className="mt-1 font-semibold text-[#881337] dark:text-[#fda4af]">{roleLabel}</p>
             </div>
             <div>
               <label htmlFor="user-office-select" className="font-semibold text-foreground">Assigned Office / Unit</label>
@@ -747,7 +774,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               size="sm"
               disabled={updateMyOfficeMutation.isPending}
               onClick={() => updateMyOfficeMutation.mutate({ officeName: selectedOfficeName })}
-              className="bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+              className="bg-[#881337] text-xs text-white hover:bg-[#70102b]"
             >
               {updateMyOfficeMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Save Office Assignment
@@ -759,60 +786,76 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-// ─── Mobile-only nav content ─────────────────────────────────────────────────
+// ─── Mobile-only nav content (with collapsible categories) ───────────────────
 function MobileNavContent({
-  grouped, getLabel, location, setLocation, setMenuOpen,
+  grouped, getLabel, location, setLocation, setMenuOpen, collapsedSections, toggleSection,
 }: {
   grouped: Record<string, typeof navigation>;
   getLabel: (item: (typeof navigation)[0]) => string;
   location: string;
   setLocation: (path: string) => void;
   setMenuOpen: (open: boolean) => void;
+  collapsedSections: Record<string, boolean>;
+  toggleSection: (cat: string) => void;
 }) {
   return (
     <>
-      {Object.entries(grouped).map(([cat, items]) => (
-        <div key={cat} className="mb-4">
-          <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            {CATEGORY_LABELS[cat] ?? cat}
-          </p>
-          <nav className="grid gap-0.5">
-            {items.map((item) => {
-              const label = getLabel(item);
-              const active = location === item.path;
-              return (
-                <button
-                  key={item.path}
-                  type="button"
-                  onClick={() => { setLocation(item.path); setMenuOpen(false); }}
-                  aria-current={active ? "page" : undefined}
-                  style={active ? { boxShadow: "0 0 16px rgba(136,19,55,0.38)" } : undefined}
-                  className={[
-                    "group relative flex w-full items-center gap-0 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-all",
-                    active
-                      ? "border border-[#881337]/50 bg-[#881337]/25 text-white font-semibold"
-                      : "border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-200",
-                  ].join(" ")}
-                >
-                  {active && (
-                    <span
-                      className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full"
-                      style={{ background: "linear-gradient(90deg, transparent, #e11d48, transparent)" }}
-                    />
-                  )}
-                  <span className={[
-                    "mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                    active ? "bg-[#881337]/35 text-[#fda4af]" : "bg-slate-800/80 text-slate-400 group-hover:bg-slate-700/80 group-hover:text-slate-200",
-                  ].join(" ")}>
-                    <item.icon className="h-[15px] w-[15px]" />
-                  </span>
-                  <span className="truncate leading-none">{label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      ))}
+      {Object.entries(grouped).map(([cat, items]) => {
+        const isSectionCollapsed = Boolean(collapsedSections[cat]);
+        return (
+          <div key={cat} className="mb-4">
+            <button
+              type="button"
+              onClick={() => toggleSection(cat)}
+              className="mb-1.5 flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            >
+              <span>{CATEGORY_LABELS[cat] ?? cat}</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
+                  isSectionCollapsed ? "-rotate-90" : "rotate-0"
+                }`}
+              />
+            </button>
+            {!isSectionCollapsed && (
+              <nav className="grid gap-0.5">
+                {items.map((item) => {
+                  const label = getLabel(item);
+                  const active = location === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      type="button"
+                      onClick={() => { setLocation(item.path); setMenuOpen(false); }}
+                      aria-current={active ? "page" : undefined}
+                      style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
+                      className={[
+                        "group relative flex w-full items-center gap-0 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-all",
+                        active
+                          ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
+                          : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
+                      ].join(" ")}
+                    >
+                      {active && (
+                        <span
+                          className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full before:bg-[#d5ab55]"
+                          style={{ background: "linear-gradient(90deg, transparent, #e11d48, transparent)" }}
+                        />
+                      )}
+                      <span className={[
+                        "mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        active ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]" : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
+                      ].join(" ")}>
+                        <item.icon className="h-[15px] w-[15px]" />
+                      </span>
+                      <span className="truncate leading-none">{label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -828,28 +871,27 @@ function MobileProfileFooter({
   onLogout: () => void;
 }) {
   return (
-    <div className="shrink-0 border-t border-white/10 p-3">
+    <div className="shrink-0 border-t border-slate-200 dark:border-slate-800/80 p-3 bg-slate-50/80 dark:bg-[#0c1322]">
       <div
-        className="flex items-center gap-2.5 rounded-xl border border-white/10 p-3"
-        style={{ background: "linear-gradient(145deg, #151d2e 0%, #0e1420 100%)" }}
+        className="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-[#121826] transition-colors"
       >
         <button
           type="button"
           onClick={onEditProfile}
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/25 ring-2 ring-[#881337]/35"
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30"
         >
-          <span className="text-xs font-bold text-[#fda4af]">{userInitials}</span>
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#151d2e] bg-emerald-400" />
+          <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-slate-100">{user.name || "Procurement User"}</p>
-          <p className="truncate text-[10px] text-[#fda4af]">{roleLabel}</p>
+          <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{user.name || "Procurement User"}</p>
+          <p className="truncate text-[10px] text-[#881337] dark:text-[#fda4af] font-medium">{roleLabel}</p>
         </div>
         <button
           type="button"
           onClick={onLogout}
           aria-label="Sign out"
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:bg-rose-500/20 hover:text-rose-400"
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400"
         >
           <LogOut className="h-3.5 w-3.5" />
         </button>
