@@ -479,15 +479,41 @@ html[data-appearance-theme="dark"] {
   nav,
   aside,
   button:not(.print-include),
-  [role="dialog"],
+  [role="dialog"]:not(:has(.evaluation-document-sheet)),
+  [data-radix-dialog-overlay],
   [role="tooltip"],
   [data-sonner-toaster],
   .toaster,
-  header:not(.print-bsc-header):not(.official-form-header):not(.print-include),
-  footer:not(.print-bsc-footer):not(.official-form-footer):not(.print-include),
+  header:not(.print-bsc-header):not(.official-form-header):not(.evaluation-header-container):not(.print-include),
+  footer:not(.print-bsc-footer):not(.official-form-footer):not(.evaluation-footer-container):not(.print-include),
   section[aria-labelledby="pr-system-controls"],
   #pr-system-controls {
     display: none !important;
+  }
+
+  /* Support printing from inside Supplier Evaluation Preview Modal */
+  div[data-radix-portal]:has(.evaluation-document-sheet) {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  div[data-radix-portal]:has(.evaluation-document-sheet) > [data-radix-dialog-overlay] {
+    display: none !important;
+  }
+
+  [role="dialog"]:has(.evaluation-document-sheet) {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
   }
 
   /* Official header and footer images (header.png and footer.png) pinned at top and bottom */
@@ -571,6 +597,59 @@ html[data-appearance-theme="dark"] {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     margin-top: 4mm !important;
+  }
+
+  /* Supplier Evaluation Form document sheet print rules */
+  .evaluation-document-sheet {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background-color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative !important;
+    page-break-after: avoid !important;
+  }
+
+  .evaluation-document-sheet.landscape {
+    width: 297mm !important;
+    max-width: 297mm !important;
+    min-height: 210mm !important;
+  }
+
+  .evaluation-header-container,
+  .evaluation-footer-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    background: transparent !important;
+    overflow: hidden !important;
+  }
+
+  .evaluation-header-container img,
+  .evaluation-footer-container img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .evaluation-content-area {
+    padding: 6mm 14mm !important;
+    flex: 1 1 auto !important;
+    overflow: visible !important;
   }
 }
 
