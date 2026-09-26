@@ -261,6 +261,15 @@ html[data-appearance-theme="dark"] {
     height: 0 !important;
     width: 0 !important;
   }
+
+  /* ── Sidebar navigation label typography ── */
+  .sidebar-nav-label {
+    font-size: 0.8125rem !important; /* ~13.5px */
+    line-height: 1.35 !important;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
 }
 
 /* ==========================================================================

@@ -606,8 +606,8 @@ function EndUserPersonalDashboard({
                       </td>
 
                       {/* Column 2: Purpose */}
-                      <td className="max-w-[280px] px-4 py-3 text-foreground">
-                        <p className="truncate font-medium" title={pr.purpose}>{pr.purpose}</p>
+                      <td className="max-w-[320px] px-4 py-3 text-foreground">
+                        <p className="line-clamp-2 break-words font-medium leading-snug" title={pr.purpose}>{pr.purpose}</p>
                       </td>
 
                       {/* Column 3: Status + inline feedback indicator */}
@@ -1095,7 +1095,7 @@ function AdminDashboard({
                 <div key={pr.id} className="flex items-center justify-between gap-3 py-4">
                   <div>
                     <p className="text-xs font-semibold text-[#3e4855] dark:text-[#f1f5f8]">{pr.prNumber}</p>
-                    <p className="mt-1 max-w-[480px] truncate text-[11px] text-[#77818d] dark:text-[#d1dae2]">
+                    <p className="mt-1 max-w-[600px] text-[11px] text-[#77818d] dark:text-[#d1dae2] line-clamp-2 break-words" title={pr.purpose}>
                       {pr.purpose}
                     </p>
                   </div>

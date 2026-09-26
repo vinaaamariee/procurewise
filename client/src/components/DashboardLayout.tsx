@@ -396,8 +396,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         aria-current={active ? "page" : undefined}
         style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
         className={[
-          "group relative flex w-full items-center gap-0 rounded-xl py-2 text-left text-[13px] font-medium transition-all duration-150",
-          isCollapsed ? "justify-center px-2" : "px-3",
+          "group relative flex w-full items-center rounded-xl py-2 text-left transition-all duration-150",
+          isCollapsed ? "justify-center px-2" : "px-3 gap-2.5",
           active
             ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
             : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
@@ -415,16 +415,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <span
           className={[
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-            isCollapsed ? "" : "mr-3",
+            isCollapsed ? "" : "mr-0",
             active
               ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]"
               : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
           ].join(" ")}
         >
-          <item.icon className="h-[15px] w-[15px]" />
+          <item.icon className="h-4 w-4" />
         </span>
 
-        {!isCollapsed && <span className="truncate leading-none">{label}</span>}
+        {!isCollapsed && (
+          <span className="sidebar-nav-label flex-1 min-w-0 text-left font-medium leading-snug break-words">
+            {label}
+          </span>
+        )}
       </button>
     );
 
@@ -492,7 +496,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1322] text-slate-800 dark:text-slate-200 pt-14 transition-transform duration-300 lg:hidden print:hidden",
           menuOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
-        style={{ width: 272 }}
+        style={{ width: 296 }}
       >
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
           {/* Search */}
@@ -533,7 +537,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className={[
             "sidebar-rail hidden lg:flex flex-col min-h-screen shrink-0 border-r transition-colors duration-200 print:hidden overflow-x-hidden",
             "bg-white dark:bg-[#0c1322] border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-200",
-            isCollapsed ? "w-[72px]" : "w-[272px]",
+            isCollapsed ? "w-[72px]" : "w-[292px]",
           ].join(" ")}
         >
           {/* ── Header ── */}
@@ -613,12 +617,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 type="button"
                 onClick={() => setLocation("/notifications")}
-                className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-600 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
+                className="mb-2 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400">
                   <LifeBuoy className="h-[15px] w-[15px]" />
                 </span>
-                <span>Help &amp; Support</span>
+                <span className="sidebar-nav-label flex-1 text-slate-600 dark:text-slate-400 font-medium">Help &amp; Support</span>
                 {unreadCount > 0 && (
                   <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#881337] px-1 text-[9px] font-bold text-white">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -832,7 +836,7 @@ function MobileNavContent({
                       aria-current={active ? "page" : undefined}
                       style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
                       className={[
-                        "group relative flex w-full items-center gap-0 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-all",
+                        "group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-all",
                         active
                           ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
                           : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
@@ -845,12 +849,12 @@ function MobileNavContent({
                         />
                       )}
                       <span className={[
-                        "mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
                         active ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]" : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
                       ].join(" ")}>
-                        <item.icon className="h-[15px] w-[15px]" />
+                        <item.icon className="h-4 w-4" />
                       </span>
-                      <span className="truncate leading-none">{label}</span>
+                      <span className="sidebar-nav-label flex-1 min-w-0 text-left font-medium leading-snug break-words">{label}</span>
                     </button>
                   );
                 })}
