@@ -193,7 +193,7 @@ function EndUserPersonalDashboard({
   }, [userPrs, activePrs, returnedPrs, successfulPrs, rejectedPrs, selectedCategory, searchQuery]);
 
   return (
-    <div className="mx-auto w-full max-w-[1360px] pb-12">
+    <div className="content-shell pb-12">
       {/* Page Header */}
       <PageHeader
         eyebrow="End-User Workspace"
@@ -260,7 +260,7 @@ function EndUserPersonalDashboard({
 
         {/* Dynamic Contextual Banner Rendering */}
         {activeBannerCategory === "returned" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4.5 shadow-sm dark:border-[#5a431c] dark:from-[#251b0f] dark:to-[#1a232c]">
+          <div className="relative rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4 shadow-sm dark:border-[#5a431c] dark:from-[#251b0f] dark:to-[#1a232c]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#faeed2] text-[#936418] dark:bg-[#3a2c16] dark:text-[#f4d081]">
@@ -271,8 +271,9 @@ function EndUserPersonalDashboard({
                     <span className="rounded bg-[#f9e7be] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#795010] dark:bg-[#493414] dark:text-[#ffd98e]">
                       ACTION REQUIRED
                     </span>
-                    <h3 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      📝 Minor adjustments needed: Your PR [{activeBannerPr.prNumber}] was returned for revision.
+                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                      <FileEdit className="h-4 w-4 shrink-0 text-[#9a6d19]" />
+                      Minor adjustments needed: Your PR [{activeBannerPr.prNumber}] was returned for revision.
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
@@ -321,8 +322,9 @@ function EndUserPersonalDashboard({
                     <span className="rounded bg-[#fedbdb] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8b1e1e] dark:bg-[#4d1f1f] dark:text-[#fca5a5]">
                       DISAPPROVED / CANCELLED
                     </span>
-                    <h3 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      ℹ️ Notice: Your PR [{activeBannerPr.prNumber}] could not proceed.
+                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                      <Info className="h-4 w-4 shrink-0 text-[#a52a2a]" />
+                      Notice: Your PR [{activeBannerPr.prNumber}] could not proceed.
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
@@ -371,8 +373,9 @@ function EndUserPersonalDashboard({
                     <span className="rounded bg-[#c8eed9] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#0e5c38] dark:bg-[#205335] dark:text-[#86efac]">
                       AWARDED &amp; COMPLETED
                     </span>
-                    <h3 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      🎉 Great news! Your Purchase Request [{activeBannerPr.prNumber}] has been successfully completed and approved!
+                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#136a43]" />
+                      Great news! Your Purchase Request [{activeBannerPr.prNumber}] has been successfully completed and approved!
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
@@ -511,8 +514,8 @@ function EndUserPersonalDashboard({
 
             {/* Filter Pills & Search Box */}
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center shrink-0">
-              {/* Category Filter Tabs */}
-              <div className="flex flex-wrap items-center gap-1 rounded-md border border-[#e5dfd5] bg-white p-0.5 text-xs shadow-xs dark:border-[#384554] dark:bg-[#1b2229]">
+              {/* Category Filter Tabs — suppress zero-count unselected pills */}
+              <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-card p-0.5 text-xs shadow-xs">
                 {(
                   [
                     { id: "all", label: "All", count: userPrs.length },
@@ -521,18 +524,18 @@ function EndUserPersonalDashboard({
                     { id: "successful", label: "Successful", count: successfulPrs.length },
                     { id: "rejected", label: "Rejected", count: rejectedPrs.length },
                   ] as const
-                ).map((tab) => (
+                ).filter((tab) => tab.id === "all" || tab.count > 0 || selectedCategory === tab.id).map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setSelectedCategory(tab.id)}
                     className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
                       selectedCategory === tab.id
-                        ? "bg-[#7b1e1e] text-white shadow-xs dark:bg-[#a32828]"
-                        : "text-[#5e6977] hover:text-[#202833] dark:text-[#aeb9c4] dark:hover:text-white"
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {tab.label} ({tab.count})
+                    {tab.label}{tab.count > 0 ? ` (${tab.count})` : ""}
                   </button>
                 ))}
               </div>
@@ -568,101 +571,91 @@ function EndUserPersonalDashboard({
           </div>
         ) : filteredPrs.length ? (
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-xs">
-              <thead className="border-b border-[#e5dcce] bg-[#f8f5ee] text-[11px] font-bold uppercase tracking-wider text-[#554433] dark:border-[#384554] dark:bg-[#202833] dark:text-[#d1dae2]">
+            <table className="w-full min-w-[560px] text-left text-xs">
+              <thead className="border-b border-border bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-5 py-3.5">PR Number</th>
+                  <th className="px-5 py-3.5">PR Number &amp; Date</th>
                   <th className="px-4 py-3.5">Purpose</th>
-                  <th className="px-4 py-3.5 text-right">Estimated ABC</th>
                   <th className="px-4 py-3.5">Status &amp; Stage</th>
-                  <th className="px-4 py-3.5">Reviewer Feedback / Remarks</th>
-                  <th className="px-4 py-3.5 text-right">Created</th>
+                  <th className="px-4 py-3.5 text-right">Date</th>
                   <th className="px-4 py-3.5 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ece8df] dark:divide-[#384554]">
+              <tbody className="divide-y divide-border">
                 {filteredPrs.map((pr) => {
                   const prStatusInfo = getEmployeePrStatus(pr.status);
                   const isReturned = pr.status === "returned";
                   const isRejected = pr.status === "rejected" || pr.status === "cancelled";
                   const isSuccessful = ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(pr.status);
+                  const hasFeedback = isReturned || isRejected;
 
                   return (
                     <tr
                       key={pr.id}
-                      className="hover:bg-[#fbfaf6] dark:hover:bg-[#232c35] transition-colors cursor-pointer"
+                      className="hover:bg-accent/40 transition-colors cursor-pointer"
                       onClick={() => setSelectedPrForModal(pr)}
                     >
-                      <td className="px-5 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">
-                        <div className="flex items-center gap-1.5">
-                          <span>{pr.prNumber}</span>
-                          {pr.trackingToken && (
-                            <span className="text-[10px] font-normal text-[#8d98a5] dark:text-[#aeb9c4]" title={`Token: ${pr.trackingToken}`}>
-                              • {pr.trackingToken.slice(0, 6)}…
+                      {/* Column 1: PR Number + creation date subtitle */}
+                      <td className="px-5 py-3">
+                        <p className="font-semibold text-primary">{pr.prNumber}</p>
+                        {pr.trackingToken && (
+                          <p className="mt-0.5 text-[10px] text-muted-foreground" title={`Token: ${pr.trackingToken}`}>
+                            {pr.trackingToken.slice(0, 8)}…
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Column 2: Purpose */}
+                      <td className="max-w-[280px] px-4 py-3 text-foreground">
+                        <p className="truncate font-medium" title={pr.purpose}>{pr.purpose}</p>
+                      </td>
+
+                      {/* Column 3: Status + inline feedback indicator */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge
+                            tone={
+                              isSuccessful ? "approved"
+                              : isReturned ? "pending"
+                              : isRejected ? "returned"
+                              : pr.status.includes("review") || ["rfq", "po"].includes(pr.status) ? "active"
+                              : "draft"
+                            }
+                          >
+                            {prStatusInfo.label.toUpperCase()}
+                          </StatusBadge>
+                          {/* Compact inline feedback indicator — clicking opens full modal */}
+                          {hasFeedback && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedPrForModal(pr); }}
+                              className={`inline-flex items-center gap-1 text-[10px] font-medium leading-4 ${
+                                isReturned ? "text-[#9a6d19] dark:text-[#f0c36a]" : "text-[#a52a2a] dark:text-[#fca5a5]"
+                              }`}
+                              title={isReturned ? (pr.latestReturnReason || "Returned for revision") : (pr.latestRejectionReason || "Disapproved")}
+                            >
+                              {isReturned ? <FileEdit className="h-3 w-3 shrink-0" /> : <Ban className="h-3 w-3 shrink-0" />}
+                              <span className="truncate max-w-[120px]">
+                                {isReturned
+                                  ? (pr.latestReturnReason?.slice(0, 30) || "Needs revision") + (pr.latestReturnReason && pr.latestReturnReason.length > 30 ? "…" : "")
+                                  : (pr.latestRejectionReason?.slice(0, 30) || "Disapproved") + (pr.latestRejectionReason && pr.latestRejectionReason.length > 30 ? "…" : "")}
+                              </span>
+                            </button>
+                          )}
+                          {isSuccessful && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#0f766e] dark:text-[#86efac]">
+                              <CheckCircle2 className="h-3 w-3 shrink-0" />Approved &amp; Awarded
                             </span>
                           )}
                         </div>
                       </td>
 
-                      <td className="max-w-[280px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">
-                        <p className="truncate font-medium" title={pr.purpose}>
-                          {pr.purpose}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-3 text-right font-mono font-medium text-[#29323f] dark:text-[#f1f5f8]">
-                        {formatMoney(pr.totalEstimate)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <StatusBadge
-                          tone={
-                            isSuccessful
-                              ? "approved"
-                              : isReturned
-                              ? "pending"
-                              : isRejected
-                              ? "returned"
-                              : pr.status.includes("review") || ["rfq", "po"].includes(pr.status)
-                              ? "active"
-                              : "draft"
-                          }
-                        >
-                          {prStatusInfo.label.toUpperCase()}
-                        </StatusBadge>
-                      </td>
-
-                      <td className="max-w-[240px] px-4 py-3 text-[11px]">
-                        {isReturned ? (
-                          <div className="flex items-start gap-1 text-[#9a6d19] dark:text-[#f0c36a]">
-                            <FileEdit className="mt-0.5 h-3 w-3 shrink-0" />
-                            <p className="truncate font-medium" title={pr.latestReturnReason || "Returned for revision"}>
-                              {pr.latestReturnReason || "Needs revision before resubmission"}
-                            </p>
-                          </div>
-                        ) : isRejected ? (
-                          <div className="flex items-start gap-1 text-[#a52a2a] dark:text-[#fca5a5]">
-                            <Ban className="mt-0.5 h-3 w-3 shrink-0" />
-                            <p className="truncate font-medium" title={pr.latestRejectionReason || "Disapproved by committee"}>
-                              {pr.latestRejectionReason || "Could not proceed"}
-                            </p>
-                          </div>
-                        ) : isSuccessful ? (
-                          <div className="flex items-start gap-1 text-[#0f766e] dark:text-[#86efac]">
-                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
-                            <p className="truncate font-medium">Approved &amp; Awarded</p>
-                          </div>
-                        ) : (
-                          <span className="text-[#88939f] dark:text-[#aeb9c4]">
-                            {prStatusInfo.meaning.slice(0, 38)}…
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 text-right text-[11px] text-[#74808c] dark:text-[#aeb9c4] whitespace-nowrap">
+                      {/* Column 4: Date */}
+                      <td className="px-4 py-3 text-right text-[11px] text-muted-foreground whitespace-nowrap">
                         {new Date(pr.createdAt).toLocaleDateString("en-PH")}
                       </td>
 
+                      {/* Column 5: Action */}
                       <td className="px-4 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="outline"
@@ -673,24 +666,15 @@ function EndUserPersonalDashboard({
                               ? "border-[#d8a834] bg-[#fffaf0] text-[#8a6520] hover:bg-[#faeed2] dark:border-[#635028] dark:bg-[#251d10] dark:text-[#f0c36a]"
                               : isRejected
                               ? "border-[#e28c8c] bg-[#fff5f5] text-[#932323] hover:bg-[#fedcdc] dark:border-[#6b2525] dark:bg-[#251212] dark:text-[#fca5a5]"
-                              : "border-[#d8d3ca] text-[#44505f] hover:bg-[#f6f4ee] dark:border-[#384554] dark:text-[#d1dae2]"
+                              : "border-border text-muted-foreground hover:bg-accent"
                           }`}
                         >
                           {isReturned ? (
-                            <>
-                              <FileEdit className="mr-1 h-3 w-3" />
-                              Revise
-                            </>
+                            <><FileEdit className="mr-1 h-3 w-3" />Revise</>
                           ) : isRejected ? (
-                            <>
-                              <Info className="mr-1 h-3 w-3" />
-                              Remarks
-                            </>
+                            <><Info className="mr-1 h-3 w-3" />Remarks</>
                           ) : (
-                            <>
-                              <Eye className="mr-1 h-3 w-3" />
-                              Details
-                            </>
+                            <><Eye className="mr-1 h-3 w-3" />Details</>
                           )}
                         </Button>
                       </td>
@@ -756,10 +740,10 @@ function EndUserPersonalDashboard({
             </DialogHeader>
 
             <div className="mt-4 space-y-4 text-xs">
-              {/* Key PR Metadata Summary */}
-              <div className="grid grid-cols-2 gap-2.5 rounded border border-[#ece8df] bg-[#fbf9f5] p-3 text-[11px] dark:border-[#384554] dark:bg-[#202833]">
+              {/* Key PR Metadata Summary — includes Estimated ABC (moved from table) */}
+              <div className="grid grid-cols-2 gap-2.5 rounded border border-border bg-muted/30 p-3 text-[11px]">
                 <div>
-                  <span className="text-[#88939f] dark:text-[#aeb9c4]">Current Stage:</span>
+                  <span className="text-muted-foreground">Current Stage:</span>
                   <div className="mt-0.5">
                     <StatusBadge
                       tone={
@@ -778,15 +762,15 @@ function EndUserPersonalDashboard({
                 </div>
 
                 <div>
-                  <span className="text-[#88939f] dark:text-[#aeb9c4]">Estimated ABC:</span>
-                  <p className="mt-0.5 font-mono font-bold text-sm text-[#202833] dark:text-[#f1f5f8]">
+                  <span className="text-muted-foreground">Estimated ABC:</span>
+                  <p className="mt-0.5 font-mono font-bold text-sm text-foreground">
                     {formatMoney(selectedPrForModal.totalEstimate)}
                   </p>
                 </div>
 
                 <div>
-                  <span className="text-[#88939f] dark:text-[#aeb9c4]">Date Created:</span>
-                  <p className="mt-0.5 font-medium text-[#3f4a57] dark:text-[#d1dae2]">
+                  <span className="text-muted-foreground">Date Created:</span>
+                  <p className="mt-0.5 font-medium text-foreground">
                     {new Date(selectedPrForModal.createdAt).toLocaleDateString("en-PH", {
                       year: "numeric",
                       month: "long",
@@ -796,8 +780,8 @@ function EndUserPersonalDashboard({
                 </div>
 
                 <div>
-                  <span className="text-[#88939f] dark:text-[#aeb9c4]">Tracking Token:</span>
-                  <p className="mt-0.5 font-mono font-medium text-[#7b1e1e] dark:text-[#ff837a]">
+                  <span className="text-muted-foreground">Tracking Token:</span>
+                  <p className="mt-0.5 font-mono font-medium text-primary">
                     {selectedPrForModal.trackingToken || "Pending"}
                   </p>
                 </div>
@@ -1066,7 +1050,7 @@ function AdminDashboard({
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[1360px] pb-12">
+    <div className="content-shell pb-12">
       <PageHeader
         eyebrow="Control center"
         title="Procurement overview"

@@ -71,7 +71,7 @@ export function PreCanvassPage() {
   const ownDraftPrs = dashboard.data?.purchaseRequests.filter((pr) => pr.status === "draft" || pr.status === "procurement_review") ?? [];
   const quotesFor = (preCanvassId: number) => getValidPreCanvassQuotes(dashboard.data?.preCanvassQuotes ?? [], preCanvassId);
   const supplierMap = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier]));
-  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="End-User preliminary package" title="Pre-Canvass & supplier quotes" description="Complete the pre-canvass and submit the PR, PPMP, and preliminary quotation document. Procurement Staff/BAC will validate the quotations and prepare the official Abstract of Quotations." action={isEndUser ? { label: "New Pre-Canvass", onClick: () => setMode(mode === "create" ? null : "create") } : undefined} />
+  return <div className="content-shell"><PageHeader eyebrow="End-User preliminary package" title="Pre-Canvass & supplier quotes" description="Complete the pre-canvass and submit the PR, PPMP, and preliminary quotation document. Procurement Staff/BAC will validate the quotations and prepare the official Abstract of Quotations." action={isEndUser ? { label: "New Pre-Canvass", onClick: () => setMode(mode === "create" ? null : "create") } : undefined} />
     <LiveUpdateBadge connectionState={realtime.connectionState} lastUpdatedAt={realtime.lastUpdatedAt} />
     {!dashboard.isLoading && !dashboard.data?.preCanvasses.length ? <PreCanvassPrerequisiteNotice eligiblePrCount={ownDraftPrs.length} supplierCount={setup.data?.suppliers.length ?? 0} tagCount={tagData.data?.tags.length ?? 0} /> : null}
     {mode === "create" && <OfficialAnnexDStructure />}

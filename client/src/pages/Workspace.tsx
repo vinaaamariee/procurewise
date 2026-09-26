@@ -91,7 +91,7 @@ export function PurchaseRequestsPage() {
     return purchaseRequests.data[0];
   }, [purchaseRequests.data, selectedPrId]);
 
-  return <div className="mx-auto max-w-[1240px]">
+  return <div className="content-shell">
     <PageHeader eyebrow="End-User package" title="PPMP-linked Purchase Requests" description="Create an itemized Purchase Request with a Linked PPMP entry, then prepare the three-file package: PR, PPMP, and preliminary quotations from the completed pre-canvass." action={{ label: "New Purchase Request", onClick: () => setIsCreating(!isCreating) }} />
     {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={createRequest.isPending} onCancel={() => setIsCreating(false)} onCreate={(input) => createRequest.mutate(input)} /> : (
       <div className="mt-7">
