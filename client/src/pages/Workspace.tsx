@@ -15,7 +15,7 @@ import { OfficeSelect } from "@/components/OfficeSelect";
 import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import { trpc } from "@/lib/trpc";
 import { countValidPreCanvassQuotes, hasRequiredSupplierQuotations, normalizeProcurementRole } from "../../../shared/procurementRules";
-import { CircleAlert, FileSearch, Info, LoaderCircle, Plus, Search, Send, Star, Trash2 } from "lucide-react";
+import { CheckCircle2, CircleAlert, FileSearch, Info, LoaderCircle, Plus, Search, Send, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -203,7 +203,25 @@ function PurchaseRequestTable({
           </Button>
         )}
       </>
-    )}{canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && <Button size="sm" variant="outline" onClick={() => setRejectingId(record.id)} className="h-7 border-[#d8a7a7] px-2.5 text-[10px] text-[#9c2525] dark:border-[#ff837a] dark:text-[#ff837a]">Reject</Button>}{record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">In progress</span>}</div>}</td></tr>;
+    )}
+    {canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && (
+      <>
+        <Button
+          size="sm"
+          onClick={() => onSubmit(record.id)}
+          disabled={submittingId === record.id}
+          className="h-7 rounded-[4px] bg-[#881337] px-2.5 text-[10px] font-medium text-white hover:bg-[#70102b] dark:bg-[#9f1239] dark:hover:bg-[#881337]"
+        >
+          {submittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <CheckCircle2 className="mr-1 h-3 w-3" />}
+          {record.status === "approval_review" ? "Accept Package" : "Approve & Forward"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setRejectingId(record.id)} className="h-7 border-[#d8a7a7] px-2.5 text-[10px] text-[#9c2525] dark:border-[#ff837a] dark:text-[#ff837a]">
+          Reject
+        </Button>
+      </>
+    )}
+    {record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">In progress</span>}
+  </div>}</td></tr>;
   })}</tbody></RecordTable>;
 }
 

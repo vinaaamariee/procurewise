@@ -175,8 +175,40 @@ export default function Access() {
                 {registration ? "Create your End-User account" : "Access your workspace"}
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {registration ? "Use your work email and a strong password. New profiles begin as End-Users; an administrator assigns elevated roles when authorised." : "Use the email and password registered for your ProcureWise account."}
+                {registration ? "Use your work email and a strong password. New profiles begin as End-Users; an administrator assigns elevated roles when authorised." : "Use the email and password registered for your ProcureWise account, or click a standardized demo role below."}
               </p>
+              {!registration && (
+                <div className="mt-4 rounded-lg border border-border/80 bg-muted/30 p-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Quick Demo Roles (Password: Password123!)</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[
+                      { role: "End-User", email: "enduser.demo@bsc.edu.ph" },
+                      { role: "PO", email: "officer.demo@bsc.edu.ph" },
+                      { role: "Staff", email: "staff.demo@bsc.edu.ph" },
+                      { role: "BAC", email: "bac.demo@bsc.edu.ph" },
+                      { role: "HoPE", email: "hope.demo@bsc.edu.ph" },
+                      { role: "Budget", email: "budget.demo@bsc.edu.ph" },
+                    ].map((d) => (
+                      <button
+                        key={d.email}
+                        type="button"
+                        onClick={() => {
+                          setEmail(d.email);
+                          setPassword("Password123!");
+                          setTouched({ email: true, password: true });
+                        }}
+                        className={`rounded-[4px] border px-2 py-1 text-[11px] font-medium transition ${
+                          email === d.email
+                            ? "border-[#881337] bg-[#881337]/15 text-[#881337] dark:border-[#fda4af] dark:text-[#fda4af]"
+                            : "border-border bg-card text-foreground hover:border-[#881337]/50"
+                        }`}
+                      >
+                        {d.role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-6 grid gap-4">
                 {registration && (
                   <div>

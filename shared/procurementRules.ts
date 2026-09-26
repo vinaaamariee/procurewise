@@ -18,13 +18,13 @@ export type PersistedUserRole = (typeof USER_ROLES)[number];
 
 export const OFFICIAL_ROLE_LABELS: Record<ProcurementRole, string> = {
   end_user: "End-User",
-  procurement_officer: "Procurement Office",
+  procurement_officer: "Procurement Officer",
   procurement_officer_i: "Procurement Officer I",
   procurement_officer_ii: "Procurement Officer II",
   procurement_staff: "Procurement Staff",
-  administrative_approver: "Administrative Approver (legacy)",
+  administrative_approver: "Administrative Approver",
   bac_secretariat: "BAC Secretariat",
-  bac: "BAC",
+  bac: "Bids and Awards Committee",
   hope: "HoPE",
   budget_officer: "Budget Officer",
   supplier_contractor: "Supplier/Contractor",
@@ -53,10 +53,11 @@ export function normalizeProcurementRole(role: PersistedUserRole): ProcurementRo
   return role;
 }
 
-export function getNextPrStatus(currentStatus: PrStatus, role: ProcurementRole): PrStatus | null {
-  if (currentStatus === "draft" && roleCanAct(role, ["end_user"])) return "procurement_review";
-  if (currentStatus === "procurement_review" && roleCanAct(role, ["procurement_officer"])) return "approval_review";
-  if (currentStatus === "approval_review" && roleCanAct(role, ["administrative_approver"])) return "approved";
+export function getNextPrStatus(currentStatus: PrStatus, role: PersistedUserRole): PrStatus | null {
+  const norm = normalizeProcurementRole(role);
+  if (currentStatus === "draft" && (roleCanAct(norm, ["end_user"]) || role === "end_user")) return "procurement_review";
+  if (currentStatus === "procurement_review" && (roleCanAct(norm, ["procurement_officer"]) || role === "procurement_staff")) return "approval_review";
+  if (currentStatus === "approval_review" && (roleCanAct(norm, ["administrative_approver"]) || role === "hope" || role === "bac")) return "approved";
   return null;
 }
 
