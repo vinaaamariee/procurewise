@@ -2,7 +2,7 @@ import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BadgeCheck, BarChart3, ClipboardList, FileCheck2, FileSearch, Landmark, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowRight, BadgeCheck, BarChart3, ClipboardList, FileCheck2, FileSearch, Landmark, Search, ShieldCheck, WalletCards } from "lucide-react";
 import { Link } from "wouter";
 
 const steps = [
@@ -42,7 +42,20 @@ export default function Landing() {
               </div>
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-[#202833] dark:text-[#f1f5f8] sm:text-5xl lg:text-6xl">Procurement with a clear line of accountability.</h1>
               <p className="mt-6 max-w-xl text-[15px] leading-7 text-[#5f6977] dark:text-[#aeb9c4]">ProcureWise helps Philippine government offices manage the full PR-to-PO lifecycle with disciplined workflow gates, budget visibility, supplier comparison, and traceable decisions.</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              {/* Citizen entry point: placed before staff actions so the public task is found first */}
+              <section aria-labelledby="citizen-tracking-title" className="mt-8 max-w-xl rounded-lg border-2 border-[#7b1e1e] bg-white p-5 sm:p-6 dark:border-[#eb766a] dark:bg-[#1b2229]">
+                <h2 id="citizen-tracking-title" className="text-xl font-bold text-[#202833] dark:text-[#f1f5f8]">Check your request status</h2>
+                <p className="mt-2 text-base leading-7 text-[#3d4754] dark:text-[#d5dde5]">See where your purchase request is right now. No account or sign-in needed — just the tracking code from your slip.</p>
+                <Link
+                  href="/track"
+                  className="mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-md bg-[#7b1e1e] px-6 text-lg font-bold text-white hover:bg-[#641818] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#7b1e1e] sm:w-auto dark:bg-[#9a2828] dark:hover:bg-[#852020] dark:focus-visible:outline-[#eb766a]"
+                >
+                  <Search className="h-5 w-5" aria-hidden="true" />
+                  Check my request
+                </Link>
+              </section>
+              <p className="mt-8 text-xs font-bold uppercase tracking-[0.14em] text-[#5f6977] dark:text-[#aeb9c4]">For procurement staff</p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-10 rounded-[4px] bg-[#7b1e1e] px-5 text-sm font-semibold text-white hover:bg-[#641818] dark:bg-[#8f2424] dark:hover:bg-[#741c1c]"><Link href="/access">Open procurement workspace <ArrowRight className="ml-2 h-4 w-4 text-white" /></Link></Button>
                 <Link href="#workflow" className="inline-flex h-10 items-center justify-center rounded-[4px] border border-[#d6d2c9] bg-white px-5 text-sm font-semibold text-[#3d4754] hover:bg-[#fbfaf7] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] dark:hover:bg-[#2d3844]">Explore the workflow</Link>
               </div>

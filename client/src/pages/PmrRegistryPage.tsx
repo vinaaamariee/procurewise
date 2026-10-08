@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -804,7 +805,17 @@ export function PmrRegistryPage() {
 
                 <div className="my-4 flex justify-center">
                   <div className="rounded-lg bg-white p-3 shadow-inner border border-slate-200">
-                    <QrCode className="h-28 w-28 text-slate-800" />
+                    {/* Always black-on-white (even in dark mode) so phone cameras can read it; marginSize keeps the quiet zone when printed. */}
+                    <QRCodeSVG
+                      value={`${window.location.origin}/track?token=${encodeURIComponent(trackingSlipPr.trackingToken)}`}
+                      size={128}
+                      level="M"
+                      marginSize={2}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      role="img"
+                      aria-label={`QR code: scan to check the progress of ${trackingSlipPr.prNumber}`}
+                    />
                   </div>
                 </div>
 

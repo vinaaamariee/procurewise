@@ -2862,7 +2862,9 @@ export async function getPublicPurchaseRequestTracking(trackingToken: string) {
   if (!purchaseRequest) throw new Error("Tracking record not found.");
   const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequest.id)).limit(1);
   const [purchaseOrder] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.purchaseRequestId, purchaseRequest.id)).limit(1);
-  const events = await db.select({ action: auditTrails.action, createdAt: auditTrails.createdAt }).from(auditTrails).where(eq(auditTrails.entityId, purchaseRequest.id)).orderBy(auditTrails.createdAt);
+  // Scope to purchase_request rows: entityId alone collides with suppliers, user profiles, etc. sharing the same numeric id.
+  // Keep the narrow column list — this endpoint is public and must not expose details/performedBy.
+  const events = await db.select({ action: auditTrails.action, createdAt: auditTrails.createdAt }).from(auditTrails).where(and(eq(auditTrails.entityType, "purchase_request"), eq(auditTrails.entityId, purchaseRequest.id))).orderBy(auditTrails.createdAt);
   return { purchaseRequest, preCanvass: preCanvass ? { status: preCanvass.status, updatedAt: preCanvass.updatedAt } : null, purchaseOrder: purchaseOrder ? { poNumber: purchaseOrder.poNumber, status: purchaseOrder.status, updatedAt: purchaseOrder.updatedAt } : null, events };
 }
 
