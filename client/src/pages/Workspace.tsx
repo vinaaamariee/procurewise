@@ -430,6 +430,7 @@ function PurchaseRequestForm({
   const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingPpmpFile, setIsDraggingPpmpFile] = useState(false);
 
   // Verified PPMP confirmed from Step 1
   const [verifiedPpmp, setVerifiedPpmp] = useState<{
@@ -455,9 +456,12 @@ function PurchaseRequestForm({
   const [officeId, setOfficeId] = useState("");
   const [objectId, setObjectId] = useState("");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePpmpFile = (file?: File) => {
     if (!file) return;
+    if (!/\.(pdf|xlsx|xls|docx|doc|png|jpe?g)$/i.test(file.name)) {
+      toast.error("Choose a PDF, Excel, Word, or image document for the Department PPMP.");
+      return;
+    }
     if (file.size > 14 * 1024 * 1024) {
       toast.error("File exceeds 14MB limit. Please upload a smaller document.");
       return;
@@ -479,6 +483,11 @@ function PurchaseRequestForm({
       toast.success(`Attached Department PPMP document: ${file.name}`);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handlePpmpFile(event.target.files?.[0]);
+    event.currentTarget.value = "";
   };
 
   const removeUploadedFile = () => {
@@ -823,6 +832,28 @@ function PurchaseRequestForm({
                   className="hidden"
                   id="ppmp-file-upload-input"
                 />
+                <div
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDraggingPpmpFile(true);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                    setIsDraggingPpmpFile(true);
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setIsDraggingPpmpFile(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingPpmpFile(false);
+                    handlePpmpFile(event.dataTransfer.files?.[0]);
+                  }}
+                  className={`rounded-lg transition-colors ${isDraggingPpmpFile ? "ring-2 ring-[#7b1e1e] ring-offset-2 dark:ring-[#ff837a] dark:ring-offset-[#1b2229]" : ""}`}
+                >
                 {uploadedFile ? (
                   <div className="flex items-center justify-between rounded-md border-2 border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40 p-3.5 text-xs text-emerald-900 dark:text-emerald-200">
                     <div className="flex items-center gap-2.5 truncate">
@@ -846,7 +877,7 @@ function PurchaseRequestForm({
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dedad2] dark:border-[#46515c] hover:border-[#7b1e1e] dark:hover:border-[#ff837a] bg-white dark:bg-[#232c35]/50 p-6 text-center cursor-pointer transition-colors"
+                    className={`group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dedad2] dark:border-[#46515c] hover:border-[#7b1e1e] dark:hover:border-[#ff837a] bg-white dark:bg-[#232c35]/50 p-6 text-center cursor-pointer transition-colors ${isDraggingPpmpFile ? "border-[#7b1e1e] bg-[#fffaf0] dark:border-[#ff837a] dark:bg-[#2a2020]" : ""}`}
                   >
                     <Upload className="h-8 w-8 text-[#9a6d19] group-hover:text-[#7b1e1e] dark:text-[#f0c36a] dark:group-hover:text-[#ff837a] transition-colors mb-2" />
                     <p className="text-xs sm:text-sm font-semibold text-[#34404e] dark:text-[#f1f5f8]">
@@ -857,6 +888,7 @@ function PurchaseRequestForm({
                     </p>
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Form Metadata */}
