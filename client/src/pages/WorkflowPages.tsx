@@ -26,8 +26,8 @@ const tone = (status: string) => status === "approved" || status === "pmr_logged
 
 function LiveUpdateBadge({ connectionState, lastUpdatedAt }: { connectionState: "connecting" | "live" | "unavailable"; lastUpdatedAt: string | null }) {
   const label = connectionState === "live" ? (lastUpdatedAt ? `Live update received ${new Date(lastUpdatedAt).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}` : "Live updates connected") : connectionState === "connecting" ? "Checking live updates…" : "Live updates unavailable — use Refresh after changes";
-  const className = connectionState === "live" ? "border-[#b7d8c4] bg-[#eff9f2] text-[#27633b]" : connectionState === "connecting" ? "border-[#e4d4ae] bg-[#fffaf0] text-[#72561d]" : "border-[#e5d5d5] bg-[#fff7f7] text-[#8a4242]";
-  return <div className={`mt-5 inline-flex items-center rounded-[4px] border px-2.5 py-1 text-[10px] font-semibold ${className}`} role="status">{connectionState === "live" ? "LIVE" : connectionState === "connecting" ? "CONNECTING" : "MANUAL"}<span className="mx-1.5 h-1 w-1 rounded-full bg-current" />{label}</div>;
+  const className = connectionState === "live" ? "border-[#b7d8c4] bg-[#eff9f2] text-[#27633b] dark:border-[#315b43] dark:bg-[#14271b] dark:text-[#9be0ad]" : connectionState === "connecting" ? "border-[#e4d4ae] bg-[#fffaf0] text-[#72561d] dark:border-[#635028] dark:bg-[#272118] dark:text-[#f0c36a]" : "border-[#e5d5d5] bg-[#fff7f7] text-[#8a4242] dark:border-[#633b3b] dark:bg-[#2a1b1b] dark:text-[#ffb4ad]";
+  return <div className={`mt-5 inline-flex items-center rounded-[4px] border px-2.5 py-1 text-xs leading-5 font-semibold ${className}`} role="status">{connectionState === "live" ? "LIVE" : connectionState === "connecting" ? "CONNECTING" : "MANUAL"}<span className="mx-1.5 h-1 w-1 rounded-full bg-current" />{label}</div>;
 }
 
 export function PreCanvassPage() {
@@ -149,10 +149,10 @@ function PreliminaryAoqUpload({
     <section className="mt-6 flat-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#34404e]">
+          <p className="text-base font-semibold text-[#34404e] dark:text-[#f1f5f8]">
             Pre-canvass attachment
           </p>
-          <p className="mt-1 max-w-3xl text-[11px] leading-5 text-[#77818d]">
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#586575] dark:text-[#c4ced8]">
             Upload the preliminary quotation worksheet or document showing
             your three supplier quotes. This attachment is required before
             submitting the complete package to Procurement.
@@ -165,7 +165,7 @@ function PreliminaryAoqUpload({
       {records.length ? (
         <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <div>
-          <Label className="text-[11px] font-semibold">
+          <Label className="text-xs font-semibold text-[#4c5664] dark:text-[#e2e8f0]">
             Pre-Canvass package
           </Label>
           <Select value={preCanvassId} onValueChange={setPreCanvassId}>
@@ -182,19 +182,22 @@ function PreliminaryAoqUpload({
             </SelectContent>
           </Select>
         </div>
-        <Field label="Preliminary quotation attachment (Excel or PDF)">
+        <div>
+          <Label className="text-xs font-semibold leading-5 text-[#4c5664] dark:text-[#e2e8f0]">
+            Preliminary quotation attachment (Excel or PDF)
+          </Label>
           <Input
             type="file"
             accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
             onChange={event => setFile(event.target.files?.[0] ?? null)}
-            className="h-9 cursor-pointer text-[11px]"
+            className="mt-1.5 h-10 cursor-pointer text-sm dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8] file:text-sm"
           />
-        </Field>
+        </div>
         <Button
           type="button"
           disabled={isSaving || attach.isPending || !preCanvassId || !file}
           onClick={() => void upload()}
-          className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]"
+          className="h-10 rounded-[4px] bg-[#7b1e1e] text-sm hover:bg-[#641818]"
         >
           {attach.isPending ? (
             <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -204,18 +207,18 @@ function PreliminaryAoqUpload({
         </div>
       ) : (
         <div className="mt-5 rounded border border-[#e4d4ae] bg-[#fffaf0] p-4 dark:border-[#635028] dark:bg-[#272118]">
-          <p className="text-xs font-semibold text-[#79551a] dark:text-[#f0c36a]">
+          <p className="text-sm font-semibold text-[#79551a] dark:text-[#f0c36a]">
             Create a request and pre-canvass package first
           </p>
-          <p className="mt-1 text-[11px] leading-5 text-[#75643e] dark:text-[#d1dae2]">
+          <p className="mt-1 text-sm leading-6 text-[#75643e] dark:text-[#d1dae2]">
             After creating your Purchase Request, open a pre-canvass package and record three supplier quotes. This is where you will attach the preliminary quotation document.
           </p>
-          <Button asChild variant="outline" className="mt-3 h-8 text-[11px]">
+          <Button asChild variant="outline" className="mt-3 h-9 text-sm dark:border-[#596675] dark:text-[#f1f5f8]">
             <Link href="/purchase-requests?create=1">Create Purchase Request</Link>
           </Button>
         </div>
       )}
-      <div className="mt-4 border-t border-[#ece8df] pt-3">
+      <div className="mt-4 border-t border-[#ece8df] pt-3 dark:border-[#46515c]">
         {records.map(record => {
           const attached = documents.filter(
             document =>
@@ -226,20 +229,20 @@ function PreliminaryAoqUpload({
           return (
             <div
               key={record.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-[11px]"
+              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm leading-6"
             >
-              <span className="font-medium text-[#4a5563]">
+              <span className="font-medium text-[#4a5563] dark:text-[#e2e8f0]">
                 {record.preCanvassNumber}
               </span>
               {attached.length ? (
-                <span className="text-[#27633b]">
+                <span className="text-[#27633b] dark:text-[#9be0ad]">
                   Uploaded:{" "}
                   {attached
                     .map(document => document.originalFileName)
                     .join(", ")}
                 </span>
               ) : (
-                <span className="text-[#9a6d19]">
+                <span className="text-[#8a6216] dark:text-[#f0c36a]">
                   No preliminary quotation attachment uploaded yet
                 </span>
               )}
