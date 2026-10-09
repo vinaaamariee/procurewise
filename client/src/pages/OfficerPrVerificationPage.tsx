@@ -461,8 +461,8 @@ export function OfficerPrVerificationPage() {
       {/* Review & Verification Modal */}
       {selectedVerificationItem && (
         <Dialog open={Boolean(selectedVerificationItem)} onOpenChange={(open) => !open && setSelectedVerificationItem(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-4 sm:max-w-[min(96vw,1280px)] sm:p-6">
+            <DialogHeader className="shrink-0">
               <div className="flex items-center gap-2">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#881337]/10 text-[#881337] dark:bg-[#881337]/20 dark:text-rose-300">
                   <FileCheck2 className="h-4 w-4" />
@@ -478,7 +478,7 @@ export function OfficerPrVerificationPage() {
               </div>
             </DialogHeader>
 
-            <div className="space-y-4 pt-2">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-2">
               {/* Package Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/40 text-xs">
                 <div>
@@ -564,8 +564,8 @@ export function OfficerPrVerificationPage() {
                   <span>Line Items & Commodity Category Analysis ({selectedVerificationItem.items.length} items)</span>
                   <span className="text-[10px] text-slate-500">Mandated 5 Categories: Office, Hardware, ICT, Printing, Food</span>
                 </div>
-                <div className="max-h-56 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px] text-left text-xs">
                     <thead className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 text-[11px] text-slate-500">
                       <tr>
                         <th className="px-3 py-2">Item Description & Spec</th>
@@ -647,7 +647,7 @@ export function OfficerPrVerificationPage() {
               </div>
             </div>
 
-            <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-slate-200 dark:border-slate-800 pt-3">
+            <DialogFooter className="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 type="button"
                 variant="outline"
