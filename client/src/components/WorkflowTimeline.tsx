@@ -11,30 +11,45 @@ export interface PrSummary {
 }
 
 const STAGES = [
-  { label: "Draft package", description: "PPMP & 3-quote Pre-Canvass", icon: Clock },
-  { label: "Procurement review", description: "Pre-canvass & budget verification", icon: Send },
-  { label: "Administrative approval", description: "Approver sign-off & decision", icon: ShieldCheck },
-  { label: "PO issued", description: "RFQ award & Purchase Order", icon: ShoppingCart },
-  { label: "Delivery & PMR", description: "Inspection & PMR record", icon: PackageCheck },
+  { label: "Prepare request", description: "Add items and required information", icon: Clock },
+  { label: "Office review", description: "Procurement checks your request", icon: Send },
+  { label: "Approval", description: "An approver reviews the request", icon: ShieldCheck },
+  { label: "Supplier selection", description: "Quotes are reviewed and purchase details are confirmed", icon: ShoppingCart },
+  { label: "Delivery", description: "Items arrive and final records are completed", icon: PackageCheck },
 ] as const;
 
 const STATUS_STAGE_MAP: Record<string, { stageIndex: number; percent: number; label: string }> = {
-  draft: { stageIndex: 0, percent: 15, label: "Draft package preparation" },
-  returned: { stageIndex: 0, percent: 10, label: "Returned for End-User correction" },
-  procurement_review: { stageIndex: 1, percent: 35, label: "Procurement review" },
-  approval_review: { stageIndex: 2, percent: 55, label: "Administrative approval review" },
-  budget_review: { stageIndex: 2, percent: 55, label: "Budget review" },
-  supply_review: { stageIndex: 2, percent: 55, label: "Supply review" },
-  bac_review: { stageIndex: 2, percent: 55, label: "BAC review" },
-  approved: { stageIndex: 2, percent: 65, label: "Approved — Endorsed for RFQ / PO" },
-  rfq: { stageIndex: 3, percent: 75, label: "RFQ canvass in progress" },
-  po: { stageIndex: 3, percent: 80, label: "Purchase Order in progress" },
-  po_issued: { stageIndex: 3, percent: 85, label: "Purchase Order issued" },
-  delivered: { stageIndex: 4, percent: 95, label: "Delivered — Pending PMR" },
-  pmr_logged: { stageIndex: 4, percent: 100, label: "PMR logged — Completed" },
-  closed: { stageIndex: 4, percent: 100, label: "Closed — Procurement complete" },
-  rejected: { stageIndex: 0, percent: 0, label: "Rejected" },
+  draft: { stageIndex: 0, percent: 15, label: "Finish preparing your request" },
+  returned: { stageIndex: 0, percent: 10, label: "Changes requested: update your request" },
+  procurement_review: { stageIndex: 1, percent: 35, label: "The Procurement Office is checking your request" },
+  approval_review: { stageIndex: 2, percent: 55, label: "Waiting for approval" },
+  budget_review: { stageIndex: 2, percent: 55, label: "The available budget is being checked" },
+  supply_review: { stageIndex: 2, percent: 55, label: "The Supply Office is checking your request" },
+  bac_review: { stageIndex: 2, percent: 55, label: "The review committee is checking your request" },
+  approved: { stageIndex: 2, percent: 65, label: "Approved: supplier selection is next" },
+  rfq: { stageIndex: 3, percent: 75, label: "Supplier quotes are being reviewed" },
+  po: { stageIndex: 3, percent: 80, label: "The purchase order is being prepared" },
+  po_issued: { stageIndex: 4, percent: 85, label: "Purchase order issued: delivery is next" },
+  delivered: { stageIndex: 4, percent: 95, label: "Delivered: final records are being completed" },
+  pmr_logged: { stageIndex: 4, percent: 100, label: "Request complete" },
+  closed: { stageIndex: 4, percent: 100, label: "Request complete" },
+  rejected: { stageIndex: 0, percent: 0, label: "Request not approved" },
+  cancelled: { stageIndex: 0, percent: 0, label: "Request cancelled" },
 };
+
+export function getWorkflowStageInfo(status: string) {
+  const stageInfo = STATUS_STAGE_MAP[status] ?? {
+    stageIndex: 0,
+    percent: 10,
+    label: status.replaceAll("_", " "),
+  };
+
+  return {
+    ...stageInfo,
+    stageCount: STAGES.length,
+    stageLabel: STAGES[stageInfo.stageIndex]?.label ?? STAGES[0].label,
+  };
+}
 
 export function WorkflowTimeline({
   status: propStatus,
@@ -48,9 +63,9 @@ export function WorkflowTimeline({
   onSelectPr?: (id: number) => void;
 }) {
   const currentStatus = pr?.status ?? propStatus ?? "draft";
-  const stageInfo = STATUS_STAGE_MAP[currentStatus] ?? { stageIndex: 0, percent: 10, label: currentStatus.replaceAll("_", " ") };
+  const stageInfo = getWorkflowStageInfo(currentStatus);
   const activeIndex = stageInfo.stageIndex;
-  const isRejected = currentStatus === "rejected";
+  const isStopped = currentStatus === "rejected" || currentStatus === "cancelled";
   const isCompleted = currentStatus === "closed" || currentStatus === "pmr_logged";
 
   return (
@@ -58,7 +73,7 @@ export function WorkflowTimeline({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#efebe4] dark:border-[#46515c] pb-3.5">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs font-bold text-[#34404e] dark:text-[#f1f5f8]">Purchase Request workflow</p>
+            <p className="text-xs font-bold text-[#34404e] dark:text-[#f1f5f8]">Your request progress</p>
             {pr && (
               <span className="inline-flex items-center rounded-full bg-[#f8f1e0] dark:bg-[#342817] px-2 py-0.5 text-[10px] font-semibold text-[#7b1e1e] dark:text-[#f0c36a]">
                 {pr.prNumber}
@@ -66,14 +81,14 @@ export function WorkflowTimeline({
             )}
           </div>
           <p className="mt-1 text-[11px] text-[#77818d] dark:text-[#a0acba]">
-            Current stage: <strong className="font-semibold text-[#34404e] dark:text-[#f1f5f8]">{stageInfo.label}</strong>
+            Current update: <strong className="font-semibold text-[#34404e] dark:text-[#f1f5f8]">{stageInfo.label}</strong>
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           {allPrs && allPrs.length > 1 && onSelectPr && (
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-[10px] text-muted-foreground hidden sm:inline">Inspect PR:</span>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">Choose a request:</span>
               <Select
                 value={String(pr?.id ?? allPrs[0].id)}
                 onValueChange={(val) => onSelectPr(Number(val))}
@@ -84,16 +99,13 @@ export function WorkflowTimeline({
                 <SelectContent>
                   {allPrs.map((item) => (
                     <SelectItem key={item.id} value={String(item.id)} className="text-xs">
-                      {item.prNumber} ({item.status.replaceAll("_", " ")})
+                      {item.prNumber} ({STATUS_STAGE_MAP[item.status]?.label ?? "Being updated"})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-          <span className="text-[10px] font-bold uppercase tracking-[0.12em] rounded bg-[#fff7e7] dark:bg-[#342817] px-2 py-1 text-[#9a6d19] dark:text-[#f0c36a]">
-            ROLE-GATED
-          </span>
         </div>
       </div>
 
@@ -101,15 +113,17 @@ export function WorkflowTimeline({
       <div className="mt-4">
         <div className="flex items-center justify-between text-[11px] mb-1.5">
           <span className="font-medium text-[#5a6573] dark:text-[#b4c0cd]">
-            Workflow Completion
+            Progress
           </span>
           <span className="font-bold text-[#7b1e1e] dark:text-[#ff837a]">
-            {isRejected ? "Rejected" : `${stageInfo.percent}%`}
+            {isStopped ? stageInfo.label : `Step ${activeIndex + 1} of ${STAGES.length}`}
           </span>
         </div>
         <Progress
           value={stageInfo.percent}
           className="h-2 bg-[#e8e2d7] dark:bg-[#343e4a]"
+          aria-label={`Request progress: ${stageInfo.label}`}
+          aria-valuetext={isStopped ? stageInfo.label : `Step ${activeIndex + 1} of ${STAGES.length}: ${stageInfo.label}`}
         />
       </div>
 
@@ -117,7 +131,7 @@ export function WorkflowTimeline({
       <ol className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-5">
         {STAGES.map((stage, index) => {
           const isDone = index < activeIndex || isCompleted;
-          const isCurrent = index === activeIndex && !isCompleted;
+          const isCurrent = index === activeIndex && !isCompleted && !isStopped;
           const Icon = stage.icon;
 
           return (
@@ -176,10 +190,10 @@ export function WorkflowTimeline({
         })}
       </ol>
 
-      {isRejected && (
+      {isStopped && (
         <div className="mt-4 flex items-center gap-2 rounded-[4px] border border-[#f3c2c2] bg-[#fff5f5] p-2.5 text-xs text-[#9c2525] dark:border-[#632a2a] dark:bg-[#281515] dark:text-[#ff837a]">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>This Purchase Request has been rejected and cannot advance further on this path.</span>
+          <span>{currentStatus === "cancelled" ? "This request was cancelled and will not move to another step." : "This request was not approved and will not move to another step."}</span>
         </div>
       )}
     </div>

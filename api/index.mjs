@@ -6567,7 +6567,7 @@ function getBearerToken(req) {
   return token || null;
 }
 function getAuthClient() {
-  const url = process.env.VITE_SUPABASE_URL;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) {
     console.warn("[Supabase Auth] Missing server Supabase configuration", {

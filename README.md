@@ -97,7 +97,8 @@ Create local configuration outside Git and configure the same values in your dep
 | `SUPABASE_DB_PASSWORD` | Drizzle migration configuration | **Secret** |
 | `VITE_SUPABASE_URL` | Supabase project URL used by the server to provide browser-safe Realtime configuration | Browser-safe |
 | `VITE_SUPABASE_ANON_KEY` | Browser-safe Supabase Realtime credential | Browser-safe |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Realtime broadcast publication | **Secret** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side Auth, Realtime, and private document storage | **Secret** |
+| `SUPABASE_STORAGE_BUCKET` | Optional private document bucket name; defaults to `procurewise-documents` | Non-secret |
 | `JWT_SECRET` | Server-side session signing | **Secret** |
 | OAuth variables | Authentication integration, if enabled | Treat client-secret values as **Secret** |
 
@@ -132,6 +133,7 @@ ProcureWise uses **Supabase Auth** for the browser session. The browser sends it
 | `VITE_SUPABASE_URL` | Vercel environment variables | Browser-visible project URL |
 | `VITE_SUPABASE_ANON_KEY` | Vercel environment variables | Browser-visible publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel environment variables | **Secret**; server verification and Realtime broadcasts |
+| `SUPABASE_STORAGE_BUCKET` | Vercel environment variables | Optional private document bucket; defaults to `procurewise-documents` |
 | `OWNER_OPEN_ID` | Vercel environment variables | **Secret**; retain only if owner migration behavior is needed |
 | `OWNER_NAME` | Vercel environment variables | Non-secret owner display value |
 

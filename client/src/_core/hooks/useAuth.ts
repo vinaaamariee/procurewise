@@ -25,9 +25,12 @@ export function useAuth(options?: UseAuthOptions) {
 
   useEffect(() => {
     let mounted = true;
-    void supabaseAuth.auth.getSession().finally(() => {
-      if (mounted) setSessionReady(true);
-    });
+    void supabaseAuth.auth
+      .getSession()
+      .catch(() => ({ data: { session: null }, error: null }))
+      .finally(() => {
+        if (mounted) setSessionReady(true);
+      });
     const { data } = supabaseAuth.auth.onAuthStateChange(() => {
       if (!mounted) return;
       setSessionReady(true);
@@ -35,7 +38,7 @@ export function useAuth(options?: UseAuthOptions) {
     });
     return () => {
       mounted = false;
-      data.subscription.unsubscribe();
+      data?.subscription?.unsubscribe();
     };
   }, [utils]);
 

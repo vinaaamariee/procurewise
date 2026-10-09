@@ -2,19 +2,48 @@
 // Uploads via Forge Server presigned URL to S3 (PUT direct).
 // Downloads return /manus-storage/{key} paths served via 307 redirect.
 
+import { createClient } from "@supabase/supabase-js";
 import { ENV } from "./_core/env";
 
-function getForgeConfig() {
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
+type StorageConfiguration =
+  | { provider: "forge"; forgeUrl: string; forgeKey: string }
+  | { provider: "supabase"; supabaseUrl: string; serviceRoleKey: string; bucket: string };
 
-  if (!forgeUrl || !forgeKey) {
-    throw new Error(
-      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY",
-    );
+export function resolveStorageConfiguration(env: Record<string, string | undefined>): StorageConfiguration {
+  const forgeUrl = env.BUILT_IN_FORGE_API_URL;
+  const forgeKey = env.BUILT_IN_FORGE_API_KEY;
+  if (forgeUrl && forgeKey) {
+    return { provider: "forge", forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
   }
 
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+  const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceRoleKey) {
+    return {
+      provider: "supabase",
+      supabaseUrl: supabaseUrl.replace(/\/+$/, ""),
+      serviceRoleKey,
+      bucket: env.SUPABASE_STORAGE_BUCKET || "procurewise-documents",
+    };
+  }
+
+  throw new Error(
+    "Document storage is not configured. Set Supabase URL and SUPABASE_SERVICE_ROLE_KEY, or configure both Forge storage variables.",
+  );
+}
+
+async function ensureSupabaseBucket(configuration: Extract<StorageConfiguration, { provider: "supabase" }>) {
+  const client = createClient(configuration.supabaseUrl, configuration.serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: lookupError } = await client.storage.getBucket(configuration.bucket);
+  if (!lookupError) return client;
+
+  const { error: createError } = await client.storage.createBucket(configuration.bucket, { public: false });
+  if (createError && !createError.message.toLowerCase().includes("already exists")) {
+    throw new Error(`Supabase storage bucket setup failed: ${createError.message}`);
+  }
+  return client;
 }
 
 function normalizeKey(relKey: string): string {
@@ -33,8 +62,21 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
+  const configuration = resolveStorageConfiguration(process.env);
   const key = appendHashSuffix(normalizeKey(relKey));
+
+  if (configuration.provider === "supabase") {
+    const client = await ensureSupabaseBucket(configuration);
+    const { error } = await client.storage.from(configuration.bucket).upload(key, Buffer.from(data), {
+      contentType,
+      upsert: false,
+    });
+    if (error) throw new Error(`Supabase storage upload failed: ${error.message}`);
+    const storedKey = `supabase/${key}`;
+    return { key: storedKey, url: `/manus-storage/${storedKey}` };
+  }
+
+  const { forgeUrl, forgeKey } = configuration;
 
   // 1. Get presigned PUT URL from Forge
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
@@ -77,8 +119,28 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
+
+  if (key.startsWith("supabase/")) {
+    const configuration = resolveStorageConfiguration(process.env);
+    if (configuration.provider !== "supabase") {
+      throw new Error("Supabase Storage credentials are required to retrieve this document.");
+    }
+    const client = await ensureSupabaseBucket(configuration);
+    const { data, error } = await client.storage
+      .from(configuration.bucket)
+      .createSignedUrl(key.slice("supabase/".length), 60);
+    if (error || !data?.signedUrl) {
+      throw new Error(`Supabase storage signed URL failed: ${error?.message ?? "No signed URL returned"}`);
+    }
+    return data.signedUrl;
+  }
+
+  const configuration = resolveStorageConfiguration(process.env);
+  if (configuration.provider !== "forge") {
+    throw new Error("Forge Storage credentials are required to retrieve this legacy document.");
+  }
+  const { forgeUrl, forgeKey } = configuration;
 
   const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
   getUrl.searchParams.set("path", key);

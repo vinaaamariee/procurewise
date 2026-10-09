@@ -170,6 +170,7 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
         { id: 2, preCanvassId: 601, supplierId: 11, totalPrice: "84200.00", deliveryDays: 5, isCompliant: 1 },
         { id: 3, preCanvassId: 601, supplierId: 12, totalPrice: "85000.00", deliveryDays: 10, isCompliant: 1 },
       ];
+      const attachment = { id: 1, entityType: "pre_canvass", entityId: 601, documentType: "Preliminary Abstract of Quotations" };
 
       const allotment = {
         officeId: 1,
@@ -179,7 +180,7 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
         committedAmount: "0.00",
       };
 
-      const fake = fakeDb([[pr], [preCanvass], quotes, [allotment]]);
+      const fake = fakeDb([[pr], [preCanvass], quotes, [attachment], [allotment]]);
 
       const result = await advancePurchaseRequest(
         { purchaseRequestId: 501, nextStatus: "procurement_review" },
