@@ -16,7 +16,7 @@ import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModa
 import { trpc } from "@/lib/trpc";
 import { formatFriendlyError } from "@/lib/formatError";
 import { countValidPreCanvassQuotes, detectMixedCategories, hasRequiredSupplierQuotations, normalizeProcurementRole, SECTION_5_1_1_CATEGORIES } from "../../../shared/procurementRules";
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Info, LoaderCircle, Plus, Search, Send, ShieldAlert, Star, Trash2, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, ChevronDown, ChevronUp, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Info, LoaderCircle, Plus, Search, Send, ShieldAlert, Star, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -639,6 +639,11 @@ function PurchaseRequestForm({
   const [mixedCategoryAcknowledged, setMixedCategoryAcknowledged] = useState(false);
 
   const updateItem = (index: number, field: keyof RequestItem, value: string) => setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  const adjustItemQuantity = (index: number, direction: -1 | 1) => {
+    const currentQuantity = Number(items[index]?.quantity) || 0;
+    const nextQuantity = Math.max(1, Math.round((currentQuantity + direction) * 100) / 100);
+    updateItem(index, "quantity", String(nextQuantity));
+  };
   const addItem = () => setItems((current) => [...current, { catalogItemId: "", stockPropertyNo: "", description: "", specification: "", quantity: "1", unit: "pc", estimatedUnitCost: "" }]);
 
   const submit = (event: React.FormEvent) => {
@@ -1035,7 +1040,7 @@ function PurchaseRequestForm({
         /* ─────────────────────────────────────────────────────────────────── */
         /* STEP 2: PURCHASE REQUEST FORMULATION & APPENDIX 60 CANVAS          */
         /* ─────────────────────────────────────────────────────────────────── */
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] print:block print:m-0 print:p-0">
+        <div className="space-y-6 print:block print:m-0 print:p-0">
           <form onSubmit={submit} className="min-w-0 space-y-6 print:m-0 print:p-0">
             {/* Active Verified PPMP Card at top of Step 2 */}
             <div className="rounded-lg border-2 border-emerald-400 bg-emerald-50/80 dark:border-emerald-800 dark:bg-emerald-950/40 p-4 shadow-sm print:hidden no-print">
@@ -1427,8 +1432,7 @@ function PurchaseRequestForm({
                   <option value="bundle">bundle</option>
                 </datalist>
 
-                <div className="overflow-x-auto">
-                  <RecordTable className="mt-4 min-w-[920px]">
+                <RecordTable className="mt-4">
                     <RecordTableHeader>
                       <tr>
                         <th className="px-3 py-3 font-semibold">Catalog item</th>
@@ -1451,7 +1455,7 @@ function PurchaseRequestForm({
 
                         return (
                           <tr key={index}>
-                            <td className="min-w-64 p-2">
+                            <td className="min-w-56 p-1.5">
                               <Select
                                 value={item.catalogItemId || "manual-item"}
                                 onValueChange={(value) => {
@@ -1474,7 +1478,7 @@ function PurchaseRequestForm({
                                   );
                                 }}
                               >
-                                <SelectTrigger className="h-8 min-w-64 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-[10px]">
+                                <SelectTrigger className="h-8 min-w-0 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-[10px]">
                                   <SelectValue placeholder="Manual item or select catalog" />
                                 </SelectTrigger>
                                 <SelectContent className="dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]">
@@ -1488,7 +1492,7 @@ function PurchaseRequestForm({
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1501,15 +1505,15 @@ function PurchaseRequestForm({
                                 <Star className={selectedCatalogItem && favoriteIds.has(selectedCatalogItem.id) ? "h-3.5 w-3.5 fill-current" : "h-3.5 w-3.5"} />
                               </Button>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.stockPropertyNo}
                                 onChange={(event) => updateItem(index, "stockPropertyNo", event.target.value)}
                                 placeholder="Optional"
-                                className="h-8 w-28 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
+                                className="h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
                               />
                             </td>
-                            <td className="min-w-56 p-2">
+                            <td className="min-w-48 p-1.5">
                               <Input
                                 value={item.description}
                                 onChange={(event) => updateItem(index, "description", event.target.value)}
@@ -1519,31 +1523,51 @@ function PurchaseRequestForm({
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
-                              <Input
-                                value={item.quantity}
-                                onChange={(event) => updateItem(index, "quantity", event.target.value)}
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="1"
-                                className={`h-8 w-20 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
-                                  isQtyInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
-                                }`}
-                              />
+                            <td className="p-1.5">
+                              <div className="relative w-16">
+                                <Input
+                                  value={item.quantity}
+                                  onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                                  type="number"
+                                  min="0.01"
+                                  step="any"
+                                  placeholder="1"
+                                  className={`h-8 w-16 pr-6 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                    isQtyInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
+                                  }`}
+                                />
+                                <div className="absolute inset-y-0 right-0 flex flex-col border-l border-[#e1ddd5] dark:border-[#46515c]">
+                                  <button
+                                    type="button"
+                                    aria-label={`Increase quantity for item ${index + 1}`}
+                                    onClick={() => adjustItemQuantity(index, 1)}
+                                    className="flex h-4 w-5 items-center justify-center text-[#66717e] hover:bg-[#f2eee6] dark:text-[#c4ced8] dark:hover:bg-[#303b46]"
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label={`Decrease quantity for item ${index + 1}`}
+                                    onClick={() => adjustItemQuantity(index, -1)}
+                                    className="flex h-4 w-5 items-center justify-center text-[#66717e] hover:bg-[#f2eee6] dark:text-[#c4ced8] dark:hover:bg-[#303b46]"
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.unit}
                                 list="pr-unit-suggestions"
                                 onChange={(event) => updateItem(index, "unit", event.target.value)}
                                 placeholder="e.g. pc, box"
-                                className={`h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                className={`h-8 w-20 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
                                   isUnitInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.estimatedUnitCost}
                                 onChange={(event) => updateItem(index, "estimatedUnitCost", event.target.value)}
@@ -1551,12 +1575,12 @@ function PurchaseRequestForm({
                                 min="0.01"
                                 step="0.01"
                                 placeholder="0.00"
-                                className={`h-8 w-28 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                className={`h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
                                   isCostInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1573,7 +1597,6 @@ function PurchaseRequestForm({
                       })}
                     </tbody>
                   </RecordTable>
-                </div>
 
                 <div className="mt-3 flex justify-end text-xs font-semibold text-[#4b5563] dark:text-[#d1dae2]">
                   Estimated total: <span className="ml-2 text-[#7b1e1e] dark:text-[#ff837a]">₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
