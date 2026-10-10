@@ -69,6 +69,7 @@ export function IntegratedPreCanvassModal({
   const [isCompliant, setIsCompliant] = useState<string>("yes");
   const [quotationReference, setQuotationReference] = useState<string>("");
   const [supplierRepresentative, setSupplierRepresentative] = useState<string>("");
+  const [preliminaryAoqFile, setPreliminaryAoqFile] = useState<File | null>(null);
 
   const suppliers = setup.data?.suppliers ?? [];
   const filteredSuppliers = filterSuppliersByTag(
@@ -112,6 +113,14 @@ export function IntegratedPreCanvassModal({
     },
     onError: (err) => toast.error(err.message),
   });
+  const attachDocumentMutation = trpc.procurement.documents.attach.useMutation({
+    onSuccess: () => {
+      toast.success("Pre-canvass attachment uploaded. The package is ready to forward.");
+      setPreliminaryAoqFile(null);
+      void utils.procurement.dashboard.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   // Handle initialization of Pre-Canvass
   const handleInitializeCanvass = () => {
@@ -151,14 +160,55 @@ export function IntegratedPreCanvassModal({
 
   // Handle Forward Package to Procurement
   const handleForwardToProcurement = () => {
+    if (!hasPreliminaryAoq) {
+      toast.error("Upload the preliminary quotation attachment before forwarding.");
+      return;
+    }
     submitPackageMutation.mutate({
       purchaseRequestId: purchaseRequest.id,
     });
   };
 
+  const handleUploadPreliminaryAoq = async () => {
+    if (!existingPreCanvass || !preliminaryAoqFile) {
+      toast.error("Choose the preliminary quotation attachment first.");
+      return;
+    }
+    if (preliminaryAoqFile.size > 10 * 1024 * 1024) {
+      toast.error("The pre-canvass attachment must be 10 MB or smaller.");
+      return;
+    }
+    const dataBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("The selected attachment could not be read."));
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        resolve(result.includes(",") ? result.split(",")[1] || "" : result);
+      };
+      reader.readAsDataURL(preliminaryAoqFile);
+    });
+    attachDocumentMutation.mutate({
+      entityType: "pre_canvass",
+      entityId: existingPreCanvass.id,
+      documentType: "Preliminary Abstract of Quotations",
+      originalFileName: preliminaryAoqFile.name,
+      mimeType: preliminaryAoqFile.type || "application/octet-stream",
+      dataBase64,
+    });
+  };
+
   const quotesCount = existingQuotes.length;
   const isReadyToForward = hasRequiredSupplierQuotations(quotesCount);
-  const modalProgress = !existingPreCanvass ? 15 : quotesCount === 0 ? 35 : quotesCount === 1 ? 55 : quotesCount === 2 ? 75 : 100;
+  const preliminaryAoqDocument = existingPreCanvass
+    ? dashboard.data?.documents.find((document) =>
+        document.entityType === "pre_canvass" &&
+        document.entityId === existingPreCanvass.id &&
+        document.documentType === "Preliminary Abstract of Quotations"
+      )
+    : undefined;
+  const hasPreliminaryAoq = Boolean(preliminaryAoqDocument);
+  const canForward = isReadyToForward && hasPreliminaryAoq;
+  const modalProgress = !existingPreCanvass ? 15 : quotesCount === 0 ? 35 : quotesCount === 1 ? 50 : quotesCount === 2 ? 65 : hasPreliminaryAoq ? 100 : 85;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -214,20 +264,20 @@ export function IntegratedPreCanvassModal({
             <span>2. 3 Supplier Quotes ({quotesCount}/3)</span>
           </div>
           <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground" />
-          <div className={`shrink-0 flex items-center gap-1.5 ${isReadyToForward ? "text-[#7b1e1e] font-bold" : "text-muted-foreground"}`}>
+          <div className={`shrink-0 flex items-center gap-1.5 ${canForward ? "text-[#27633b] font-semibold" : isReadyToForward ? "text-[#7b1e1e] font-bold" : "text-muted-foreground"}`}>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#f5f3ee] dark:bg-[#232c35]">
-              3
+              {canForward ? "✓" : "3"}
             </span>
-            <span>3. Forward Package</span>
+            <span>3. Attach &amp; forward</span>
           </div>
         </div>
 
         {/* Step Progress Bar */}
         <div className="mt-2.5 space-y-1">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Canvass Requirement Progress</span>
+            <span>Quotes and attachment progress</span>
             <span className="font-semibold text-foreground">
-              {isReadyToForward ? `Complete (${quotesCount}/3 Quotes Recorded)` : `${quotesCount}/3 Quotes Recorded`}
+              {canForward ? "Ready to submit" : isReadyToForward ? "Attachment required" : `${quotesCount}/3 quotes recorded`}
             </span>
           </div>
           <Progress value={modalProgress} className="h-1.5" />
@@ -476,18 +526,58 @@ export function IntegratedPreCanvassModal({
               </form>
             )}
 
-            {/* Step 3: Forward Package action once required quotes exist */}
+            {/* Step 3: Attach the preliminary quotation document and forward */}
             {isReadyToForward && (
               <div className="rounded-[4px] border border-[#b7d8c4] bg-[#eff9f2] p-4 text-xs dark:border-[#27633b] dark:bg-[#14291a]">
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-5 w-5 text-[#27633b] shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-bold text-[#1f4e2f] dark:text-[#a3e3b7]">
-                      Pre-Canvass Complete! ({quotesCount}/3 Quotes Recorded)
+                      {canForward ? "Pre-Canvass complete" : `All ${quotesCount} supplier quotes recorded`}
                     </p>
                     <p className="mt-1 leading-5 text-[#2e5d3c] dark:text-[#c4ecd2]">
-                      Your {quotesCount}-supplier quote package meets government procurement requirements. You can now forward this complete package directly to the Procurement Officer for review and official Abstract preparation.
+                      {canForward
+                        ? "Your quotes and preliminary attachment are ready. Forward the complete package to Procurement for review."
+                        : "Upload the preliminary quotation worksheet or document showing your three supplier quotes before forwarding this package."}
                     </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[4px] border border-[#d5c89f] bg-white p-3 dark:border-[#635028] dark:bg-[#1b2229]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label htmlFor="integrated-preliminary-aoq" className="text-xs font-semibold">
+                      Preliminary quotation attachment <span className="text-rose-600">Required</span>
+                    </Label>
+                    {hasPreliminaryAoq && (
+                      <StatusBadge tone="approved">ATTACHED</StatusBadge>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Upload the Excel or PDF worksheet that documents your three supplier quotes. Maximum size: 10 MB.
+                  </p>
+                  {preliminaryAoqDocument && (
+                    <p className="mt-2 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                      Attached: {preliminaryAoqDocument.originalFileName}
+                    </p>
+                  )}
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      id="integrated-preliminary-aoq"
+                      type="file"
+                      accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
+                      onChange={(event) => setPreliminaryAoqFile(event.target.files?.[0] ?? null)}
+                      className="h-9 min-w-0 text-[11px]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!existingPreCanvass || !preliminaryAoqFile || attachDocumentMutation.isPending}
+                      onClick={() => void handleUploadPreliminaryAoq()}
+                      className="h-9 shrink-0 text-[11px]"
+                    >
+                      {attachDocumentMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                      Upload attachment
+                    </Button>
                   </div>
                 </div>
 
@@ -504,7 +594,7 @@ export function IntegratedPreCanvassModal({
                   <Button
                     type="button"
                     size="sm"
-                    disabled={submitPackageMutation.isPending}
+                    disabled={submitPackageMutation.isPending || !canForward}
                     onClick={handleForwardToProcurement}
                     className="h-8 rounded-[4px] bg-[#27633b] text-xs text-white hover:bg-[#1f4e2f]"
                   >

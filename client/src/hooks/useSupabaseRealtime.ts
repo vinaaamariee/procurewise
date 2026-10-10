@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
-export type ProcurementRealtimeRecordType = "pre_canvass" | "abstract_of_canvass";
+export type ProcurementRealtimeRecordType = "pre_canvass" | "abstract_of_canvass" | "purchase_request";
 export type RealtimeConnectionState = "connecting" | "live" | "unavailable";
 
 type RealtimeSignal = { recordType?: ProcurementRealtimeRecordType; occurredAt?: string };

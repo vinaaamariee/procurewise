@@ -16,7 +16,7 @@ import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModa
 import { trpc } from "@/lib/trpc";
 import { formatFriendlyError } from "@/lib/formatError";
 import { countValidPreCanvassQuotes, detectMixedCategories, hasRequiredSupplierQuotations, normalizeProcurementRole, SECTION_5_1_1_CATEGORIES } from "../../../shared/procurementRules";
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Info, LoaderCircle, Plus, Search, Send, ShieldAlert, Star, Trash2, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, ChevronDown, ChevronUp, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Info, LoaderCircle, Plus, Search, Send, ShieldAlert, Star, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -110,7 +110,8 @@ export function PurchaseRequestsPage() {
   const handleCreatePurchaseRequest = async (
     input: Parameters<typeof createRequest.mutateAsync>[0],
     uploadedPpmpFile?: { name: string; type: string; size: number; base64: string } | null,
-    newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null
+    newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null,
+    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null
   ) => {
     setIsSubmittingPackage(true);
     try {
@@ -163,6 +164,23 @@ export function PurchaseRequestsPage() {
         } catch (attachErr: any) {
           console.warn("PPMP attachment notice:", attachErr);
           toast.warning("PR created, but file attachment had an issue: " + (attachErr.message || "Upload issue"));
+        }
+      }
+
+      if (marketScopingFile) {
+        try {
+          await attachDocumentMutation.mutateAsync({
+            entityType: "purchase_request",
+            entityId: created.id,
+            documentType: "Market Scoping",
+            originalFileName: marketScopingFile.name,
+            mimeType: marketScopingFile.type || "application/octet-stream",
+            dataBase64: marketScopingFile.base64,
+          });
+          toast.success("Market Scoping document attached to your request.");
+        } catch (attachErr: any) {
+          console.warn("Market Scoping attachment notice:", attachErr);
+          toast.warning("Purchase Request created, but the Market Scoping file could not be attached: " + (attachErr.message || "Upload issue"));
         }
       }
     } catch (err: any) {
@@ -390,7 +408,8 @@ function PurchaseRequestForm({
       }>;
     },
     uploadedPpmpFile?: { name: string; type: string; size: number; base64: string } | null,
-    newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null
+    newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null,
+    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null
   ) => void;
 }) {
   const utils = trpc.useUtils();
@@ -409,7 +428,9 @@ function PurchaseRequestForm({
   const [customPpmpMode, setCustomPpmpMode] = useState("Small Value Procurement");
   const [customFundSource, setCustomFundSource] = useState("General Appropriations Act");
   const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
+  const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingPpmpFile, setIsDraggingPpmpFile] = useState(false);
 
   // Verified PPMP confirmed from Step 1
   const [verifiedPpmp, setVerifiedPpmp] = useState<{
@@ -435,9 +456,12 @@ function PurchaseRequestForm({
   const [officeId, setOfficeId] = useState("");
   const [objectId, setObjectId] = useState("");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePpmpFile = (file?: File) => {
     if (!file) return;
+    if (!/\.(pdf|xlsx|xls|docx|doc|png|jpe?g)$/i.test(file.name)) {
+      toast.error("Choose a PDF, Excel, Word, or image document for the Department PPMP.");
+      return;
+    }
     if (file.size > 14 * 1024 * 1024) {
       toast.error("File exceeds 14MB limit. Please upload a smaller document.");
       return;
@@ -461,11 +485,39 @@ function PurchaseRequestForm({
     reader.readAsDataURL(file);
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handlePpmpFile(event.target.files?.[0]);
+    event.currentTarget.value = "";
+  };
+
   const removeUploadedFile = () => {
     setUploadedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const handleMarketScopingFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Market Scoping file exceeds the 10 MB limit.");
+      event.target.value = "";
+      setMarketScopingFile(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => toast.error("The Market Scoping file could not be read.");
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      setMarketScopingFile({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        base64: result.includes(",") ? result.split(",")[1] : result,
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   // Step 1: Confirmation handler
@@ -587,6 +639,11 @@ function PurchaseRequestForm({
   const [mixedCategoryAcknowledged, setMixedCategoryAcknowledged] = useState(false);
 
   const updateItem = (index: number, field: keyof RequestItem, value: string) => setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  const adjustItemQuantity = (index: number, direction: -1 | 1) => {
+    const currentQuantity = Number(items[index]?.quantity) || 0;
+    const nextQuantity = Math.max(1, Math.round((currentQuantity + direction) * 100) / 100);
+    updateItem(index, "quantity", String(nextQuantity));
+  };
   const addItem = () => setItems((current) => [...current, { catalogItemId: "", stockPropertyNo: "", description: "", specification: "", quantity: "1", unit: "pc", estimatedUnitCost: "" }]);
 
   const submit = (event: React.FormEvent) => {
@@ -608,6 +665,9 @@ function PurchaseRequestForm({
     if (!verifiedPpmp) {
       setCurrentStep("ppmp");
       return toast.error("A verified PPMP is required before creating a Purchase Request.");
+    }
+    if (!marketScopingFile) {
+      return toast.error("Attach your Market Scoping document before saving the Purchase Request.");
     }
     if (!items.length) {
       return toast.error("Please add at least one line item.");
@@ -671,66 +731,49 @@ function PurchaseRequestForm({
             title: verifiedPpmp.title,
             fiscalYear: verifiedPpmp.fiscalYear,
             plannedAmount: verifiedPpmp.plannedAmount > 0 ? verifiedPpmp.plannedAmount : (total > 0 ? total : undefined),
-          }
+          },
+      marketScopingFile
     );
   };
 
+  const preparationSteps = [
+    {
+      label: "PP + PPMP",
+      description: "Select or upload your department plan.",
+      complete: Boolean(verifiedPpmp) && currentStep !== "ppmp",
+      current: currentStep === "ppmp",
+    },
+    {
+      label: "Market Scoping",
+      description: "Attach your market research or price comparison.",
+      complete: Boolean(marketScopingFile),
+      current: currentStep === "pr" && !marketScopingFile,
+    },
+    {
+      label: "Purchase Request",
+      description: "Enter the items, quantities, and estimated costs.",
+      complete: false,
+      current: currentStep === "pr" && Boolean(marketScopingFile),
+    },
+    {
+      label: "Three supplier quotes",
+      description: "Record the required supplier quotations.",
+      complete: false,
+      current: false,
+    },
+    {
+      label: "Attach & submit",
+      description: "Upload the preliminary quotation document.",
+      complete: false,
+      current: false,
+    },
+  ];
+  const currentProgressIndex = Math.max(0, preparationSteps.findIndex((step) => step.current));
+  const currentProgressNumber = currentProgressIndex + 1;
+  const currentProgressStep = preparationSteps[currentProgressIndex];
+
   return (
     <div className="mt-7 space-y-6">
-      {/* Visual Multi-Step Wizard Indicator */}
-      <div className="rounded-lg border border-[#e4d4ae] bg-[#fffdf5] dark:border-[#524424] dark:bg-[#1f1b14] p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#ebdcb8] dark:border-[#483c22] pb-3">
-          <div>
-            <span className="inline-block rounded bg-[#7b1e1e] text-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mb-1">
-              End-User Requisition Lifecycle
-            </span>
-            <h3 className="text-sm sm:text-base font-bold text-[#34404e] dark:text-[#f1f5f8] flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-[#7b1e1e] dark:text-[#ff837a]" />
-              {currentStep === "ppmp" ? "Step 1: Department PPMP Prerequisite Gate" : "Step 2: Appendix 60 Purchase Request Formulation"}
-            </h3>
-            <p className="text-xs text-[#75643e] dark:text-[#c4cfd9] mt-0.5">
-              Under RA 12009 (NGPA) & Institutional Procedure 5, all procurement must originate from an approved Project Procurement Management Plan (PPMP).
-            </p>
-          </div>
-
-          {/* Stepper Pills */}
-          <div className="flex items-center gap-1.5 text-xs font-semibold shrink-0">
-            <button
-              type="button"
-              onClick={() => setCurrentStep("ppmp")}
-              className={`flex items-center gap-1 rounded-full px-3 py-1 transition-colors ${
-                currentStep === "ppmp"
-                  ? "bg-[#7b1e1e] text-white shadow-sm"
-                  : verifiedPpmp
-                  ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                  : "bg-[#eee9df] text-[#606a77] dark:bg-[#2b3540] dark:text-[#aeb9c4]"
-              }`}
-            >
-              <span>{verifiedPpmp ? "✓" : "1"}</span>
-              <span>PPMP Prerequisite</span>
-            </button>
-            <span className="text-[#a59a85]">→</span>
-            <button
-              type="button"
-              disabled={!verifiedPpmp}
-              onClick={() => verifiedPpmp && setCurrentStep("pr")}
-              className={`flex items-center gap-1 rounded-full px-3 py-1 transition-colors ${
-                currentStep === "pr"
-                  ? "bg-[#7b1e1e] text-white shadow-sm"
-                  : "bg-[#eee9df] text-[#606a77] dark:bg-[#2b3540] dark:text-[#aeb9c4] disabled:opacity-40 disabled:cursor-not-allowed"
-              }`}
-            >
-              <span>2</span>
-              <span>PR & Items</span>
-            </button>
-            <span className="text-[#a59a85]">→</span>
-            <span className="flex items-center gap-1 rounded-full bg-[#eee9df] text-[#858f9b] dark:bg-[#2b3540] dark:text-[#74808c] px-3 py-1 opacity-70">
-              <span>3</span> Pre-Canvass (3 Quotes)
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* STEP 1: PPMP PREREQUISITE GATE (UPLOAD OR SELECT)                  */}
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -794,6 +837,28 @@ function PurchaseRequestForm({
                   className="hidden"
                   id="ppmp-file-upload-input"
                 />
+                <div
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDraggingPpmpFile(true);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                    setIsDraggingPpmpFile(true);
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setIsDraggingPpmpFile(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingPpmpFile(false);
+                    handlePpmpFile(event.dataTransfer.files?.[0]);
+                  }}
+                  className={`rounded-lg transition-colors ${isDraggingPpmpFile ? "ring-2 ring-[#7b1e1e] ring-offset-2 dark:ring-[#ff837a] dark:ring-offset-[#1b2229]" : ""}`}
+                >
                 {uploadedFile ? (
                   <div className="flex items-center justify-between rounded-md border-2 border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40 p-3.5 text-xs text-emerald-900 dark:text-emerald-200">
                     <div className="flex items-center gap-2.5 truncate">
@@ -817,7 +882,7 @@ function PurchaseRequestForm({
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dedad2] dark:border-[#46515c] hover:border-[#7b1e1e] dark:hover:border-[#ff837a] bg-white dark:bg-[#232c35]/50 p-6 text-center cursor-pointer transition-colors"
+                    className={`group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dedad2] dark:border-[#46515c] hover:border-[#7b1e1e] dark:hover:border-[#ff837a] bg-white dark:bg-[#232c35]/50 p-6 text-center cursor-pointer transition-colors ${isDraggingPpmpFile ? "border-[#7b1e1e] bg-[#fffaf0] dark:border-[#ff837a] dark:bg-[#2a2020]" : ""}`}
                   >
                     <Upload className="h-8 w-8 text-[#9a6d19] group-hover:text-[#7b1e1e] dark:text-[#f0c36a] dark:group-hover:text-[#ff837a] transition-colors mb-2" />
                     <p className="text-xs sm:text-sm font-semibold text-[#34404e] dark:text-[#f1f5f8]">
@@ -828,6 +893,7 @@ function PurchaseRequestForm({
                     </p>
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Form Metadata */}
@@ -974,7 +1040,7 @@ function PurchaseRequestForm({
         /* ─────────────────────────────────────────────────────────────────── */
         /* STEP 2: PURCHASE REQUEST FORMULATION & APPENDIX 60 CANVAS          */
         /* ─────────────────────────────────────────────────────────────────── */
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] print:block print:m-0 print:p-0">
+        <div className="space-y-6 print:block print:m-0 print:p-0">
           <form onSubmit={submit} className="min-w-0 space-y-6 print:m-0 print:p-0">
             {/* Active Verified PPMP Card at top of Step 2 */}
             <div className="rounded-lg border-2 border-emerald-400 bg-emerald-50/80 dark:border-emerald-800 dark:bg-emerald-950/40 p-4 shadow-sm print:hidden no-print">
@@ -1010,8 +1076,9 @@ function PurchaseRequestForm({
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={isSaving}
                   onClick={() => setCurrentStep("ppmp")}
-                  className="h-8 shrink-0 rounded-[4px] border-emerald-400 bg-white dark:bg-[#1b2229] text-xs font-semibold text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                  className="h-8 shrink-0 rounded-[4px] border-emerald-400 bg-white dark:bg-[#1b2229] text-xs font-semibold text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
                   Change / Re-upload PPMP
@@ -1038,6 +1105,31 @@ function PurchaseRequestForm({
                 </div>
               )}
             </div>
+
+            <section aria-labelledby="market-scoping-upload" className="rounded-lg border-2 border-[#d4a029] bg-[#fffaf0] p-4 dark:border-[#8a6520] dark:bg-[#272118] print:hidden no-print">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 id="market-scoping-upload" className="text-sm font-semibold text-[#34404e] dark:text-[#f1f5f8]">
+                  Step 2: Market Scoping document
+                </h4>
+                <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${marketScopingFile ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-[#f5e6bf] text-[#79551a] dark:bg-[#493714] dark:text-[#f0c36a]"}`}>
+                  {marketScopingFile ? "Attached" : "Required"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[#75643e] dark:text-[#d1dae2]">
+                Attach your market research or price comparison before saving this Purchase Request. PDF, Excel, Word, or image files up to 10 MB.
+              </p>
+              <Input
+                type="file"
+                required
+                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.png,.jpg,.jpeg,application/pdf"
+                onChange={handleMarketScopingFileChange}
+                aria-describedby="market-scoping-file-status"
+                className="mt-3 h-auto min-h-9 cursor-pointer text-xs"
+              />
+              <p id="market-scoping-file-status" className="mt-2 text-[11px] text-[#65717e] dark:text-[#c4cfd9]" aria-live="polite">
+                {marketScopingFile ? `Selected: ${marketScopingFile.name}` : "No Market Scoping document selected."}
+              </p>
+            </section>
 
             {/* Official Government Canvas (Appendix 60) */}
             <OfficialPurchaseRequestCanvas
@@ -1340,8 +1432,7 @@ function PurchaseRequestForm({
                   <option value="bundle">bundle</option>
                 </datalist>
 
-                <div className="overflow-x-auto">
-                  <RecordTable className="mt-4 min-w-[920px]">
+                <RecordTable className="mt-4">
                     <RecordTableHeader>
                       <tr>
                         <th className="px-3 py-3 font-semibold">Catalog item</th>
@@ -1364,7 +1455,7 @@ function PurchaseRequestForm({
 
                         return (
                           <tr key={index}>
-                            <td className="min-w-64 p-2">
+                            <td className="min-w-56 p-1.5">
                               <Select
                                 value={item.catalogItemId || "manual-item"}
                                 onValueChange={(value) => {
@@ -1387,7 +1478,7 @@ function PurchaseRequestForm({
                                   );
                                 }}
                               >
-                                <SelectTrigger className="h-8 min-w-64 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-[10px]">
+                                <SelectTrigger className="h-8 min-w-0 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-[10px]">
                                   <SelectValue placeholder="Manual item or select catalog" />
                                 </SelectTrigger>
                                 <SelectContent className="dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]">
@@ -1401,7 +1492,7 @@ function PurchaseRequestForm({
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1414,15 +1505,15 @@ function PurchaseRequestForm({
                                 <Star className={selectedCatalogItem && favoriteIds.has(selectedCatalogItem.id) ? "h-3.5 w-3.5 fill-current" : "h-3.5 w-3.5"} />
                               </Button>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.stockPropertyNo}
                                 onChange={(event) => updateItem(index, "stockPropertyNo", event.target.value)}
                                 placeholder="Optional"
-                                className="h-8 w-28 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
+                                className="h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
                               />
                             </td>
-                            <td className="min-w-56 p-2">
+                            <td className="min-w-48 p-1.5">
                               <Input
                                 value={item.description}
                                 onChange={(event) => updateItem(index, "description", event.target.value)}
@@ -1432,31 +1523,51 @@ function PurchaseRequestForm({
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
-                              <Input
-                                value={item.quantity}
-                                onChange={(event) => updateItem(index, "quantity", event.target.value)}
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="1"
-                                className={`h-8 w-20 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
-                                  isQtyInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
-                                }`}
-                              />
+                            <td className="p-1.5">
+                              <div className="relative w-16">
+                                <Input
+                                  value={item.quantity}
+                                  onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                                  type="number"
+                                  min="0.01"
+                                  step="any"
+                                  placeholder="1"
+                                  className={`h-8 w-16 pr-6 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                    isQtyInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
+                                  }`}
+                                />
+                                <div className="absolute inset-y-0 right-0 flex flex-col border-l border-[#e1ddd5] dark:border-[#46515c]">
+                                  <button
+                                    type="button"
+                                    aria-label={`Increase quantity for item ${index + 1}`}
+                                    onClick={() => adjustItemQuantity(index, 1)}
+                                    className="flex h-4 w-5 items-center justify-center text-[#66717e] hover:bg-[#f2eee6] dark:text-[#c4ced8] dark:hover:bg-[#303b46]"
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label={`Decrease quantity for item ${index + 1}`}
+                                    onClick={() => adjustItemQuantity(index, -1)}
+                                    className="flex h-4 w-5 items-center justify-center text-[#66717e] hover:bg-[#f2eee6] dark:text-[#c4ced8] dark:hover:bg-[#303b46]"
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.unit}
                                 list="pr-unit-suggestions"
                                 onChange={(event) => updateItem(index, "unit", event.target.value)}
                                 placeholder="e.g. pc, box"
-                                className={`h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                className={`h-8 w-20 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
                                   isUnitInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Input
                                 value={item.estimatedUnitCost}
                                 onChange={(event) => updateItem(index, "estimatedUnitCost", event.target.value)}
@@ -1464,12 +1575,12 @@ function PurchaseRequestForm({
                                 min="0.01"
                                 step="0.01"
                                 placeholder="0.00"
-                                className={`h-8 w-28 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
+                                className={`h-8 w-24 border-[#e1ddd5] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs ${
                                   isCostInvalid ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/30" : ""
                                 }`}
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1486,7 +1597,6 @@ function PurchaseRequestForm({
                       })}
                     </tbody>
                   </RecordTable>
-                </div>
 
                 <div className="mt-3 flex justify-end text-xs font-semibold text-[#4b5563] dark:text-[#d1dae2]">
                   Estimated total: <span className="ml-2 text-[#7b1e1e] dark:text-[#ff837a]">₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
@@ -1498,8 +1608,9 @@ function PurchaseRequestForm({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={isSaving}
                   onClick={() => setCurrentStep("ppmp")}
-                  className="h-9 rounded-[4px] border-[#d8d3ca] text-xs dark:border-[#46515c] dark:text-[#f1f5f8] flex items-center gap-1.5"
+                  className="h-9 rounded-[4px] border-[#d8d3ca] text-xs dark:border-[#46515c] dark:text-[#f1f5f8] flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   <span>Back to PPMP Setup</span>
@@ -1534,23 +1645,79 @@ function PurchaseRequestForm({
               <p className="text-xs font-bold">End-User Guidance</p>
             </div>
             <p className="mt-3 text-[11px] leading-5 text-[#75643e] dark:text-[#d1dae2]">
-              Under RA 12009 (NGPA), your Purchase Request is directly linked to the verified Department PPMP document.
-              After saving this PR, you will complete the preliminary 3-supplier pre-canvass quotes to assemble the complete 3-file package.
+              Before submission, complete market scoping and prepare the PP, PPMP, and Purchase Request. After saving the request, record three supplier quotes and upload the preliminary quotation document.
             </p>
             <div className="mt-5 border-t border-[#eddfbe] dark:border-[#635028] pt-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19] dark:text-[#f0c36a]">
-                Statutory Sequence
+                Package checklist
               </p>
-              <ol className="mt-2 space-y-1.5 text-[11px] text-[#75643e] dark:text-[#d1dae2] list-decimal list-inside font-medium">
-                <li>Department PPMP Upload/Link ✓</li>
-                <li>Itemized PR (Appendix 60)</li>
-                <li>3-Supplier Pre-Canvass Quotes</li>
-                <li>Forward Package to Officer</li>
+              <ol className="mt-2 space-y-2 text-[11px] text-[#75643e] dark:text-[#d1dae2]">
+                {preparationSteps.map((step, index) => (
+                  <li key={step.label} aria-current={step.current ? "step" : undefined} className="flex items-start gap-2">
+                    <span className={`mt-0.5 inline-grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] ${step.complete ? "border-emerald-700 bg-emerald-700 text-white dark:border-emerald-500 dark:bg-emerald-600" : step.current ? "border-[#9a6d19] bg-[#fff2ce] text-[#79551a] dark:border-[#f0c36a] dark:bg-[#493714] dark:text-[#f0c36a]" : "border-[#c8b98f] text-[#8c7a58] dark:border-[#746445] dark:text-[#b5a783]"}`}>
+                      {step.complete ? "✓" : index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block font-semibold ${step.current ? "text-[#79551a] dark:text-[#f0c36a]" : ""}`}>{step.label}</span>
+                      <span className="block text-[10px] leading-4 text-[#8c8067] dark:text-[#b5a783]">{step.complete ? "Complete" : step.current ? "In progress" : step.description}</span>
+                    </span>
+                  </li>
+                ))}
               </ol>
             </div>
           </aside>
         </div>
       )}
+      <section className="rounded-lg border border-[#e4d4ae] bg-[#fffdf5] p-4 dark:border-[#524424] dark:bg-[#1f1b14]" aria-label="Request setup progress">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-[#34404e] dark:text-[#f1f5f8]">Steps to submit your request</h3>
+            <p className="mt-1 text-xs text-[#75643e] dark:text-[#c4cfd9]">
+              {currentProgressStep.description}
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-[#7b1e1e] dark:text-[#ff837a]">
+            Step {currentProgressNumber} of {preparationSteps.length}: {currentProgressStep.label}
+          </span>
+        </div>
+        <div
+          className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e8e2d7] dark:bg-[#343e4a]"
+          role="progressbar"
+          aria-label="Request setup progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={currentProgressNumber * 20}
+          aria-valuetext={`Step ${currentProgressNumber} of ${preparationSteps.length}: ${currentProgressStep.label}`}
+        >
+          <div
+            className="h-full rounded-full bg-[#7b1e1e] transition-[width] duration-300 dark:bg-[#d65c50]"
+            style={{ width: `${currentProgressNumber * 20}%` }}
+          />
+        </div>
+        <ol className="mt-3 grid gap-3 sm:grid-cols-5" aria-label="Required request steps">
+          {preparationSteps.map((step, index) => (
+            <li
+              key={step.label}
+              aria-current={step.current ? "step" : undefined}
+              className={`min-w-0 text-[11px] ${
+                step.current
+                  ? "text-[#7b1e1e] dark:text-[#ff837a]"
+                  : step.complete
+                    ? "text-emerald-700 dark:text-emerald-300"
+                    : "text-[#77818d] dark:text-[#aeb9c4]"
+              }`}
+            >
+              <span className="flex items-center gap-1.5 font-semibold">
+                <span className="inline-grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px]">
+                  {step.complete ? "✓" : index + 1}
+                </span>
+                {step.label}
+              </span>
+              <span className="mt-1 block leading-4 text-[#77818d] dark:text-[#aeb9c4]">{step.description}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }

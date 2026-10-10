@@ -26,8 +26,8 @@ const tone = (status: string) => status === "approved" || status === "pmr_logged
 
 function LiveUpdateBadge({ connectionState, lastUpdatedAt }: { connectionState: "connecting" | "live" | "unavailable"; lastUpdatedAt: string | null }) {
   const label = connectionState === "live" ? (lastUpdatedAt ? `Live update received ${new Date(lastUpdatedAt).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}` : "Live updates connected") : connectionState === "connecting" ? "Checking live updates…" : "Live updates unavailable — use Refresh after changes";
-  const className = connectionState === "live" ? "border-[#b7d8c4] bg-[#eff9f2] text-[#27633b]" : connectionState === "connecting" ? "border-[#e4d4ae] bg-[#fffaf0] text-[#72561d]" : "border-[#e5d5d5] bg-[#fff7f7] text-[#8a4242]";
-  return <div className={`mt-5 inline-flex items-center rounded-[4px] border px-2.5 py-1 text-[10px] font-semibold ${className}`} role="status">{connectionState === "live" ? "LIVE" : connectionState === "connecting" ? "CONNECTING" : "MANUAL"}<span className="mx-1.5 h-1 w-1 rounded-full bg-current" />{label}</div>;
+  const className = connectionState === "live" ? "border-[#b7d8c4] bg-[#eff9f2] text-[#27633b] dark:border-[#315b43] dark:bg-[#14271b] dark:text-[#9be0ad]" : connectionState === "connecting" ? "border-[#e4d4ae] bg-[#fffaf0] text-[#72561d] dark:border-[#635028] dark:bg-[#272118] dark:text-[#f0c36a]" : "border-[#e5d5d5] bg-[#fff7f7] text-[#8a4242] dark:border-[#633b3b] dark:bg-[#2a1b1b] dark:text-[#ffb4ad]";
+  return <div className={`mt-5 inline-flex items-center rounded-[4px] border px-2.5 py-1 text-xs leading-5 font-semibold ${className}`} role="status">{connectionState === "live" ? "LIVE" : connectionState === "connecting" ? "CONNECTING" : "MANUAL"}<span className="mx-1.5 h-1 w-1 rounded-full bg-current" />{label}</div>;
 }
 
 export function PreCanvassPage() {
@@ -78,26 +78,198 @@ export function PreCanvassPage() {
     {mode === "create" && <OfficialAnnexDStructure />}
     {mode === "create" && <FormShell title="Open Pre-Canvass — Annex D" description="Record the RFQ deadline, approved budget ceiling, delivery period, and evaluation method before collecting three supplier quotations." icon={<FileSearch className="h-4 w-4" />} className="mt-7" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const purchaseRequestId = form.get("purchaseRequestId"); const approvedBudget = Number(form.get("approvedBudget")); const deadline = String(form.get("quotationDeadline") || ""); const deliveryPeriodDays = Number(form.get("deliveryPeriodDays")); const priceEvaluationMode = String(form.get("priceEvaluationMode")); if (!purchaseRequestId || approvedBudget <= 0 || !deadline || deliveryPeriodDays <= 0) return toast.error("Complete the PR, approved budget, deadline, and delivery period fields."); create.mutate({ purchaseRequestId: Number(purchaseRequestId), approvedBudget, quotationDeadline: new Date(`${deadline}T00:00:00`), deliveryPeriodDays, priceEvaluationMode: priceEvaluationMode === "per_item" ? "per_item" : "lot_basis" }); }}><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><div><Label className="text-[11px] font-semibold">Purchase Request</Label><Select name="purchaseRequestId"><SelectTrigger className="mt-1.5"><SelectValue placeholder="Select your Purchase Request" /></SelectTrigger><SelectContent>{ownDraftPrs.map((pr) => <SelectItem key={pr.id} value={String(pr.id)}>{pr.prNumber} — {pr.purpose}</SelectItem>)}</SelectContent></Select></div><Field label="Approved budget ceiling"><Input name="approvedBudget" type="number" min="0.01" step="0.01" placeholder="0.00" /></Field><Field label="Quotation deadline"><Input name="quotationDeadline" type="date" /></Field><Field label="Delivery period (days)"><Input name="deliveryPeriodDays" type="number" min="1" defaultValue="30" /></Field><div><Label className="text-[11px] font-semibold">Price evaluation</Label><Select name="priceEvaluationMode" defaultValue="lot_basis"><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="lot_basis">Lot basis</SelectItem><SelectItem value="per_item">Per item</SelectItem></SelectContent></Select></div></div>{!ownDraftPrs.length && <div className="mt-4 rounded-[4px] border border-[#e8d8b5] bg-[#fffaf0] p-3 text-[11px] leading-5 text-[#75643e]">No eligible Purchase Request is available yet. Create and save a Purchase Request first, then return here to open a Pre-Canvass package.</div>}<div className="mt-5 flex justify-end"><Button disabled={create.isPending || !ownDraftPrs.length} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{create.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Open Pre-Canvass</Button></div></FormShell>}
     {mode === "quote" && <PreCanvassQuoteForm preCanvasses={dashboard.data?.preCanvasses ?? []} suppliers={setup.data?.suppliers ?? []} isSaving={addQuote.isPending} onCancel={() => setMode(null)} onCreate={(input) => addQuote.mutate(input)} />}
-    {isEndUser && dashboard.data?.preCanvasses.length ? <PreliminaryAoqUpload records={dashboard.data.preCanvasses} documents={dashboard.data.documents ?? []} isSaving={false} onUploaded={refresh} /> : null}
+    {isEndUser && !dashboard.isLoading ? <PreliminaryAoqUpload records={dashboard.data?.preCanvasses ?? []} documents={dashboard.data?.documents ?? []} isSaving={false} onUploaded={refresh} /> : null}
     {isProcurement && <section className="mt-6 flat-panel overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Final canvass validation and Abstract preparation</p><p className="mt-1 text-[11px] text-[#77818d]">Procurement Staff/BAC validates the End-User's preliminary quotation document, completes or revises the final canvass, and prepares the official Abstract of Quotations. Use correction controls only when the submitted preliminary package requires End-User correction.</p></div><div className="p-5"><div className="flex flex-wrap gap-2">{dashboard.data?.preCanvasses.filter((record) => record.status === "submitted").map((record) => <Button key={record.id} type="button" size="sm" variant={correctionTarget === record.id ? "default" : "outline"} onClick={() => setCorrectionTarget(record.id)} className={correctionTarget === record.id ? "h-8 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]" : "h-8 rounded-[4px] text-[10px]"}>Return {record.preCanvassNumber}</Button>)}{!dashboard.data?.preCanvasses.some((record) => record.status === "submitted") && <p className="text-[11px] text-[#77818d]">No submitted preliminary quotation package is awaiting Procurement Staff/BAC validation.</p>}</div>{correctionTarget && <div className="mt-4 border-t border-[#ece8df] pt-4"><Label htmlFor="correction-reason" className="text-[11px] font-semibold">Required correction comments</Label><Textarea id="correction-reason" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="State the missing, inconsistent, or non-compliant information the End-User must correct." className="mt-1.5 min-h-24 text-xs" /><div className="mt-3 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => { setCorrectionTarget(null); setCorrectionReason(""); }} className="h-8 rounded-[4px] text-[11px]">Cancel</Button><Button type="button" disabled={requestCorrection.isPending || correctionReason.trim().length < 10} onClick={() => requestCorrection.mutate({ preCanvassId: correctionTarget, reason: correctionReason.trim() })} className="h-8 rounded-[4px] bg-[#7b1e1e] text-[11px] hover:bg-[#641818]">{requestCorrection.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Return package</Button></div></div>}</div></section>}
     <div className="mt-7">{dashboard.isLoading ? <Loading label="Loading Pre-Canvass packages" /> : dashboard.data?.preCanvasses.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Pre-Canvass</th><th className="px-4 py-3 font-semibold">Linked PR</th><th className="px-4 py-3 font-semibold">Supplier quotes</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{dashboard.data.preCanvasses.map((record) => { const quotes = quotesFor(record.id); const hasPreliminaryAoq = (dashboard.data?.documents ?? []).some((document) => document.entityType === "pre_canvass" && document.entityId === record.id && document.documentType === "Preliminary Abstract of Quotations"); const hasAbstract = dashboard.data?.abstractsOfCanvass.some((abstract) => abstract.preCanvassId === record.id); return <tr key={record.id}><td className="px-4 py-3 font-semibold text-[#7b1e1e]">{record.preCanvassNumber}</td><td className="px-4 py-3 text-[#65717e]">{`PR #${record.purchaseRequestId}`}</td><td className="px-4 py-3"><StatusBadge tone={hasRequiredSupplierQuotations(quotes.length) ? "approved" : "pending"}>{quotes.length}/3 SUPPLIERS</StatusBadge></td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{record.status.replaceAll("_", " ").toUpperCase()}</StatusBadge></td><td className="px-4 py-3"><div className="flex flex-wrap gap-2">{isEndUser && record.status === "draft" && <><Button size="sm" variant="outline" onClick={() => setMode("quote")} className="h-7 rounded-[4px] text-[10px]"><Plus className="mr-1 h-3 w-3" />Add preliminary quote</Button><Button size="sm" disabled={!hasRequiredSupplierQuotations(quotes.length) || !hasPreliminaryAoq || submit.isPending} onClick={() => submit.mutate({ preCanvassId: record.id })} className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Submit three-file package</Button></>}{isProcurement && record.status === "submitted" && !hasAbstract && <Button size="sm" disabled={createAbstract.isPending} onClick={() => createAbstract.mutate({ preCanvassId: record.id })} className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Create abstract — Prepare official Abstract</Button>}{hasAbstract && <span className="text-[11px] text-[#77818d]">Official Abstract prepared</span>}</div></td></tr>; })}</tbody></RecordTable> : <EmptyWorkspace eyebrow="Pre-Canvass" title="No preliminary quotation packages have been created." description="End-Users create a PPMP-linked Purchase Request, record the preliminary pre-canvass quotations, and submit the three-file package to Procurement Staff." />}</div>
     {dashboard.data?.preCanvasses.length ? <PreCanvassComparison records={dashboard.data.preCanvasses} quotes={dashboard.data.preCanvassQuotes} supplierMap={supplierMap} requestItems={dashboard.data.purchaseRequestItems ?? []} /> : null}
   </div>;
 }
 
-function PreliminaryAoqUpload({ records, documents, isSaving, onUploaded }: { records: Array<{ id: number; preCanvassNumber: string; status: string }>; documents: Array<{ entityType: string; entityId: number; documentType: string; originalFileName: string; fileSize: number; createdAt: Date | string }>; isSaving: boolean; onUploaded: () => void }) {
+function PreliminaryAoqUpload({
+  records,
+  documents,
+  isSaving,
+  onUploaded,
+}: {
+  records: Array<{ id: number; preCanvassNumber: string; status: string }>;
+  documents: Array<{
+    entityType: string;
+    entityId: number;
+    documentType: string;
+    originalFileName: string;
+    fileSize: number;
+    createdAt: Date | string;
+  }>;
+  isSaving: boolean;
+  onUploaded: () => void;
+}) {
   const [preCanvassId, setPreCanvassId] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const attach = trpc.procurement.documents.attach.useMutation({ onSuccess: () => { toast.success("Preliminary AOQ uploaded for Procurement validation."); setFile(null); onUploaded(); }, onError: (error) => toast.error(error.message) });
+  const selectedPackageHasAttachment = documents.some(
+    document =>
+      document.entityType === "pre_canvass" &&
+      document.entityId === Number(preCanvassId) &&
+      document.documentType === "Preliminary Abstract of Quotations"
+  );
+  const attach = trpc.procurement.documents.attach.useMutation({
+    onSuccess: () => {
+      toast.success("Pre-canvass attachment uploaded for Procurement review.");
+      setFile(null);
+      onUploaded();
+    },
+    onError: error => toast.error(error.message),
+  });
   const upload = async () => {
-    if (!preCanvassId || !file) return toast.error("Select a Pre-Canvass and choose an Excel or PDF file.");
-    if (file.size > 10 * 1024 * 1024) return toast.error("The preliminary AOQ must be 10 MB or smaller.");
-    const dataBase64 = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error("The selected file could not be read.")); reader.onload = () => { const result = String(reader.result || ""); resolve(result.includes(",") ? result.split(",")[1] || "" : result); }; reader.readAsDataURL(file); });
-    attach.mutate({ entityType: "pre_canvass", entityId: Number(preCanvassId), documentType: "Preliminary Abstract of Quotations", originalFileName: file.name, mimeType: file.type || "application/octet-stream", dataBase64 });
+    if (!preCanvassId || !file)
+      return toast.error(
+        "Select a Pre-Canvass package and choose its preliminary quotation attachment."
+      );
+    if (file.size > 10 * 1024 * 1024)
+      return toast.error("The pre-canvass attachment must be 10 MB or smaller.");
+    const dataBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () =>
+        reject(new Error("The selected attachment could not be read."));
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        resolve(result.includes(",") ? result.split(",")[1] || "" : result);
+      };
+      reader.readAsDataURL(file);
+    });
+    attach.mutate({
+      entityType: "pre_canvass",
+      entityId: Number(preCanvassId),
+      documentType: "Preliminary Abstract of Quotations",
+      originalFileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      dataBase64,
+    });
   };
-  return <section className="mt-6 flat-panel p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-[#34404e]">Preliminary Abstract of Quotations</p><p className="mt-1 max-w-3xl text-[11px] leading-5 text-[#77818d]">Upload the End-User’s preliminary AOQ or pre-canvass worksheet with at least three supplier references. Procurement Staff/BAC will validate or revise it and prepare the official Abstract of Quotations during the final RFQ process.</p></div><StatusBadge tone="pending">FOR VALIDATION</StatusBadge></div><div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"><div><Label className="text-[11px] font-semibold">Pre-Canvass package</Label><Select value={preCanvassId} onValueChange={setPreCanvassId}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Select package" /></SelectTrigger><SelectContent>{records.map((record) => <SelectItem key={record.id} value={String(record.id)}>{record.preCanvassNumber} — {record.status.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></div><Field label="Excel or PDF AOQ"><Input type="file" accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="h-9 cursor-pointer text-[11px]" /></Field><Button type="button" disabled={isSaving || attach.isPending || !preCanvassId || !file} onClick={() => void upload()} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{attach.isPending ? <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}Upload preliminary AOQ</Button></div><div className="mt-4 border-t border-[#ece8df] pt-3">{records.map((record) => { const attached = documents.filter((document) => document.entityType === "pre_canvass" && document.entityId === record.id && document.documentType === "Preliminary Abstract of Quotations"); return <div key={record.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-[11px]"><span className="font-medium text-[#4a5563]">{record.preCanvassNumber}</span>{attached.length ? <span className="text-[#27633b]">Uploaded: {attached.map((document) => document.originalFileName).join(", ")}</span> : <span className="text-[#9a6d19]">No preliminary AOQ uploaded yet</span>}</div>; })}</div></section>;
+  return (
+    <section className="mt-6 flat-panel p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-[#34404e] dark:text-[#f1f5f8]">
+            Pre-canvass attachment
+          </p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#586575] dark:text-[#c4ced8]">
+            Upload the preliminary quotation worksheet or document showing
+            your three supplier quotes. This attachment is required before
+            submitting the complete package to Procurement.
+          </p>
+        </div>
+        <StatusBadge tone={selectedPackageHasAttachment ? "approved" : "pending"}>
+          {selectedPackageHasAttachment ? "ATTACHMENT ADDED" : "REQUIRED BEFORE SUBMISSION"}
+        </StatusBadge>
+      </div>
+      {records.length ? (
+        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <div>
+          <Label className="text-xs font-semibold text-[#4c5664] dark:text-[#e2e8f0]">
+            Pre-Canvass package
+          </Label>
+          <Select value={preCanvassId} onValueChange={setPreCanvassId}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder="Select package" />
+            </SelectTrigger>
+            <SelectContent>
+              {records.map(record => (
+                <SelectItem key={record.id} value={String(record.id)}>
+                  {record.preCanvassNumber} —{" "}
+                  {record.status.replaceAll("_", " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs font-semibold leading-5 text-[#4c5664] dark:text-[#e2e8f0]">
+            Preliminary quotation attachment (Excel or PDF)
+          </Label>
+          <Input
+            type="file"
+            accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
+            onChange={event => setFile(event.target.files?.[0] ?? null)}
+            className="mt-1.5 h-10 cursor-pointer text-sm dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8] file:text-sm"
+          />
+        </div>
+        <Button
+          type="button"
+          disabled={isSaving || attach.isPending || !preCanvassId || !file}
+          onClick={() => void upload()}
+          className="h-10 rounded-[4px] bg-[#7b1e1e] text-sm hover:bg-[#641818]"
+        >
+          {attach.isPending ? (
+            <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          Upload pre-canvass attachment
+        </Button>
+        </div>
+      ) : (
+        <div className="mt-5 rounded border border-[#e4d4ae] bg-[#fffaf0] p-4 dark:border-[#635028] dark:bg-[#272118]">
+          <p className="text-sm font-semibold text-[#79551a] dark:text-[#f0c36a]">
+            Create a request and pre-canvass package first
+          </p>
+          <p className="mt-1 text-sm leading-6 text-[#75643e] dark:text-[#d1dae2]">
+            After creating your Purchase Request, open a pre-canvass package and record three supplier quotes. This is where you will attach the preliminary quotation document.
+          </p>
+          <Button asChild variant="outline" className="mt-3 h-9 text-sm dark:border-[#596675] dark:text-[#f1f5f8]">
+            <Link href="/purchase-requests?create=1">Create Purchase Request</Link>
+          </Button>
+        </div>
+      )}
+      <div className="mt-4 border-t border-[#ece8df] pt-3 dark:border-[#46515c]">
+        {records.map(record => {
+          const attached = documents.filter(
+            document =>
+              document.entityType === "pre_canvass" &&
+              document.entityId === record.id &&
+              document.documentType === "Preliminary Abstract of Quotations"
+          );
+          return (
+            <div
+              key={record.id}
+              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm leading-6"
+            >
+              <span className="font-medium text-[#4a5563] dark:text-[#e2e8f0]">
+                {record.preCanvassNumber}
+              </span>
+              {attached.length ? (
+                <span className="text-[#27633b] dark:text-[#9be0ad]">
+                  Uploaded:{" "}
+                  {attached
+                    .map(document => document.originalFileName)
+                    .join(", ")}
+                </span>
+              ) : (
+                <span className="text-[#8a6216] dark:text-[#f0c36a]">
+                  No preliminary quotation attachment uploaded yet
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
-function OfficialAnnexDStructure() { return <section className="mt-6 border border-[#ded8cc] bg-[#fffdfa] p-4 text-[11px] leading-5 text-[#4b5664]"><div className="flex justify-between border-b border-[#e8e2d7] pb-2"><strong className="text-[#7b1e1e]">REQUEST FOR PRICE QUOTATION</strong><strong>Annex D</strong></div><p className="mt-2">The form preserves the RFQ Date and supplier instruction followed by the price-evaluation rule, delivery period, sealed-envelope requirement, THE APPROVED BUDGET FOR THIS PROCUREMENT, documentary-requirement note, and Item # / Qty. / Unit / PARTICULAR / Unit Price / Total schedule. Data below populates only from authorised transaction entries.</p></section>; }
+function OfficialAnnexDStructure() {
+  return (
+    <section className="mt-6 border border-[#ded8cc] bg-[#fffdfa] p-4 text-[11px] leading-5 text-[#4b5664]">
+      <div className="flex justify-between border-b border-[#e8e2d7] pb-2">
+        <strong className="text-[#7b1e1e]">REQUEST FOR PRICE QUOTATION</strong>
+        <strong>Annex D</strong>
+      </div>
+      <p className="mt-2">
+        The form preserves the RFQ Date and supplier instruction followed by the
+        price-evaluation rule, delivery period, sealed-envelope requirement, THE
+        APPROVED BUDGET FOR THIS PROCUREMENT, documentary-requirement note, and
+        Item # / Qty. / Unit / PARTICULAR / Unit Price / Total schedule. Data
+        below populates only from authorised transaction entries.
+      </p>
+    </section>
+  );
+}
 
 function PreCanvassPrerequisiteNotice({ eligiblePrCount, supplierCount, tagCount }: { eligiblePrCount: number; supplierCount: number; tagCount: number }) {
   return <section className="mt-6 border border-[#e4d4ae] bg-[#fffaf0] p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-[#79551a]">Pre-Canvass is ready for a Purchase Request</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-[#75643e]">A Pre-Canvass package can only be opened after an eligible Purchase Request exists. The supplier registry currently contains {supplierCount} supplier{supplierCount === 1 ? "" : "s"}; {tagCount ? `${tagCount} goods/services tag${tagCount === 1 ? " is" : "s are"} available for filtering once you add a quote.` : "goods/services tags can be created in Suppliers before quote entry."}</p></div><a href="/purchase-requests" className="inline-flex h-8 items-center rounded-[4px] bg-[#7b1e1e] px-3 text-[11px] font-semibold text-white hover:bg-[#641818]">{eligiblePrCount ? "Open Purchase Requests" : "Create Purchase Request"}</a></div></section>;
@@ -111,36 +283,724 @@ function PreCanvassQuoteForm({ preCanvasses, suppliers, isSaving, onCancel, onCr
   return <FormShell title="Pre-Canvass supplier quote — Annex E" description="Record the supplier quotation and its acknowledgement details for the mandatory three-supplier canvass. Use the goods-and-services filter to narrow choices; it does not change accreditation or role controls." icon={<ClipboardList className="h-4 w-4" />} className="mt-7 w-full min-w-0" onSubmit={(event) => { event.preventDefault(); if (!preCanvassId || !supplierId || Number(totalPrice) <= 0 || Number(deliveryDays) < 0) return toast.error("Complete the Pre-Canvass, supplier, price, and delivery fields."); onCreate({ preCanvassId: Number(preCanvassId), supplierId: Number(supplierId), totalPrice: Number(totalPrice), deliveryDays: Number(deliveryDays), isCompliant: isCompliant === "yes", quotationReference: quotationReference.trim() || undefined, supplierRepresentative: supplierRepresentative.trim() || undefined, acknowledgedAt: acknowledgedAt ? new Date(`${acknowledgedAt}T00:00:00`) : undefined, receivedBy: receivedBy.trim() || undefined, notes: notes.trim() || undefined }); }}><div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0"><Field label="Pre-Canvass" className="w-full min-w-0"><Select value={preCanvassId} onValueChange={setPreCanvassId}><SelectTrigger className="w-full min-w-0 box-border overflow-hidden"><SelectValue placeholder="Select Pre-Canvass" className="truncate" /></SelectTrigger><SelectContent>{openRecords.map((record) => <SelectItem key={record.id} value={String(record.id)}>{record.preCanvassNumber}</SelectItem>)}</SelectContent></Select></Field><Field label="Goods/services filter" className="w-full min-w-0"><Select value={tagFilter} onValueChange={(value) => { setTagFilter(value); setSupplierId(""); }}><SelectTrigger className="w-full min-w-0 box-border overflow-hidden"><SelectValue className="truncate" /></SelectTrigger><SelectContent><SelectItem value="all">All suppliers</SelectItem>{tagData.data?.tags.filter((tag) => tag.isActive === 1).map((tag) => <SelectItem key={tag.id} value={String(tag.id)}>{tag.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Supplier" className="w-full min-w-0"><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger className="w-full min-w-0 box-border overflow-hidden"><SelectValue placeholder={filteredSuppliers.length ? "Select supplier" : "No suppliers match tag"} className="truncate" /></SelectTrigger><SelectContent>{filteredSuppliers.map((supplier) => <SelectItem key={supplier.id} value={String(supplier.id)}>{supplier.supplierCode} — {supplier.companyName}</SelectItem>)}</SelectContent></Select></Field><Field label="Quotation reference" className="w-full min-w-0"><Input value={quotationReference} onChange={(event) => setQuotationReference(event.target.value)} placeholder="RFQ/Quote reference" className="w-full min-w-0 box-border" /></Field><Field label="Quoted amount" className="w-full min-w-0"><Input type="number" min="0.01" step="0.01" value={totalPrice} onChange={(event) => setTotalPrice(event.target.value)} placeholder="0.00" className="w-full min-w-0 box-border" /></Field><Field label="Delivery days" className="w-full min-w-0"><Input type="number" min="0" value={deliveryDays} onChange={(event) => setDeliveryDays(event.target.value)} placeholder="0" className="w-full min-w-0 box-border" /></Field><Field label="Compliance" className="w-full min-w-0"><Select value={isCompliant} onValueChange={setIsCompliant}><SelectTrigger className="w-full min-w-0 box-border overflow-hidden"><SelectValue className="truncate" /></SelectTrigger><SelectContent><SelectItem value="yes">Compliant</SelectItem><SelectItem value="no">Non-compliant</SelectItem></SelectContent></Select></Field><Field label="Supplier representative" className="w-full min-w-0"><Input value={supplierRepresentative} onChange={(event) => setSupplierRepresentative(event.target.value)} placeholder="Printed name / signature reference" className="w-full min-w-0 box-border" /></Field><Field label="Acknowledged date" className="w-full min-w-0"><Input type="date" value={acknowledgedAt} onChange={(event) => setAcknowledgedAt(event.target.value)} className="w-full min-w-0 box-border" /></Field><Field label="Received by" className="w-full min-w-0"><Input value={receivedBy} onChange={(event) => setReceivedBy(event.target.value)} placeholder="Recipient name" className="w-full min-w-0 box-border" /></Field><Field label="Notes" className="w-full min-w-0"><Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional notes" className="w-full min-w-0 box-border" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button type="button" variant="outline" onClick={onCancel} className="h-9 rounded-[4px] text-xs">Cancel</Button><Button disabled={isSaving || !openRecords.length || !filteredSuppliers.length} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{isSaving && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Record quote</Button></div></FormShell>;
 }
 
-function PreCanvassComparison({ records, quotes, supplierMap, requestItems }: { records: Array<{ id: number; preCanvassNumber: string; purchaseRequestId: number }>; quotes: Array<{ id: number; preCanvassId: number; supplierId: number; totalPrice: string; deliveryDays: number; isCompliant: number }>; supplierMap: Map<number, { companyName: string }>; requestItems: Array<{ purchaseRequestId: number; catalogItemId: number | null; description: string; quantity: string; unit: string }> }) {
-  return <div className="flat-panel mt-6"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Pre-Canvass comparison</p><p className="mt-1 text-[11px] text-[#77818d]">The lowest compliant supplier is highlighted for the Procurement Officer's Abstract of Canvass recommendation, alongside the linked End-User item schedule.</p></div>{records.map((record) => { const rows = quotes.filter((quote) => quote.preCanvassId === record.id); const items = requestItems.filter((item) => item.purchaseRequestId === record.purchaseRequestId); const lowest = rows.filter((quote) => quote.isCompliant === 1).sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice))[0]; return <div key={record.id} className="border-b border-[#efebe4] last:border-b-0"><div className="px-5 py-3"><p className="text-xs font-semibold text-[#7b1e1e]">{record.preCanvassNumber}</p>{items.length ? <div className="mt-2 flex flex-wrap gap-1.5">{items.map((item, index) => <span key={`${item.purchaseRequestId}-${index}`} className="rounded-[3px] border border-[#e4d4ae] bg-[#fffaf0] px-2 py-1 text-[10px] text-[#72561d]">{item.catalogItemId ? "Catalog · " : ""}{item.description} — {Number(item.quantity)} {item.unit}</span>)}</div> : <p className="mt-1 text-[10px] text-[#8b949e]">Linked Purchase Request item lines will appear here once recorded.</p>}</div>{rows.length ? <RecordTable className="border-x-0 border-b-0"><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Supplier</th><th className="px-4 py-3 font-semibold">Quote</th><th className="px-4 py-3 font-semibold">Delivery</th><th className="px-4 py-3 font-semibold">Compliance</th><th className="px-4 py-3 font-semibold">Recommendation</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{rows.map((quote) => <tr key={quote.id} className={lowest?.id === quote.id ? "bg-[#fffaf0]" : ""}><td className="px-4 py-3">{supplierMap.get(quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`}</td><td className="px-4 py-3">{money(quote.totalPrice)}</td><td className="px-4 py-3">{quote.deliveryDays} day(s)</td><td className="px-4 py-3"><StatusBadge tone={quote.isCompliant ? "approved" : "returned"}>{quote.isCompliant ? "COMPLIANT" : "NON-COMPLIANT"}</StatusBadge></td><td className="px-4 py-3">{lowest?.id === quote.id ? <StatusBadge tone="pending">LOWEST COMPLIANT</StatusBadge> : "—"}</td></tr>)}</tbody></RecordTable> : <p className="px-5 pb-4 text-[11px] text-[#77818d]">No supplier quotes recorded yet.</p>}</div>; })}</div>;
+function PreCanvassComparison({
+  records,
+  quotes,
+  supplierMap,
+  requestItems,
+}: {
+  records: Array<{
+    id: number;
+    preCanvassNumber: string;
+    purchaseRequestId: number;
+  }>;
+  quotes: Array<{
+    id: number;
+    preCanvassId: number;
+    supplierId: number;
+    totalPrice: string;
+    deliveryDays: number;
+  }>;
+  supplierMap: Map<number, { companyName: string }>;
+  requestItems: Array<{
+    purchaseRequestId: number;
+    catalogItemId: number | null;
+    description: string;
+    quantity: string;
+    unit: string;
+  }>;
+}) {
+  return (
+    <div className="flat-panel mt-6">
+      <div className="border-b border-[#ece8df] px-5 py-4">
+        <p className="text-sm font-semibold text-[#34404e]">
+          Pre-Canvass comparison
+        </p>
+        <p className="mt-1 text-[11px] text-[#77818d]">
+          Compare supplier prices and delivery times. The Procurement Officer
+          will determine supplier compliance and make the recommendation.
+        </p>
+      </div>
+      {records.map(record => {
+        const rows = quotes.filter(quote => quote.preCanvassId === record.id);
+        const items = requestItems.filter(
+          item => item.purchaseRequestId === record.purchaseRequestId
+        );
+        return (
+          <div
+            key={record.id}
+            className="border-b border-[#efebe4] last:border-b-0"
+          >
+            <div className="px-5 py-3">
+              <p className="text-xs font-semibold text-[#7b1e1e]">
+                {record.preCanvassNumber}
+              </p>
+              {items.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {items.map((item, index) => (
+                    <span
+                      key={`${item.purchaseRequestId}-${index}`}
+                      className="rounded-[3px] border border-[#e4d4ae] bg-[#fffaf0] px-2 py-1 text-[10px] text-[#72561d]"
+                    >
+                      {item.catalogItemId ? "Catalog · " : ""}
+                      {item.description} — {Number(item.quantity)} {item.unit}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-[10px] text-[#8b949e]">
+                  Linked Purchase Request item lines will appear here once
+                  recorded.
+                </p>
+              )}
+            </div>
+            {rows.length ? (
+              <RecordTable className="border-x-0 border-b-0">
+                <RecordTableHeader>
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Supplier</th>
+                    <th className="px-4 py-3 font-semibold">Quote</th>
+                    <th className="px-4 py-3 font-semibold">Delivery</th>
+                  </tr>
+                </RecordTableHeader>
+                <tbody className="divide-y divide-[#efebe4]">
+                  {rows.map(quote => (
+                    <tr
+                      key={quote.id}
+                    >
+                      <td className="px-4 py-3">
+                        {supplierMap.get(quote.supplierId)?.companyName ||
+                          `Supplier #${quote.supplierId}`}
+                      </td>
+                      <td className="px-4 py-3">{money(quote.totalPrice)}</td>
+                      <td className="px-4 py-3">{quote.deliveryDays} day(s)</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </RecordTable>
+            ) : (
+              <p className="px-5 pb-4 text-[11px] text-[#77818d]">
+                No supplier quotes recorded yet.
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ExecutionPage() {
-  const { user } = useAuth(); const role = user ? normalizeProcurementRole(user.role) : "end_user"; const isProcurement = role === "procurement_officer" || role === "admin"; const isApprover = role === "administrative_approver" || role === "admin";
-  const [mode, setMode] = useState<"delivery" | "pmr" | null>(null); const [correctionTarget, setCorrectionTarget] = useState<{ kind: "abstract" | "purchase_order"; id: number; preCanvassId?: number; label: string } | null>(null); const [correctionReason, setCorrectionReason] = useState(""); const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false }); const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false }); const utils = trpc.useUtils(); const refresh = () => void utils.procurement.dashboard.invalidate(); const realtime = useSupabaseRealtime({ recordTypes: ["pre_canvass", "abstract_of_canvass"], onRecordChanged: refresh });
-  const decide = trpc.procurement.preCanvasses.decideAbstract.useMutation({ onSuccess: () => { toast.success("Administrative decision recorded."); refresh(); }, onError: (error) => toast.error(error.message) });
-  const issue = trpc.procurement.preCanvasses.issuePurchaseOrder.useMutation({ onSuccess: () => { toast.success("Purchase Order issued."); refresh(); }, onError: (error) => toast.error(error.message) });
-  const delivery = trpc.procurement.preCanvasses.recordDelivery.useMutation({ onSuccess: () => { toast.success("Supplier delivery recorded."); setMode(null); refresh(); }, onError: (error) => toast.error(error.message) });
-  const pmr = trpc.procurement.preCanvasses.logPmr.useMutation({ onSuccess: () => { toast.success("PMR logged and Purchase Order closed."); setMode(null); refresh(); }, onError: (error) => toast.error(error.message) });
-  const returnAbstract = trpc.procurement.preCanvasses.returnAbstract.useMutation({ onSuccess: () => { toast.success("Abstract returned to Procurement with correction comments."); setCorrectionTarget(null); setCorrectionReason(""); refresh(); }, onError: (error) => toast.error(error.message) });
-  const resubmitAbstract = trpc.procurement.preCanvasses.resubmitAbstract.useMutation({ onSuccess: () => { toast.success("Corrected Abstract resubmitted for administrative decision."); refresh(); }, onError: (error) => toast.error(error.message) });
-  const returnPurchaseOrder = trpc.procurement.preCanvasses.returnPurchaseOrder.useMutation({ onSuccess: () => { toast.success("Purchase Order returned to Procurement with correction comments."); setCorrectionTarget(null); setCorrectionReason(""); refresh(); }, onError: (error) => toast.error(error.message) });
-  const reissuePurchaseOrder = trpc.procurement.preCanvasses.reissuePurchaseOrder.useMutation({ onSuccess: () => { toast.success("Corrected Purchase Order reissued."); refresh(); }, onError: (error) => toast.error(error.message) });
-  const calculateMcdm = trpc.procurement.preCanvasses.calculateMcdm.useMutation({ onSuccess: (recommendation) => toast.success(`MCDM recommendation calculated: supplier #${recommendation.recommendedSupplierId} scored ${Number(recommendation.totalScore).toFixed(2)}.`), onError: (error) => toast.error(error.message) });
-  const createRfqFromMcdm = trpc.procurement.preCanvasses.createRfqFromMcdm.useMutation({ onSuccess: (rfq) => { toast.success(`RFQ ${rfq.rfqNumber} created from the MCDM recommendation.`); refresh(); }, onError: (error) => toast.error(error.message) });
-  const supplierNames = new Map((setup.data?.suppliers ?? []).map((supplier) => [supplier.id, supplier.companyName]));
-  const abstractPackageInput = (abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]) => { const preCanvass = dashboard.data?.preCanvasses.find((record) => record.id === abstract.preCanvassId); return { abstract, preCanvassNumber: preCanvass?.preCanvassNumber || `Pre-Canvass #${abstract.preCanvassId}`, quotes: dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === abstract.preCanvassId) ?? [], supplierNames, items: preCanvass ? dashboard.data?.purchaseRequestItems.filter((item) => item.purchaseRequestId === preCanvass.purchaseRequestId) ?? [] : [] }; };
-  const downloadAbstractCsv = (abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]) => downloadCsv(`${abstract.abstractNumber}_AnnexF_AbstractPackage.csv`, buildAbstractPackageCsv(abstractPackageInput(abstract)));
-  const downloadAbstractPackage = async (abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]) => await downloadAbstractPackagePdf(abstractPackageInput(abstract));
-  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Post-review execution" title="Abstract, approval, PO & PMR" description="Procurement recommends the lowest compliant supplier; the Administrative Approver decides; Procurement then issues the PO, records delivery, and logs the PMR." />
-    <LiveUpdateBadge connectionState={realtime.connectionState} lastUpdatedAt={realtime.lastUpdatedAt} />
-    {(isApprover || isProcurement) && <section className="flat-panel mt-6 overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Correction and resubmission controls</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">Administrative Approvers must state the required correction. Procurement Officers can resubmit only the returned record after addressing the recorded comments.</p></div><div className="p-5"><div className="grid gap-5 lg:grid-cols-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">Abstract of Canvass</p><div className="mt-2 flex flex-wrap gap-2">{isApprover && dashboard.data?.abstractsOfCanvass.filter((abstract) => abstract.status === "recommended").map((abstract) => <Button key={abstract.id} type="button" size="sm" variant="outline" onClick={() => setCorrectionTarget({ kind: "abstract", id: abstract.id, preCanvassId: abstract.preCanvassId, label: abstract.abstractNumber })} className="h-8 rounded-[4px] text-[10px]">Return {abstract.abstractNumber}</Button>)}{isProcurement && dashboard.data?.abstractsOfCanvass.filter((abstract) => abstract.status === "returned").map((abstract) => <Button key={abstract.id} type="button" size="sm" onClick={() => resubmitAbstract.mutate({ preCanvassId: abstract.preCanvassId })} className="h-8 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Resubmit {abstract.abstractNumber}</Button>)}{!dashboard.data?.abstractsOfCanvass.some((abstract) => (isApprover && abstract.status === "recommended") || (isProcurement && abstract.status === "returned")) && <p className="text-[11px] text-[#77818d]">No Abstract requires action at your role.</p>}</div></div><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">Purchase Order</p><div className="mt-2 flex flex-wrap gap-2">{isApprover && dashboard.data?.purchaseOrders.filter((po) => po.status === "issued").map((po) => <Button key={po.id} type="button" size="sm" variant="outline" onClick={() => setCorrectionTarget({ kind: "purchase_order", id: po.id, label: po.poNumber })} className="h-8 rounded-[4px] text-[10px]">Return {po.poNumber}</Button>)}{isProcurement && dashboard.data?.purchaseOrders.filter((po) => po.status === "returned").map((po) => <Button key={po.id} type="button" size="sm" onClick={() => reissuePurchaseOrder.mutate({ purchaseOrderId: po.id })} className="h-8 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Reissue {po.poNumber}</Button>)}{!dashboard.data?.purchaseOrders.some((po) => (isApprover && po.status === "issued") || (isProcurement && po.status === "returned")) && <p className="text-[11px] text-[#77818d]">No Purchase Order requires action at your role.</p>}</div></div></div>{correctionTarget && <div className="mt-5 border-t border-[#ece8df] pt-5"><Label htmlFor="execution-correction-reason" className="text-[11px] font-semibold">Required correction comments for {correctionTarget.label}</Label><Textarea id="execution-correction-reason" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="State the field, attachment, signatory, amount, or condition that must be corrected before resubmission." className="mt-1.5 min-h-24 text-xs" /><div className="mt-3 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => { setCorrectionTarget(null); setCorrectionReason(""); }} className="h-8 rounded-[4px] text-[11px]">Cancel</Button><Button type="button" disabled={correctionReason.trim().length < 10 || returnAbstract.isPending || returnPurchaseOrder.isPending} onClick={() => correctionTarget.kind === "abstract" ? returnAbstract.mutate({ preCanvassId: correctionTarget.preCanvassId!, reason: correctionReason.trim() }) : returnPurchaseOrder.mutate({ purchaseOrderId: correctionTarget.id, reason: correctionReason.trim() })} className="h-8 rounded-[4px] bg-[#7b1e1e] text-[11px] hover:bg-[#641818]">Return for correction</Button></div></div>}</div></section>}
-    {isProcurement && <section className="flat-panel mt-6 overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">MCDM recommendation to RFQ</p><p className="mt-1 text-[11px] leading-5 text-[#77818d]">For each generated Abstract, calculate a transparent 60% price, 20% delivery, 20% compliance recommendation, then create an RFQ containing the recorded three supplier quotations.</p></div><div className="divide-y divide-[#ece8df]">{dashboard.data?.abstractsOfCanvass.filter((abstract) => abstract.status === "recommended").map((abstract) => <div key={abstract.id} className="flex flex-wrap items-center justify-between gap-3 p-5"><div><p className="text-xs font-semibold text-[#7b1e1e]">{abstract.abstractNumber}</p><p className="mt-1 text-[11px] text-[#77818d]">Pre-Canvass #{abstract.preCanvassId}</p></div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={calculateMcdm.isPending} onClick={() => calculateMcdm.mutate({ preCanvassId: abstract.preCanvassId })} className="h-8 rounded-[4px] text-[11px]">Calculate MCDM</Button><Button type="button" size="sm" disabled={createRfqFromMcdm.isPending} onClick={() => createRfqFromMcdm.mutate({ preCanvassId: abstract.preCanvassId })} className="h-8 rounded-[4px] bg-[#7b1e1e] text-[11px] hover:bg-[#641818]">Create RFQ</Button></div></div>)}{!dashboard.data?.abstractsOfCanvass.some((abstract) => abstract.status === "recommended") && <p className="p-5 text-[11px] text-[#77818d]">No recommended Abstract is ready for MCDM and RFQ preparation.</p>}</div></section>}
-    <div className="mt-7 grid gap-6 xl:grid-cols-2"><section className="flat-panel"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Abstracts of Canvass & recommendation</p><p className="mt-1 text-[11px] text-[#77818d]">Recommendations are based on the three supplier Pre-Canvass comparison. Package exports include only linked records visible to your signed-in role.</p></div>{dashboard.data?.abstractsOfCanvass.length ? <div className="divide-y divide-[#efebe4]">{dashboard.data.abstractsOfCanvass.map((abstract) => <div key={abstract.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-xs font-semibold text-[#7b1e1e]">{abstract.abstractNumber}</p><p className="mt-1 text-[11px] text-[#72808c]">Pre-Canvass #{abstract.preCanvassId} · Supplier #{abstract.recommendedSupplierId}</p><p className="mt-1 text-[11px] leading-5 text-[#65717e]">{abstract.recommendationReason}</p><div className="mt-2"><StatusBadge tone={tone(abstract.status)}>{abstract.status.toUpperCase()}</StatusBadge></div></div><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => downloadAbstractCsv(abstract)} className="h-7 rounded-[4px] text-[10px]"><FileDown className="mr-1 h-3 w-3" />CSV</Button><Button size="sm" variant="outline" onClick={() => downloadAbstractPackage(abstract)} className="h-7 rounded-[4px] text-[10px]"><FileCheck2 className="mr-1 h-3 w-3" />Package PDF</Button>{isApprover && abstract.status === "recommended" && <><Button size="sm" onClick={() => decide.mutate({ preCanvassId: abstract.preCanvassId, decision: "approved" })} className="h-7 rounded-[4px] bg-[#881337] text-[10px] font-medium text-white hover:bg-[#70102b] dark:bg-[#9f1239] dark:hover:bg-[#881337]">Approve & Forward</Button><Button size="sm" variant="outline" onClick={() => decide.mutate({ preCanvassId: abstract.preCanvassId, decision: "rejected" })} className="h-7 rounded-[4px] text-[10px]">Reject</Button></>}{isProcurement && abstract.status === "approved" && <Button size="sm" onClick={() => issue.mutate({ preCanvassId: abstract.preCanvassId })} className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Issue PO</Button>}</div></div>)}</div> : <PanelEmpty text="No Abstract of Canvass is awaiting approval." />}</section>
-      <section className="flat-panel"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Purchase Orders, delivery & PMR</p><p className="mt-1 text-[11px] text-[#77818d]">Delivery and PMR record shells will accept the official forms when provided.</p></div>{dashboard.data?.purchaseOrders.length ? <div className="divide-y divide-[#efebe4]">{dashboard.data.purchaseOrders.map((po) => <div key={po.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-xs font-semibold text-[#7b1e1e]">{po.poNumber}</p><p className="mt-1 text-[11px] text-[#72808c]">{money(po.totalAmount)} · Supplier #{po.supplierId}</p><div className="mt-2"><StatusBadge tone={tone(po.status)}>{po.status.replaceAll("_", " ").toUpperCase()}</StatusBadge></div></div>{isProcurement && <div className="flex gap-2">{po.status === "issued" && <Button size="sm" onClick={() => setMode("delivery")} className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Record delivery</Button>}{po.status === "delivered" && <Button size="sm" onClick={() => setMode("pmr")} className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]">Log PMR</Button>}</div>}</div>)}</div> : <PanelEmpty text="No Purchase Orders have been issued from approved Abstracts of Canvass." />}</section></div>
-    <OfficialDocumentDetails abstracts={dashboard.data?.abstractsOfCanvass ?? []} purchaseOrders={dashboard.data?.purchaseOrders ?? []} suppliers={setup.data?.suppliers ?? []} preCanvasses={dashboard.data?.preCanvasses ?? []} requestItems={dashboard.data?.purchaseRequestItems ?? []} />
-    {mode === "delivery" && <DeliveryForm purchaseOrders={dashboard.data?.purchaseOrders.filter((po) => po.status === "issued") ?? []} saving={delivery.isPending} onCancel={() => setMode(null)} onSave={(input) => delivery.mutate(input)} />}{mode === "pmr" && <PmrForm purchaseOrders={dashboard.data?.purchaseOrders.filter((po) => po.status === "delivered") ?? []} saving={pmr.isPending} onCancel={() => setMode(null)} onSave={(input) => pmr.mutate(input)} />}
-  </div>;
+  const { user } = useAuth();
+  const role = user ? normalizeProcurementRole(user.role) : "end_user";
+  const isProcurement = role === "procurement_officer" || role === "admin";
+  const isApprover = role === "administrative_approver" || role === "admin";
+  const [mode, setMode] = useState<"delivery" | "pmr" | null>(null);
+  const [correctionTarget, setCorrectionTarget] = useState<{
+    kind: "abstract" | "purchase_order";
+    id: number;
+    preCanvassId?: number;
+    label: string;
+  } | null>(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const dashboard = trpc.procurement.dashboard.useQuery(undefined, {
+    retry: false,
+  });
+  const setup = trpc.procurement.setup.details.useQuery(undefined, {
+    retry: false,
+  });
+  const utils = trpc.useUtils();
+  const refresh = () => void utils.procurement.dashboard.invalidate();
+  const realtime = useSupabaseRealtime({
+    recordTypes: ["pre_canvass", "abstract_of_canvass"],
+    onRecordChanged: refresh,
+  });
+  const decide = trpc.procurement.preCanvasses.decideAbstract.useMutation({
+    onSuccess: () => {
+      toast.success("Administrative decision recorded.");
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const issue = trpc.procurement.preCanvasses.issuePurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Purchase Order issued.");
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const delivery = trpc.procurement.preCanvasses.recordDelivery.useMutation({
+    onSuccess: () => {
+      toast.success("Supplier delivery recorded.");
+      setMode(null);
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const pmr = trpc.procurement.preCanvasses.logPmr.useMutation({
+    onSuccess: () => {
+      toast.success("PMR logged and Purchase Order closed.");
+      setMode(null);
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const returnAbstract =
+    trpc.procurement.preCanvasses.returnAbstract.useMutation({
+      onSuccess: () => {
+        toast.success(
+          "Abstract returned to Procurement with correction comments."
+        );
+        setCorrectionTarget(null);
+        setCorrectionReason("");
+        refresh();
+      },
+      onError: error => toast.error(error.message),
+    });
+  const resubmitAbstract =
+    trpc.procurement.preCanvasses.resubmitAbstract.useMutation({
+      onSuccess: () => {
+        toast.success(
+          "Corrected Abstract resubmitted for administrative decision."
+        );
+        refresh();
+      },
+      onError: error => toast.error(error.message),
+    });
+  const returnPurchaseOrder =
+    trpc.procurement.preCanvasses.returnPurchaseOrder.useMutation({
+      onSuccess: () => {
+        toast.success(
+          "Purchase Order returned to Procurement with correction comments."
+        );
+        setCorrectionTarget(null);
+        setCorrectionReason("");
+        refresh();
+      },
+      onError: error => toast.error(error.message),
+    });
+  const reissuePurchaseOrder =
+    trpc.procurement.preCanvasses.reissuePurchaseOrder.useMutation({
+      onSuccess: () => {
+        toast.success("Corrected Purchase Order reissued.");
+        refresh();
+      },
+      onError: error => toast.error(error.message),
+    });
+  const calculateMcdm = trpc.procurement.preCanvasses.calculateMcdm.useMutation(
+    {
+      onSuccess: recommendation =>
+        toast.success(
+          `MCDM recommendation calculated: supplier #${recommendation.recommendedSupplierId} scored ${Number(recommendation.totalScore).toFixed(2)}.`
+        ),
+      onError: error => toast.error(error.message),
+    }
+  );
+  const createRfqFromMcdm =
+    trpc.procurement.preCanvasses.createRfqFromMcdm.useMutation({
+      onSuccess: rfq => {
+        toast.success(
+          `RFQ ${rfq.rfqNumber} created from the MCDM recommendation.`
+        );
+        refresh();
+      },
+      onError: error => toast.error(error.message),
+    });
+  const supplierNames = new Map(
+    (setup.data?.suppliers ?? []).map(supplier => [
+      supplier.id,
+      supplier.companyName,
+    ])
+  );
+  const abstractPackageInput = (
+    abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]
+  ) => {
+    const preCanvass = dashboard.data?.preCanvasses.find(
+      record => record.id === abstract.preCanvassId
+    );
+    return {
+      abstract,
+      preCanvassNumber:
+        preCanvass?.preCanvassNumber || `Pre-Canvass #${abstract.preCanvassId}`,
+      quotes:
+        dashboard.data?.preCanvassQuotes.filter(
+          quote => quote.preCanvassId === abstract.preCanvassId
+        ) ?? [],
+      supplierNames,
+      items: preCanvass
+        ? (dashboard.data?.purchaseRequestItems.filter(
+            item => item.purchaseRequestId === preCanvass.purchaseRequestId
+          ) ?? [])
+        : [],
+    };
+  };
+  const downloadAbstractCsv = (
+    abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]
+  ) =>
+    downloadCsv(
+      `${abstract.abstractNumber}_AnnexF_AbstractPackage.csv`,
+      buildAbstractPackageCsv(abstractPackageInput(abstract))
+    );
+  const downloadAbstractPackage = async (
+    abstract: NonNullable<typeof dashboard.data>["abstractsOfCanvass"][number]
+  ) => await downloadAbstractPackagePdf(abstractPackageInput(abstract));
+  return (
+    <div className="mx-auto max-w-[1240px]">
+      <PageHeader
+        eyebrow="Post-review execution"
+        title="Abstract, approval, PO & PMR"
+        description="Procurement recommends the lowest compliant supplier; the Administrative Approver decides; Procurement then issues the PO, records delivery, and logs the PMR."
+      />
+      <LiveUpdateBadge
+        connectionState={realtime.connectionState}
+        lastUpdatedAt={realtime.lastUpdatedAt}
+      />
+      {(isApprover || isProcurement) && (
+        <section className="flat-panel mt-6 overflow-hidden">
+          <div className="border-b border-[#ece8df] px-5 py-4">
+            <p className="text-sm font-semibold text-[#34404e]">
+              Correction and resubmission controls
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-[#77818d]">
+              Administrative Approvers must state the required correction.
+              Procurement Officers can resubmit only the returned record after
+              addressing the recorded comments.
+            </p>
+          </div>
+          <div className="p-5">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">
+                  Abstract of Canvass
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {isApprover &&
+                    dashboard.data?.abstractsOfCanvass
+                      .filter(abstract => abstract.status === "recommended")
+                      .map(abstract => (
+                        <Button
+                          key={abstract.id}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setCorrectionTarget({
+                              kind: "abstract",
+                              id: abstract.id,
+                              preCanvassId: abstract.preCanvassId,
+                              label: abstract.abstractNumber,
+                            })
+                          }
+                          className="h-8 rounded-[4px] text-[10px]"
+                        >
+                          Return {abstract.abstractNumber}
+                        </Button>
+                      ))}
+                  {isProcurement &&
+                    dashboard.data?.abstractsOfCanvass
+                      .filter(abstract => abstract.status === "returned")
+                      .map(abstract => (
+                        <Button
+                          key={abstract.id}
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            resubmitAbstract.mutate({
+                              preCanvassId: abstract.preCanvassId,
+                            })
+                          }
+                          className="h-8 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
+                        >
+                          Resubmit {abstract.abstractNumber}
+                        </Button>
+                      ))}
+                  {!dashboard.data?.abstractsOfCanvass.some(
+                    abstract =>
+                      (isApprover && abstract.status === "recommended") ||
+                      (isProcurement && abstract.status === "returned")
+                  ) && (
+                    <p className="text-[11px] text-[#77818d]">
+                      No Abstract requires action at your role.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a6d19]">
+                  Purchase Order
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {isApprover &&
+                    dashboard.data?.purchaseOrders
+                      .filter(po => po.status === "issued")
+                      .map(po => (
+                        <Button
+                          key={po.id}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setCorrectionTarget({
+                              kind: "purchase_order",
+                              id: po.id,
+                              label: po.poNumber,
+                            })
+                          }
+                          className="h-8 rounded-[4px] text-[10px]"
+                        >
+                          Return {po.poNumber}
+                        </Button>
+                      ))}
+                  {isProcurement &&
+                    dashboard.data?.purchaseOrders
+                      .filter(po => po.status === "returned")
+                      .map(po => (
+                        <Button
+                          key={po.id}
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            reissuePurchaseOrder.mutate({
+                              purchaseOrderId: po.id,
+                            })
+                          }
+                          className="h-8 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
+                        >
+                          Reissue {po.poNumber}
+                        </Button>
+                      ))}
+                  {!dashboard.data?.purchaseOrders.some(
+                    po =>
+                      (isApprover && po.status === "issued") ||
+                      (isProcurement && po.status === "returned")
+                  ) && (
+                    <p className="text-[11px] text-[#77818d]">
+                      No Purchase Order requires action at your role.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            {correctionTarget && (
+              <div className="mt-5 border-t border-[#ece8df] pt-5">
+                <Label
+                  htmlFor="execution-correction-reason"
+                  className="text-[11px] font-semibold"
+                >
+                  Required correction comments for {correctionTarget.label}
+                </Label>
+                <Textarea
+                  id="execution-correction-reason"
+                  value={correctionReason}
+                  onChange={event => setCorrectionReason(event.target.value)}
+                  placeholder="State the field, attachment, signatory, amount, or condition that must be corrected before resubmission."
+                  className="mt-1.5 min-h-24 text-xs"
+                />
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCorrectionTarget(null);
+                      setCorrectionReason("");
+                    }}
+                    className="h-8 rounded-[4px] text-[11px]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={
+                      correctionReason.trim().length < 10 ||
+                      returnAbstract.isPending ||
+                      returnPurchaseOrder.isPending
+                    }
+                    onClick={() =>
+                      correctionTarget.kind === "abstract"
+                        ? returnAbstract.mutate({
+                            preCanvassId: correctionTarget.preCanvassId!,
+                            reason: correctionReason.trim(),
+                          })
+                        : returnPurchaseOrder.mutate({
+                            purchaseOrderId: correctionTarget.id,
+                            reason: correctionReason.trim(),
+                          })
+                    }
+                    className="h-8 rounded-[4px] bg-[#7b1e1e] text-[11px] hover:bg-[#641818]"
+                  >
+                    Return for correction
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      {isProcurement && (
+        <section className="flat-panel mt-6 overflow-hidden">
+          <div className="border-b border-[#ece8df] px-5 py-4">
+            <p className="text-sm font-semibold text-[#34404e]">
+              MCDM recommendation to RFQ
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-[#77818d]">
+              For each generated Abstract, calculate a transparent 60% price,
+              20% delivery, 20% compliance recommendation, then create an RFQ
+              containing the recorded three supplier quotations.
+            </p>
+          </div>
+          <div className="divide-y divide-[#ece8df]">
+            {dashboard.data?.abstractsOfCanvass
+              .filter(abstract => abstract.status === "recommended")
+              .map(abstract => (
+                <div
+                  key={abstract.id}
+                  className="flex flex-wrap items-center justify-between gap-3 p-5"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-[#7b1e1e]">
+                      {abstract.abstractNumber}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#77818d]">
+                      Pre-Canvass #{abstract.preCanvassId}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={calculateMcdm.isPending}
+                      onClick={() =>
+                        calculateMcdm.mutate({
+                          preCanvassId: abstract.preCanvassId,
+                        })
+                      }
+                      className="h-8 rounded-[4px] text-[11px]"
+                    >
+                      Calculate MCDM
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={createRfqFromMcdm.isPending}
+                      onClick={() =>
+                        createRfqFromMcdm.mutate({
+                          preCanvassId: abstract.preCanvassId,
+                        })
+                      }
+                      className="h-8 rounded-[4px] bg-[#7b1e1e] text-[11px] hover:bg-[#641818]"
+                    >
+                      Create RFQ
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            {!dashboard.data?.abstractsOfCanvass.some(
+              abstract => abstract.status === "recommended"
+            ) && (
+              <p className="p-5 text-[11px] text-[#77818d]">
+                No recommended Abstract is ready for MCDM and RFQ preparation.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+      <div className="mt-7 grid gap-6 xl:grid-cols-2">
+        <section className="flat-panel">
+          <div className="border-b border-[#ece8df] px-5 py-4">
+            <p className="text-sm font-semibold text-[#34404e]">
+              Abstracts of Canvass & recommendation
+            </p>
+            <p className="mt-1 text-[11px] text-[#77818d]">
+              Recommendations are based on the three supplier Pre-Canvass
+              comparison. Package exports include only linked records visible to
+              your signed-in role.
+            </p>
+          </div>
+          {dashboard.data?.abstractsOfCanvass.length ? (
+            <div className="divide-y divide-[#efebe4]">
+              {dashboard.data.abstractsOfCanvass.map(abstract => (
+                <div
+                  key={abstract.id}
+                  className="flex flex-wrap items-center justify-between gap-4 p-5"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-[#7b1e1e]">
+                      {abstract.abstractNumber}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#72808c]">
+                      Pre-Canvass #{abstract.preCanvassId} · Supplier #
+                      {abstract.recommendedSupplierId}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-[#65717e]">
+                      {abstract.recommendationReason}
+                    </p>
+                    <div className="mt-2">
+                      <StatusBadge tone={tone(abstract.status)}>
+                        {abstract.status.toUpperCase()}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadAbstractCsv(abstract)}
+                      className="h-7 rounded-[4px] text-[10px]"
+                    >
+                      <FileDown className="mr-1 h-3 w-3" />
+                      CSV
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadAbstractPackage(abstract)}
+                      className="h-7 rounded-[4px] text-[10px]"
+                    >
+                      <FileCheck2 className="mr-1 h-3 w-3" />
+                      Package PDF
+                    </Button>
+                    {isApprover && abstract.status === "recommended" && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            decide.mutate({
+                              preCanvassId: abstract.preCanvassId,
+                              decision: "approved",
+                            })
+                          }
+                          className="h-7 rounded-[4px] bg-[#881337] text-[10px] font-medium text-white hover:bg-[#70102b] dark:bg-[#9f1239] dark:hover:bg-[#881337]"
+                        >
+                          Approve & Forward
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            decide.mutate({
+                              preCanvassId: abstract.preCanvassId,
+                              decision: "rejected",
+                            })
+                          }
+                          className="h-7 rounded-[4px] text-[10px]"
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {isProcurement && abstract.status === "approved" && (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          issue.mutate({ preCanvassId: abstract.preCanvassId })
+                        }
+                        className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
+                      >
+                        Issue PO
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <PanelEmpty text="No Abstract of Canvass is awaiting approval." />
+          )}
+        </section>
+        <section className="flat-panel">
+          <div className="border-b border-[#ece8df] px-5 py-4">
+            <p className="text-sm font-semibold text-[#34404e]">
+              Purchase Orders, delivery & PMR
+            </p>
+            <p className="mt-1 text-[11px] text-[#77818d]">
+              Delivery and PMR record shells will accept the official forms when
+              provided.
+            </p>
+          </div>
+          {dashboard.data?.purchaseOrders.length ? (
+            <div className="divide-y divide-[#efebe4]">
+              {dashboard.data.purchaseOrders.map(po => (
+                <div
+                  key={po.id}
+                  className="flex flex-wrap items-center justify-between gap-4 p-5"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-[#7b1e1e]">
+                      {po.poNumber}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#72808c]">
+                      {money(po.totalAmount)} · Supplier #{po.supplierId}
+                    </p>
+                    <div className="mt-2">
+                      <StatusBadge tone={tone(po.status)}>
+                        {po.status.replaceAll("_", " ").toUpperCase()}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                  {isProcurement && (
+                    <div className="flex gap-2">
+                      {po.status === "issued" && (
+                        <Button
+                          size="sm"
+                          onClick={() => setMode("delivery")}
+                          className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
+                        >
+                          Record delivery
+                        </Button>
+                      )}
+                      {po.status === "delivered" && (
+                        <Button
+                          size="sm"
+                          onClick={() => setMode("pmr")}
+                          className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
+                        >
+                          Log PMR
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <PanelEmpty text="No Purchase Orders have been issued from approved Abstracts of Canvass." />
+          )}
+        </section>
+      </div>
+      <OfficialDocumentDetails
+        abstracts={dashboard.data?.abstractsOfCanvass ?? []}
+        purchaseOrders={dashboard.data?.purchaseOrders ?? []}
+        suppliers={setup.data?.suppliers ?? []}
+        preCanvasses={dashboard.data?.preCanvasses ?? []}
+        requestItems={dashboard.data?.purchaseRequestItems ?? []}
+      />
+      {mode === "delivery" && (
+        <DeliveryForm
+          purchaseOrders={
+            dashboard.data?.purchaseOrders.filter(
+              po => po.status === "issued"
+            ) ?? []
+          }
+          saving={delivery.isPending}
+          onCancel={() => setMode(null)}
+          onSave={input => delivery.mutate(input)}
+        />
+      )}
+      {mode === "pmr" && (
+        <PmrForm
+          purchaseOrders={
+            dashboard.data?.purchaseOrders.filter(
+              po => po.status === "delivered"
+            ) ?? []
+          }
+          saving={pmr.isPending}
+          onCancel={() => setMode(null)}
+          onSave={input => pmr.mutate(input)}
+        />
+      )}
+    </div>
+  );
 }
 
 function OfficialDocumentDetails({ abstracts, purchaseOrders, suppliers, preCanvasses, requestItems }: { abstracts: Array<{ abstractNumber: string; preCanvassId: number; openingDate: Date; openingLocation: string; procurementCategory: string; recommendationReason: string; status: string }>; purchaseOrders: Array<{ poNumber: string; supplierId: number; placeOfDelivery: string | null; scheduledDeliveryDate: Date | null; deliveryTerm: string | null; paymentTerm: string | null; modeOfProcurement: string | null; fundCluster: string | null; orsBursNumber: string | null; fundsAvailable: string | null; authorizedOfficialName: string | null; authorizedOfficialDesignation: string | null; chiefAccountantName: string | null }>; suppliers: Array<{ id: number; companyName: string; tin: string | null }>; preCanvasses: Array<{ id: number; purchaseRequestId: number }>; requestItems: Array<{ purchaseRequestId: number; catalogItemId: number | null; description: string; quantity: string; unit: string }> }) {

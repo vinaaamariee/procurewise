@@ -1743,6 +1743,21 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
   return created;
 }
 
+async function requirePreliminaryQuotationAttachment(db: ReturnType<typeof drizzle>, preCanvassId: number) {
+  const [attachment] = await db
+    .select()
+    .from(procurementDocuments)
+    .where(and(
+      eq(procurementDocuments.entityType, "pre_canvass"),
+      eq(procurementDocuments.entityId, preCanvassId),
+      eq(procurementDocuments.documentType, "Preliminary Abstract of Quotations")
+    ))
+    .limit(1);
+  if (!attachment) {
+    throw new Error("Upload the preliminary quotation attachment before submitting the complete package.");
+  }
+}
+
 export async function advancePurchaseRequest(input: { purchaseRequestId: number; nextStatus: PrStatus }, user: User, options?: ProcurementWorkflowOptions) {
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
@@ -1759,6 +1774,7 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
     if (!hasRequiredSupplierQuotations(validQuotes.length)) {
       throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
     }
+    await requirePreliminaryQuotationAttachment(db, preCanvass.id);
 
     if (preCanvass.status === "draft") {
       await db.update(preCanvasses).set({ status: "submitted", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
@@ -2348,6 +2364,7 @@ export async function submitPreCanvass(preCanvassId: number, user: User, options
   const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
   const validQuotes = getValidPreCanvassQuotes(quotes);
   if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("Three supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
+  await requirePreliminaryQuotationAttachment(db, preCanvassId);
   await db.update(preCanvasses).set({ status: "submitted" }).where(eq(preCanvasses.id, preCanvassId));
   await recordAudit({ entityType: "pre_canvass", entityId: preCanvassId, action: "submitted_to_procurement", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { quoteCount: validQuotes.length } });
 }

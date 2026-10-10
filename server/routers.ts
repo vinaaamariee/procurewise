@@ -236,7 +236,11 @@ export const appRouter = router({
         remarks: z.string().max(1000).optional(),
       })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "admin"]);
-        const result = await recordPurchaseRequestToPmr(input, ctx.user);
+        const result = await recordPurchaseRequestToPmr({
+          purchaseRequestId: input.purchaseRequestId,
+          pmrReference: input.pmrReferenceNumber,
+          remarks: input.remarks,
+        }, ctx.user);
         void publishProcurementRealtimeUpdate("purchase_request");
         return result;
       }),

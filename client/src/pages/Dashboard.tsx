@@ -3,6 +3,7 @@ import { EmptyWorkspace } from "@/components/EmptyWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { RecordTable, RecordTableHeader } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
+import { getWorkflowStageInfo } from "@/components/WorkflowTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import {
-  EMPLOYEE_PR_STATUS_LABELS,
   getEmployeePrStatus,
   normalizeProcurementRole,
 } from "../../../shared/procurementRules";
@@ -62,6 +62,29 @@ function formatMoney(amount: number | string | null | undefined) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function getEndUserRequestStatus(status: string) {
+  const endUserStatus: Record<string, { label: string; meaning: string }> = {
+    draft: { label: "Draft", meaning: "You have started this request but have not submitted it." },
+    procurement_review: { label: "Being reviewed", meaning: "The Procurement Office is checking your request." },
+    returned: { label: "Changes requested", meaning: "Review the feedback, make the requested changes, and submit the request again." },
+    approval_review: { label: "Awaiting approval", meaning: "Your request is waiting for an authorized approver." },
+    budget_review: { label: "Awaiting approval", meaning: "Your request is waiting for an authorized approver." },
+    supply_review: { label: "Awaiting approval", meaning: "Your request is waiting for an authorized approver." },
+    bac_review: { label: "Awaiting approval", meaning: "Your request is waiting for an authorized approver." },
+    approved: { label: "Approved", meaning: "Your request is approved. The purchase order or delivery may still be in progress." },
+    rejected: { label: "Not approved", meaning: "Review the explanation shown here. Contact the Procurement Office if you need help." },
+    cancelled: { label: "Cancelled", meaning: "This request was cancelled. Contact the Procurement Office if you have questions." },
+    rfq: { label: "Supplier quotes being reviewed", meaning: "The Procurement Office is reviewing supplier quotes for your request." },
+    po: { label: "Purchase order in progress", meaning: "The purchase order is being prepared or approved." },
+    po_issued: { label: "Purchase order in progress", meaning: "The purchase order is being prepared or approved." },
+    delivered: { label: "Delivered", meaning: "Delivery has been recorded for this request." },
+    pmr_logged: { label: "Complete", meaning: "All steps for this request are complete." },
+    closed: { label: "Complete", meaning: "All steps for this request are complete." },
+  };
+
+  return endUserStatus[status.toLowerCase()] ?? getEmployeePrStatus(status);
 }
 
 export default function Dashboard() {
@@ -212,11 +235,11 @@ function EndUserPersonalDashboard({
     <div className="content-shell pb-12">
       {/* Page Header */}
       <PageHeader
-        eyebrow="End-User Workspace"
-        title="Personal Analytics & Status Overview"
-        description="A dedicated overview of your personal Purchase Requests. Monitor active procurement pipeline stages, review constructive return feedback, and track completed awards."
+        eyebrow="Your workspace"
+        title="Your purchase requests"
+        description="See what is happening with each request, review any feedback, and find the next step."
         action={{
-          label: "New Purchase Request",
+          label: "Start a purchase request",
           onClick: () => setLocation("/purchase-requests?create=1"),
         }}
       />
@@ -227,7 +250,7 @@ function EndUserPersonalDashboard({
         {(returnedPrs.length > 0 || rejectedPrs.length > 0 || successfulPrs.length > 0) && (
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#7e8b9b] dark:text-[#aeb9c4]">
-              Recent Status Alerts:
+              Updates about your requests:
             </span>
             {returnedPrs.length > 0 && (
               <button
@@ -240,7 +263,7 @@ function EndUserPersonalDashboard({
                 }`}
               >
                 <FileEdit className="h-3 w-3 text-[#b47a16]" />
-                <span>Revision Needed ({returnedPrs.length})</span>
+                <span>Changes requested ({returnedPrs.length})</span>
               </button>
             )}
             {rejectedPrs.length > 0 && (
@@ -254,7 +277,7 @@ function EndUserPersonalDashboard({
                 }`}
               >
                 <Ban className="h-3 w-3 text-[#b93232]" />
-                <span>Notice / Rejected ({rejectedPrs.length})</span>
+                <span>Could not proceed ({rejectedPrs.length})</span>
               </button>
             )}
             {successfulPrs.length > 0 && (
@@ -268,7 +291,7 @@ function EndUserPersonalDashboard({
                 }`}
               >
                 <PartyPopper className="h-3 w-3 text-[#136a43]" />
-                <span>Completed / Awarded ({successfulPrs.length})</span>
+                <span>Completed ({successfulPrs.length})</span>
               </button>
             )}
           </div>
@@ -276,7 +299,7 @@ function EndUserPersonalDashboard({
 
         {/* Dynamic Contextual Banner Rendering */}
         {activeBannerCategory === "returned" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4 shadow-sm dark:border-[#5a431c] dark:from-[#251b0f] dark:to-[#1a232c]">
+          <div className="relative rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4 shadow-sm dark:border-[#5a431c] dark:from-[#251b0f] dark:via-[#2a2418] dark:to-[#1a232c]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#faeed2] text-[#936418] dark:bg-[#3a2c16] dark:text-[#f4d081]">
@@ -289,14 +312,14 @@ function EndUserPersonalDashboard({
                     </span>
                     <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
                       <FileEdit className="h-4 w-4 shrink-0 text-[#9a6d19]" />
-                      Minor adjustments needed: Your PR [{activeBannerPr.prNumber}] was returned for revision.
+                      Please update request {activeBannerPr.prNumber}.
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    Check the reviewer comments to update and resubmit.
+                    Review the feedback below, make the requested changes, and submit it again.
                     {activeBannerPr.latestReturnReason && (
                       <span className="mt-1 block rounded border border-[#fae5b8] bg-[#fffcf5] p-2 text-xs font-medium text-[#7d5615] dark:border-[#523d1a] dark:bg-[#20180d] dark:text-[#f3cd82]">
-                        Reviewer feedback: &ldquo;{activeBannerPr.latestReturnReason}&rdquo;
+                        Feedback: &ldquo;{activeBannerPr.latestReturnReason}&rdquo;
                       </span>
                     )}
                   </p>
@@ -327,7 +350,7 @@ function EndUserPersonalDashboard({
         )}
 
         {activeBannerCategory === "rejected" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#f3c8c8] bg-gradient-to-r from-[#fef7f7] via-[#fff9f9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#5e2727] dark:from-[#2a1414] dark:to-[#1a232c]">
+          <div className="relative rounded-lg border border-[#f3c8c8] bg-gradient-to-r from-[#fef7f7] via-[#fff9f9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#5e2727] dark:from-[#2a1414] dark:via-[#2d1b1d] dark:to-[#1a232c]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#fee8e8] text-[#a52a2a] dark:bg-[#431c1c] dark:text-[#fca5a5]">
@@ -340,14 +363,14 @@ function EndUserPersonalDashboard({
                     </span>
                     <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
                       <Info className="h-4 w-4 shrink-0 text-[#a52a2a]" />
-                      Notice: Your PR [{activeBannerPr.prNumber}] could not proceed.
+                      Request {activeBannerPr.prNumber} could not proceed.
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    Please check the BAC remarks for details or consult the Procurement Office before creating a new request.
+                    Review the note below. Contact the Procurement Office if you are unsure what to do next.
                     {activeBannerPr.latestRejectionReason && (
                       <span className="mt-1 block rounded border border-[#fbd3d3] bg-[#fffaf9] p-2 text-xs font-medium text-[#932323] dark:border-[#522121] dark:bg-[#201010] dark:text-[#fca5a5]">
-                        Committee remarks: &ldquo;{activeBannerPr.latestRejectionReason}&rdquo;
+                        Note: &ldquo;{activeBannerPr.latestRejectionReason}&rdquo;
                       </span>
                     )}
                   </p>
@@ -361,7 +384,7 @@ function EndUserPersonalDashboard({
                   className="h-8 rounded-[4px] bg-[#7b1e1e] px-3 text-xs font-semibold text-white hover:bg-[#641818] shadow-xs"
                 >
                   <Info className="mr-1.5 h-3.5 w-3.5" />
-                  View BAC Remarks
+                  View explanation
                 </Button>
                 <Button
                   variant="ghost"
@@ -378,7 +401,7 @@ function EndUserPersonalDashboard({
         )}
 
         {activeBannerCategory === "successful" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#b2e5cb] bg-gradient-to-r from-[#f0fbf5] via-[#f5fdf9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#225838] dark:from-[#11291b] dark:to-[#1a232c]">
+          <div className="relative rounded-lg border border-[#b2e5cb] bg-gradient-to-r from-[#f0fbf5] via-[#f5fdf9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#225838] dark:from-[#11291b] dark:via-[#173522] dark:to-[#1a232c]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#ddf7e8] text-[#136a43] dark:bg-[#1a442b] dark:text-[#86efac]">
@@ -391,15 +414,15 @@ function EndUserPersonalDashboard({
                     </span>
                     <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-[#136a43]" />
-                      Great news! Your Purchase Request [{activeBannerPr.prNumber}] has been successfully completed and approved!
+                      Request {activeBannerPr.prNumber} is complete.
                     </h3>
                   </div>
                   <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    The procurement process is complete. Awarded contract estimate:{" "}
+                    The approved amount is{" "}
                     <span className="font-semibold font-mono text-[#136a43] dark:text-[#86efac]">
                       {formatMoney(activeBannerPr.totalEstimate)}
                     </span>
-                    . You can inspect the approved package or follow delivery progress.
+                    . Open the request details to review the outcome or delivery progress.
                   </p>
                 </div>
               </div>
@@ -436,10 +459,10 @@ function EndUserPersonalDashboard({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-[#2f3946] dark:text-[#f1f5f8]">
-                  Procurement pipeline is operating normally.
+                  Nothing needs your attention right now.
                 </p>
                 <p className="text-[11px] text-[#707c8a] dark:text-[#aeb9c4]">
-                  You have {activePrs.length} active request{activePrs.length === 1 ? "" : "s"} progressing through verification. Any revisions or BAC remarks will appear right here automatically.
+                  {activePrs.length} request{activePrs.length === 1 ? " is" : "s are"} being reviewed. We’ll show any requested changes or important updates here.
                 </p>
               </div>
               <Button
@@ -449,7 +472,7 @@ function EndUserPersonalDashboard({
                 className="hidden sm:inline-flex h-7 text-xs font-medium shrink-0"
               >
                 <Plus className="mr-1 h-3.5 w-3.5" />
-                New PR
+                New request
               </Button>
             </div>
           </div>
@@ -459,12 +482,12 @@ function EndUserPersonalDashboard({
       {/* 1. Metrics Cards (KPIs) Grid */}
       <section className="mt-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {/* 1. Pursued / Active PRs */}
+          {/* Request status summaries */}
           <PersonalKpiCard
-            label="Pursued / Active PRs"
+            label="In progress"
             count={activePrs.length}
-            subtitle="Total PRs currently ongoing in the procurement pipeline"
-            detail="In review, RFQ canvassing, or PO preparation"
+            subtitle="Requests currently being reviewed"
+            detail="Select to view these requests"
             tone="blue"
             icon={Layers}
             isActive={selectedCategory === "active"}
@@ -473,10 +496,10 @@ function EndUserPersonalDashboard({
 
           {/* 2. Returned for Revision */}
           <PersonalKpiCard
-            label="Returned for Revision"
+            label="Changes requested"
             count={returnedPrs.length}
-            subtitle="Count of PRs returned needing user correction"
-            detail="Reviewer comments attached for resubmission"
+            subtitle="Requests that need an update from you"
+            detail="Open a request to read the feedback"
             tone="amber"
             icon={FileEdit}
             highlightBadge={returnedPrs.length > 0 ? "ACTION NEEDED" : undefined}
@@ -486,10 +509,10 @@ function EndUserPersonalDashboard({
 
           {/* 3. Successful / Completed PRs */}
           <PersonalKpiCard
-            label="Successful / Completed PRs"
+            label="Completed"
             count={successfulPrs.length}
-            subtitle="Count of fully awarded/completed PRs"
-            detail="Passed all reviews, awarded or closed in PMR"
+            subtitle="Requests that have been approved"
+            detail="Select to review completed requests"
             tone="emerald"
             icon={CheckCircle2}
             isActive={selectedCategory === "successful"}
@@ -498,10 +521,10 @@ function EndUserPersonalDashboard({
 
           {/* 4. Rejected / Cancelled */}
           <PersonalKpiCard
-            label="Rejected / Cancelled"
+            label="Could not proceed"
             count={rejectedPrs.length}
-            subtitle="Count of disapproved requests"
-            detail="Disapproved requests or committee terminations"
+            subtitle="Requests that were not approved"
+            detail="Open a request to read the explanation"
             tone="rose"
             icon={Ban}
             isActive={selectedCategory === "rejected"}
@@ -517,14 +540,14 @@ function EndUserPersonalDashboard({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base font-semibold text-[#2c3644] dark:text-[#f1f5f8]">
-                  My Purchase Requests Register
+                  All your requests
                 </h3>
                 <span className="rounded-[4px] border border-[#e2d5bd] bg-[#fffaf0] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8a6520] dark:border-[#52411e] dark:bg-[#251d10] dark:text-[#f0c36a]">
-                  PERSONAL SCOPE
+                  YOUR REQUESTS
                 </span>
               </div>
               <p className="mt-1 text-xs text-[#707c8a] dark:text-[#aeb9c4]">
-                Showing your submitted procurement packages. Click any row or feedback action to inspect reviewer comments and take immediate action.
+                Select a request to see its progress, feedback, and available next steps. Choose a status below to narrow the list.
               </p>
             </div>
 
@@ -534,11 +557,11 @@ function EndUserPersonalDashboard({
               <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-card p-0.5 text-xs shadow-xs">
                 {(
                   [
-                    { id: "all", label: "All", count: userPrs.length },
-                    { id: "active", label: "Active", count: activePrs.length },
-                    { id: "returned", label: "Returned", count: returnedPrs.length },
-                    { id: "successful", label: "Successful", count: successfulPrs.length },
-                    { id: "rejected", label: "Rejected", count: rejectedPrs.length },
+                    { id: "all", label: "All requests", count: userPrs.length },
+                    { id: "active", label: "In progress", count: activePrs.length },
+                    { id: "returned", label: "Changes requested", count: returnedPrs.length },
+                    { id: "successful", label: "Completed", count: successfulPrs.length },
+                    { id: "rejected", label: "Could not proceed", count: rejectedPrs.length },
                   ] as const
                 ).filter((tab) => tab.id === "all" || tab.count > 0 || selectedCategory === tab.id).map((tab) => (
                   <button
@@ -562,7 +585,7 @@ function EndUserPersonalDashboard({
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search PR# or purpose..."
+                  placeholder="Search number or purpose..."
                   className="h-8 w-full pl-8 text-xs"
                 />
               </div>
@@ -590,20 +613,31 @@ function EndUserPersonalDashboard({
             <table className="w-full min-w-[560px] text-left text-xs">
               <thead className="border-b border-border bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-5 py-3.5">PR Number &amp; Date</th>
+                  <th className="px-5 py-3.5">Request number</th>
                   <th className="px-4 py-3.5">Purpose</th>
-                  <th className="px-4 py-3.5">Status &amp; Stage</th>
-                  <th className="px-4 py-3.5 text-right">Date</th>
-                  <th className="px-4 py-3.5 text-center">Action</th>
+                  <th className="px-4 py-3.5">Status and progress</th>
+                  <th className="px-4 py-3.5 text-right">Submitted</th>
+                  <th className="px-4 py-3.5 text-center">Next step</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredPrs.map((pr) => {
-                  const prStatusInfo = getEmployeePrStatus(pr.status);
+                      const prStatusInfo = getEndUserRequestStatus(pr.status);
                   const isReturned = pr.status === "returned";
                   const isRejected = pr.status === "rejected" || pr.status === "cancelled";
                   const isSuccessful = ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(pr.status);
                   const hasFeedback = isReturned || isRejected;
+                  const workflowStageInfo = getWorkflowStageInfo(pr.status);
+                  const isWorkflowComplete = ["pmr_logged", "closed"].includes(pr.status);
+                  const isFinalWorkflowStage = workflowStageInfo.stageIndex === workflowStageInfo.stageCount - 1;
+                  const workflowPercent = isFinalWorkflowStage ? 100 : workflowStageInfo.percent;
+                  const workflowProgressText = isReturned
+                    ? "Action needed · make changes and resubmit"
+                    : isRejected
+                      ? `Stopped · ${prStatusInfo.label}`
+                      : isWorkflowComplete
+                        ? "Complete"
+                        : `Step ${workflowStageInfo.stageIndex + 1} of ${workflowStageInfo.stageCount}`;
 
                   return (
                     <tr
@@ -640,6 +674,30 @@ function EndUserPersonalDashboard({
                           >
                             {prStatusInfo.label.toUpperCase()}
                           </StatusBadge>
+                          <div className="mt-0.5 max-w-[280px] min-w-[170px]">
+                            <div
+                              role="progressbar"
+                              aria-label={`${pr.prNumber}: ${workflowProgressText}`}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={workflowPercent}
+                              aria-valuetext={workflowProgressText}
+                              className="h-1.5 overflow-hidden rounded-full bg-muted"
+                            >
+                              <div
+                                aria-hidden="true"
+                                className={`h-full rounded-full transition-[width] duration-300 ${
+                                  isRejected ? "bg-destructive" : isReturned ? "bg-amber-500" : isWorkflowComplete ? "bg-emerald-600" : "bg-primary"
+                                }`}
+                                style={{ width: `${workflowPercent}%` }}
+                              />
+                            </div>
+                            <p className={`mt-1 text-[10px] leading-tight ${
+                              isRejected ? "text-destructive" : isReturned ? "text-amber-700 dark:text-amber-300" : isWorkflowComplete ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"
+                            }`}>
+                              {workflowProgressText}
+                            </p>
+                          </div>
                           {/* Compact inline feedback indicator — clicking opens full modal */}
                           {hasFeedback && (
                             <button
@@ -653,14 +711,14 @@ function EndUserPersonalDashboard({
                               {isReturned ? <FileEdit className="h-3 w-3 shrink-0" /> : <Ban className="h-3 w-3 shrink-0" />}
                               <span className="truncate max-w-[120px]">
                                 {isReturned
-                                  ? (pr.latestReturnReason?.slice(0, 30) || "Needs revision") + (pr.latestReturnReason && pr.latestReturnReason.length > 30 ? "…" : "")
-                                  : (pr.latestRejectionReason?.slice(0, 30) || "Disapproved") + (pr.latestRejectionReason && pr.latestRejectionReason.length > 30 ? "…" : "")}
+                                  ? (pr.latestReturnReason?.slice(0, 30) || "Read feedback") + (pr.latestReturnReason && pr.latestReturnReason.length > 30 ? "…" : "")
+                                  : (pr.latestRejectionReason?.slice(0, 30) || "Read explanation") + (pr.latestRejectionReason && pr.latestRejectionReason.length > 30 ? "…" : "")}
                               </span>
                             </button>
                           )}
                           {isSuccessful && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#0f766e] dark:text-[#86efac]">
-                              <CheckCircle2 className="h-3 w-3 shrink-0" />Approved &amp; Awarded
+                              <CheckCircle2 className="h-3 w-3 shrink-0" />Approved
                             </span>
                           )}
                         </div>
@@ -686,11 +744,11 @@ function EndUserPersonalDashboard({
                           }`}
                         >
                           {isReturned ? (
-                            <><FileEdit className="mr-1 h-3 w-3" />Revise</>
+                            <><FileEdit className="mr-1 h-3 w-3" />Update</>
                           ) : isRejected ? (
-                            <><Info className="mr-1 h-3 w-3" />Remarks</>
+                            <><Info className="mr-1 h-3 w-3" />Reason</>
                           ) : (
-                            <><Eye className="mr-1 h-3 w-3" />Details</>
+                            <><Eye className="mr-1 h-3 w-3" />Open</>
                           )}
                         </Button>
                       </td>
@@ -743,10 +801,10 @@ function EndUserPersonalDashboard({
                 <div>
                   <DialogTitle className="text-base font-bold text-[#202833] dark:text-[#f1f5f8]">
                     {selectedPrForModal.status === "returned"
-                      ? `Revision Requested: ${selectedPrForModal.prNumber}`
+                      ? `Changes requested: ${selectedPrForModal.prNumber}`
                       : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled"
-                      ? `Notice on Disapproval: ${selectedPrForModal.prNumber}`
-                      : `Purchase Request Status: ${selectedPrForModal.prNumber}`}
+                        ? `Request update: ${selectedPrForModal.prNumber}`
+                        : `Request details: ${selectedPrForModal.prNumber}`}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-[#707c8a] dark:text-[#aeb9c4]">
                     {selectedPrForModal.purpose}
@@ -759,7 +817,7 @@ function EndUserPersonalDashboard({
               {/* Key PR Metadata Summary — includes Estimated ABC (moved from table) */}
               <div className="grid grid-cols-2 gap-2.5 rounded border border-border bg-muted/30 p-3 text-[11px]">
                 <div>
-                  <span className="text-muted-foreground">Current Stage:</span>
+                  <span className="text-muted-foreground">Current status:</span>
                   <div className="mt-0.5">
                     <StatusBadge
                       tone={
@@ -772,13 +830,13 @@ function EndUserPersonalDashboard({
                           : "active"
                       }
                     >
-                      {getEmployeePrStatus(selectedPrForModal.status).label.toUpperCase()}
+                      {getEndUserRequestStatus(selectedPrForModal.status).label.toUpperCase()}
                     </StatusBadge>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-muted-foreground">Estimated ABC:</span>
+                  <span className="text-muted-foreground">Estimated total:</span>
                   <p className="mt-0.5 font-mono font-bold text-sm text-foreground">
                     {formatMoney(selectedPrForModal.totalEstimate)}
                   </p>
@@ -796,7 +854,7 @@ function EndUserPersonalDashboard({
                 </div>
 
                 <div>
-                  <span className="text-muted-foreground">Tracking Token:</span>
+                  <span className="text-muted-foreground">Tracking code:</span>
                   <p className="mt-0.5 font-mono font-medium text-primary">
                     {selectedPrForModal.trackingToken || "Pending"}
                   </p>
@@ -806,10 +864,10 @@ function EndUserPersonalDashboard({
               {/* Status Explanation from Procurement Rules */}
               <div className="rounded border border-[#e8e2d5] bg-white p-3 dark:border-[#384554] dark:bg-[#1a232c]">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b95a1] dark:text-[#aeb9c4]">
-                  Workflow Explanation
+                  What this means
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[#465261] dark:text-[#d1dae2]">
-                  {getEmployeePrStatus(selectedPrForModal.status).meaning}
+                  {getEndUserRequestStatus(selectedPrForModal.status).meaning}
                 </p>
               </div>
 
@@ -818,17 +876,17 @@ function EndUserPersonalDashboard({
                 <div className="rounded-md border border-[#f1d28c] bg-[#fffaf0] p-4 text-[#795010] dark:border-[#5a431c] dark:bg-[#251d10] dark:text-[#f4d081]">
                   <div className="flex items-center gap-1.5 font-bold">
                     <FileEdit className="h-4 w-4 text-[#9a6d19]" />
-                    <span>Reviewer &amp; Procurement Officer Feedback</span>
+                    <span>Feedback</span>
                   </div>
                   <p className="mt-2 rounded border border-[#fae5b8] bg-white p-2.5 text-xs font-semibold italic text-[#63430f] dark:border-[#4d3615] dark:bg-[#1a140b] dark:text-[#fcd88b]">
-                    &ldquo;{selectedPrForModal.latestReturnReason || "Please adjust the item specifications or provide the required three-supplier preliminary quotation package."}&rdquo;
+                    &ldquo;{selectedPrForModal.latestReturnReason || "Please update the item details or add the supplier quotes requested by the reviewer."}&rdquo;
                   </p>
                   <div className="mt-3 text-[11px] leading-4 text-[#795010] dark:text-[#f4d081]">
-                    <p className="font-bold">Next steps for resubmission:</p>
+                    <p className="font-bold">How to update it:</p>
                     <ol className="mt-1 list-decimal list-inside space-y-1">
-                      <li>Open the Purchase Request in the PR workspace.</li>
-                      <li>Update the requested items or attach the required quotes/justifications.</li>
-                      <li>Click &ldquo;Resubmit Package&rdquo; for prioritized procurement review.</li>
+                      <li>Open this request from My Purchase Requests.</li>
+                      <li>Make the requested changes or add the missing documents.</li>
+                      <li>Choose &ldquo;Resubmit&rdquo; when you are finished.</li>
                     </ol>
                   </div>
                 </div>
@@ -836,17 +894,17 @@ function EndUserPersonalDashboard({
                 <div className="rounded-md border border-[#f3c8c8] bg-[#fef7f7] p-4 text-[#8b1e1e] dark:border-[#5e2727] dark:bg-[#281313] dark:text-[#fca5a5]">
                   <div className="flex items-center gap-1.5 font-bold">
                     <Ban className="h-4 w-4 text-[#a52a2a]" />
-                    <span>Official BAC / Committee Remarks</span>
+                    <span>Why this request could not proceed</span>
                   </div>
                   <p className="mt-2 rounded border border-[#fbd3d3] bg-white p-2.5 text-xs font-semibold italic text-[#771515] dark:border-[#522121] dark:bg-[#1a0c0c] dark:text-[#fca5a5]">
                     &ldquo;{selectedPrForModal.latestRejectionReason || "The request could not proceed due to budgetary or specification constraints under RA 12009 (NGPA) guidelines."}&rdquo;
                   </p>
                   <div className="mt-3 text-[11px] leading-4 text-[#8b1e1e] dark:text-[#fca5a5]">
-                    <p className="font-bold">Guidance &amp; Next Steps:</p>
+                    <p className="font-bold">What you can do:</p>
                     <ul className="mt-1 list-disc list-inside space-y-1">
-                      <li>Review whether your item specifications exceed available PPMP allotment.</li>
-                      <li>Consult your department head or the BAC Secretariat for clarifying guidelines.</li>
-                      <li>You may prepare a newly adjusted Purchase Request anytime.</li>
+                      <li>Check the explanation above and confirm the request details with your department.</li>
+                      <li>Contact the Procurement Office if you need help understanding the decision.</li>
+                      <li>You can start a new request with updated information.</li>
                     </ul>
                   </div>
                 </div>
@@ -854,20 +912,20 @@ function EndUserPersonalDashboard({
                 <div className="rounded-md border border-[#b2e5cb] bg-[#f0fbf5] p-4 text-[#0e5c38] dark:border-[#225838] dark:bg-[#11291b] dark:text-[#86efac]">
                   <div className="flex items-center gap-1.5 font-bold">
                     <Award className="h-4 w-4 text-[#136a43]" />
-                    <span>Award &amp; Completion Notice</span>
+                    <span>Request approved</span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[#136a43] dark:text-[#86efac]">
-                    🎉 Congratulations! This Purchase Request has satisfied all procurement governance requirements. The official Purchase Order is in progress or completed, and delivery coordinates with the Supply Office.
+                    Your request has been approved. The purchase order or delivery may still be in progress; open the request for the latest update.
                   </p>
                 </div>
               ) : (
                 <div className="rounded-md border border-[#cbe1f3] bg-[#f3f9fe] p-4 text-[#20517d] dark:border-[#1e3f5e] dark:bg-[#122436] dark:text-[#93c5fd]">
                   <div className="flex items-center gap-1.5 font-bold">
                     <Clock className="h-4 w-4 text-[#20517d]" />
-                    <span>Active Pipeline Routing</span>
+                    <span>What is happening now</span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[#2c5f8e] dark:text-[#93c5fd]">
-                    Your package is actively undergoing verification by authorized signatories and the Procurement Office. You will receive an alert if any clarifications are needed.
+                    Your request is being checked by the relevant offices. We will notify you if they need more information.
                   </p>
                 </div>
               )}
@@ -887,7 +945,7 @@ function EndUserPersonalDashboard({
                   className="h-8 rounded-[4px] bg-[#9a6d19] px-4 text-xs font-semibold text-white hover:bg-[#7e5712]"
                 >
                   <FileEdit className="mr-1.5 h-3.5 w-3.5" />
-                  Edit &amp; Resubmit PR
+                  Update and resubmit
                 </Button>
               ) : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled" ? (
                 <Button
@@ -899,7 +957,7 @@ function EndUserPersonalDashboard({
                   className="h-8 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold text-white hover:bg-[#641818]"
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Create New Purchase Request
+                  Start a new request
                 </Button>
               ) : (
                 <Button
@@ -911,7 +969,7 @@ function EndUserPersonalDashboard({
                   className="h-8 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold text-white hover:bg-[#641818]"
                 >
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  View in PR Register
+                  View my requests
                 </Button>
               )}
             </DialogFooter>
@@ -978,12 +1036,11 @@ function PersonalKpiCard({
   }[tone];
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
-      className={`flat-panel min-w-0 cursor-pointer p-4.5 transition-all select-none hover:shadow-md ${styles.bg} ${
+      aria-pressed={Boolean(isActive)}
+      className={`flat-panel min-w-0 cursor-pointer p-4.5 text-left transition-all select-none hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${styles.bg} ${
         isActive ? styles.activeRing : ""
       }`}
     >
@@ -1014,7 +1071,7 @@ function PersonalKpiCard({
       <p className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-[#798593] dark:text-[#aeb9c4]" title={detail}>
         {detail}
       </p>
-    </div>
+    </button>
   );
 }
 

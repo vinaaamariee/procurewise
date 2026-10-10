@@ -413,9 +413,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Apply role-specific descriptive label overrides
   const getLabel = (item: (typeof navigation)[0]) => {
     if (currentRole === "end_user") {
-      if (item.path === "/purchase-requests") return "PPMP-linked Purchase Requests";
-      if (item.path === "/analytics") return "Reports & Analytics";
-      if (item.path === "/audit") return "My Audit Trail";
+      if (item.path === "/catalog") return "Browse Items";
+      if (item.path === "/purchase-requests") return "My Purchase Requests";
+      if (item.path === "/rfq") return "Collect Supplier Quotes";
+      if (item.path === "/supplier-evaluation-form") return "Rate a Supplier";
+      if (item.path === "/analytics") return "My reports";
+      if (item.path === "/audit") return "My Activity";
     }
     if (currentRole === "procurement_officer" || currentRole === "procurement_officer_i" || currentRole === "procurement_officer_ii" || rawRole === "supply_officer") {
       if (item.path === "/dashboard") return "Overview";

@@ -2,17 +2,116 @@
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 
-// server/_core/env.ts
-var ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
-  isProduction: process.env.NODE_ENV === "production",
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? ""
-};
+// server/storage.ts
+import { createClient } from "@supabase/supabase-js";
+function resolveStorageConfiguration(env) {
+  const forgeUrl = env.BUILT_IN_FORGE_API_URL;
+  const forgeKey = env.BUILT_IN_FORGE_API_KEY;
+  if (forgeUrl && forgeKey) {
+    return { provider: "forge", forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+  }
+  const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceRoleKey) {
+    return {
+      provider: "supabase",
+      supabaseUrl: supabaseUrl.replace(/\/+$/, ""),
+      serviceRoleKey,
+      bucket: env.SUPABASE_STORAGE_BUCKET || "procurewise-documents"
+    };
+  }
+  throw new Error(
+    "Document storage is not configured. Set Supabase URL and SUPABASE_SERVICE_ROLE_KEY, or configure both Forge storage variables."
+  );
+}
+async function ensureSupabaseBucket(configuration) {
+  const client = createClient(configuration.supabaseUrl, configuration.serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+  const { error: lookupError } = await client.storage.getBucket(configuration.bucket);
+  if (!lookupError) return client;
+  const { error: createError } = await client.storage.createBucket(configuration.bucket, { public: false });
+  if (createError && !createError.message.toLowerCase().includes("already exists")) {
+    throw new Error(`Supabase storage bucket setup failed: ${createError.message}`);
+  }
+  return client;
+}
+function normalizeKey(relKey) {
+  return relKey.replace(/^\/+/, "");
+}
+function appendHashSuffix(relKey) {
+  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const lastDot = relKey.lastIndexOf(".");
+  if (lastDot === -1) return `${relKey}_${hash}`;
+  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
+}
+async function storagePut(relKey, data, contentType = "application/octet-stream") {
+  const configuration = resolveStorageConfiguration(process.env);
+  const key = appendHashSuffix(normalizeKey(relKey));
+  if (configuration.provider === "supabase") {
+    const client = await ensureSupabaseBucket(configuration);
+    const { error } = await client.storage.from(configuration.bucket).upload(key, Buffer.from(data), {
+      contentType,
+      upsert: false
+    });
+    if (error) throw new Error(`Supabase storage upload failed: ${error.message}`);
+    const storedKey = `supabase/${key}`;
+    return { key: storedKey, url: `/manus-storage/${storedKey}` };
+  }
+  const { forgeUrl, forgeKey } = configuration;
+  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
+  presignUrl.searchParams.set("path", key);
+  const presignResp = await fetch(presignUrl, {
+    headers: { Authorization: `Bearer ${forgeKey}` }
+  });
+  if (!presignResp.ok) {
+    const msg = await presignResp.text().catch(() => presignResp.statusText);
+    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
+  }
+  const { url: s3Url } = await presignResp.json();
+  if (!s3Url) throw new Error("Forge returned empty presign URL");
+  const blob = typeof data === "string" ? new Blob([data], { type: contentType }) : new Blob([data], { type: contentType });
+  const uploadResp = await fetch(s3Url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob
+  });
+  if (!uploadResp.ok) {
+    throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
+  }
+  return { key, url: `/manus-storage/${key}` };
+}
+async function storageGetSignedUrl(relKey) {
+  const key = normalizeKey(relKey);
+  if (key.startsWith("supabase/")) {
+    const configuration2 = resolveStorageConfiguration(process.env);
+    if (configuration2.provider !== "supabase") {
+      throw new Error("Supabase Storage credentials are required to retrieve this document.");
+    }
+    const client = await ensureSupabaseBucket(configuration2);
+    const { data, error } = await client.storage.from(configuration2.bucket).createSignedUrl(key.slice("supabase/".length), 60);
+    if (error || !data?.signedUrl) {
+      throw new Error(`Supabase storage signed URL failed: ${error?.message ?? "No signed URL returned"}`);
+    }
+    return data.signedUrl;
+  }
+  const configuration = resolveStorageConfiguration(process.env);
+  if (configuration.provider !== "forge") {
+    throw new Error("Forge Storage credentials are required to retrieve this legacy document.");
+  }
+  const { forgeUrl, forgeKey } = configuration;
+  const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
+  getUrl.searchParams.set("path", key);
+  const resp = await fetch(getUrl, {
+    headers: { Authorization: `Bearer ${forgeKey}` }
+  });
+  if (!resp.ok) {
+    const msg = await resp.text().catch(() => resp.statusText);
+    throw new Error(`Storage signed URL failed (${resp.status}): ${msg}`);
+  }
+  const { url } = await resp.json();
+  return url;
+}
 
 // server/_core/storageProxy.ts
 function registerStorageProxy(app2) {
@@ -22,34 +121,12 @@ function registerStorageProxy(app2) {
       res.status(400).send("Missing storage key");
       return;
     }
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      res.status(500).send("Storage proxy not configured");
-      return;
-    }
     try {
-      const forgeUrl = new URL(
-        "v1/storage/presign/get",
-        ENV.forgeApiUrl.replace(/\/+$/, "") + "/"
-      );
-      forgeUrl.searchParams.set("path", key);
-      const forgeResp = await fetch(forgeUrl, {
-        headers: { Authorization: `Bearer ${ENV.forgeApiKey}` }
-      });
-      if (!forgeResp.ok) {
-        const body = await forgeResp.text().catch(() => "");
-        console.error(`[StorageProxy] forge error: ${forgeResp.status} ${body}`);
-        res.status(502).send("Storage backend error");
-        return;
-      }
-      const { url } = await forgeResp.json();
-      if (!url) {
-        res.status(502).send("Empty signed URL from backend");
-        return;
-      }
+      const url = await storageGetSignedUrl(key);
       res.set("Cache-Control", "no-store");
       res.redirect(307, url);
     } catch (err) {
-      console.error("[StorageProxy] failed:", err);
+      console.error("[StorageProxy] failed:", err instanceof Error ? err.message : "Unknown storage error");
       res.status(502).send("Storage proxy error");
     }
   });
@@ -64,6 +141,20 @@ import { z } from "zod";
 
 // server/_core/notification.ts
 import { TRPCError } from "@trpc/server";
+
+// server/_core/env.ts
+var ENV = {
+  appId: process.env.VITE_APP_ID ?? "",
+  cookieSecret: process.env.JWT_SECRET ?? "",
+  databaseUrl: process.env.DATABASE_URL ?? "",
+  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
+  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  isProduction: process.env.NODE_ENV === "production",
+  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
+  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? ""
+};
+
+// server/_core/notification.ts
 var TITLE_MAX_LENGTH = 1200;
 var CONTENT_MAX_LENGTH = 2e4;
 var trimValue = (value) => value.trim();
@@ -1038,52 +1129,6 @@ function detectMixedCategories(items) {
 function validatePrBudgetSubmission(input) {
   const allowed = canReserveBudget(input.allottedAmount, input.committedAmount, input.purchaseRequestAmount);
   return { allowed, availableAmount: Number(input.allottedAmount) - Number(input.committedAmount) };
-}
-
-// server/storage.ts
-function getForgeConfig() {
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
-  if (!forgeUrl || !forgeKey) {
-    throw new Error(
-      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
-  }
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
-}
-function normalizeKey(relKey) {
-  return relKey.replace(/^\/+/, "");
-}
-function appendHashSuffix(relKey) {
-  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  const lastDot = relKey.lastIndexOf(".");
-  if (lastDot === -1) return `${relKey}_${hash}`;
-  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
-}
-async function storagePut(relKey, data, contentType = "application/octet-stream") {
-  const { forgeUrl, forgeKey } = getForgeConfig();
-  const key = appendHashSuffix(normalizeKey(relKey));
-  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
-  presignUrl.searchParams.set("path", key);
-  const presignResp = await fetch(presignUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` }
-  });
-  if (!presignResp.ok) {
-    const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
-  }
-  const { url: s3Url } = await presignResp.json();
-  if (!s3Url) throw new Error("Forge returned empty presign URL");
-  const blob = typeof data === "string" ? new Blob([data], { type: contentType }) : new Blob([data], { type: contentType });
-  const uploadResp = await fetch(s3Url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob
-  });
-  if (!uploadResp.ok) {
-    throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
-  }
-  return { key, url: `/manus-storage/${key}` };
 }
 
 // shared/bestValuePolicy.ts
@@ -2740,6 +2785,16 @@ async function createPurchaseRequest(input, user, options) {
   await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber, requestedSignatoryId: requestedSignatory?.id ?? null, approvedSignatoryId: approvedSignatory?.id ?? null } });
   return created;
 }
+async function requirePreliminaryQuotationAttachment(db, preCanvassId) {
+  const [attachment] = await db.select().from(procurementDocuments).where(and(
+    eq(procurementDocuments.entityType, "pre_canvass"),
+    eq(procurementDocuments.entityId, preCanvassId),
+    eq(procurementDocuments.documentType, "Preliminary Abstract of Quotations")
+  )).limit(1);
+  if (!attachment) {
+    throw new Error("Upload the preliminary quotation attachment before submitting the complete package.");
+  }
+}
 async function advancePurchaseRequest(input, user, options) {
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
@@ -2755,6 +2810,7 @@ async function advancePurchaseRequest(input, user, options) {
     if (!hasRequiredSupplierQuotations(validQuotes.length)) {
       throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
     }
+    await requirePreliminaryQuotationAttachment(db, preCanvass.id);
     if (preCanvass.status === "draft") {
       await db.update(preCanvasses).set({ status: "submitted", updatedAt: /* @__PURE__ */ new Date() }).where(eq(preCanvasses.id, preCanvass.id));
       await recordAudit({
@@ -3218,6 +3274,7 @@ async function submitPreCanvass(preCanvassId, user, options) {
   const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
   const validQuotes = getValidPreCanvassQuotes(quotes);
   if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("Three supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
+  await requirePreliminaryQuotationAttachment(db, preCanvassId);
   await db.update(preCanvasses).set({ status: "submitted" }).where(eq(preCanvasses.id, preCanvassId));
   await recordAudit({ entityType: "pre_canvass", entityId: preCanvassId, action: "submitted_to_procurement", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { quoteCount: validQuotes.length } });
 }
@@ -4426,7 +4483,7 @@ async function getEndUserPerformanceAnalytics(input) {
 }
 
 // server/supabaseRealtime.ts
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createClient2 } from "@supabase/supabase-js";
 var REALTIME_TOPIC = "procurewise:workflow";
 function getSupabaseRealtimePublicConfig() {
   const url = process.env.VITE_SUPABASE_URL ?? "";
@@ -4440,7 +4497,7 @@ async function publishProcurementRealtimeUpdate(recordType) {
   const url = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceRoleKey) return { published: false, reason: "not_configured" };
-  const client = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  const client = createClient2(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const channel = client.channel(REALTIME_TOPIC, { config: { broadcast: { ack: true, self: false } } });
   try {
     const subscribed = await new Promise((resolve) => {
@@ -5958,7 +6015,11 @@ var appRouter = router({
         remarks: z2.string().max(1e3).optional()
       })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "admin"]);
-        const result = await recordPurchaseRequestToPmr(input, ctx.user);
+        const result = await recordPurchaseRequestToPmr({
+          purchaseRequestId: input.purchaseRequestId,
+          pmrReference: input.pmrReferenceNumber,
+          remarks: input.remarks
+        }, ctx.user);
         void publishProcurementRealtimeUpdate("purchase_request");
         return result;
       })
@@ -6559,7 +6620,7 @@ var appRouter = router({
 });
 
 // server/supabaseAuth.ts
-import { createClient as createClient2 } from "@supabase/supabase-js";
+import { createClient as createClient3 } from "@supabase/supabase-js";
 function getBearerToken(req) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return null;
@@ -6567,7 +6628,7 @@ function getBearerToken(req) {
   return token || null;
 }
 function getAuthClient() {
-  const url = process.env.VITE_SUPABASE_URL;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) {
     console.warn("[Supabase Auth] Missing server Supabase configuration", {
@@ -6577,7 +6638,7 @@ function getAuthClient() {
     });
     return null;
   }
-  return createClient2(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  return createClient3(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 async function authenticateSupabaseRequest(req) {
   const token = getBearerToken(req);

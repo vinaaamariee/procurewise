@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const bridgeSource = readFileSync(resolve(root, "server/supabaseAuth.ts"), "utf8");
 const databaseSource = readFileSync(resolve(root, "server/db.ts"), "utf8");
 const accessSource = readFileSync(resolve(root, "client/src/pages/Access.tsx"), "utf8");
+const clientAuthSource = readFileSync(resolve(root, "client/src/lib/supabaseAuth.ts"), "utf8");
 
 describe("Supabase Auth identity bridge", () => {
   it("verifies bearer tokens and preserves existing ProcureWise roles by verified email", () => {
@@ -22,5 +23,12 @@ describe("Supabase Auth identity bridge", () => {
     expect(accessSource).toContain("supabaseAuth.auth.signInWithPassword");
     expect(accessSource).toContain("supabaseAuth.auth.signUp");
     expect(accessSource).toContain("emailRedirectTo");
+  });
+
+  it("accepts the existing public Supabase environment names on client and server", () => {
+    expect(clientAuthSource).toContain("import.meta.env.NEXT_PUBLIC_SUPABASE_URL");
+    expect(clientAuthSource).toContain("import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+    expect(bridgeSource).toContain("process.env.SUPABASE_URL");
+    expect(bridgeSource).toContain("process.env.NEXT_PUBLIC_SUPABASE_URL");
   });
 });

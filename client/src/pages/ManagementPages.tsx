@@ -1881,18 +1881,18 @@ export function AnalyticsPage() {
       {/* End-User Performance Analytics Table (Exclusively for Procurement Staff / Officer and Admin) */}
       {canViewPerformanceAnalytics && (
         <section className="flat-panel mt-6">
-          <div className="border-b border-[#ece8df] px-4 py-4 sm:px-6">
+          <div className="border-b border-[#ece8df] px-4 py-4 dark:border-[#46515c] sm:px-6">
             <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-semibold text-[#2c3644]">
+                  <h3 className="text-base font-semibold text-[#2c3644] dark:text-[#f1f5f8]">
                     End-User Performance Analytics
                   </h3>
-                  <span className="rounded-[4px] border border-[#e2d5bd] bg-[#fffaf0] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8a6520]">
+                  <span className="rounded-[4px] border border-[#e2d5bd] bg-[#fffaf0] px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-[#8a6520] dark:border-[#52411e] dark:bg-[#251d10] dark:text-[#f0c36a]">
                     END USER SUMMARY
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-[#707c8a]">
+                <p className="mt-1 text-sm leading-6 text-[#586575] dark:text-[#c4ced8]">
                   Replicated from official procurement monitoring sheets: PR count, Approved Budget for Contract (ABC), awarded contract values, realized savings, and overdue tracking per office.
                 </p>
               </div>
@@ -1907,7 +1907,7 @@ export function AnalyticsPage() {
                     allLabel="All Offices / Units"
                     allowClear
                     placeholder="Filter by Office..."
-                    triggerClassName="h-8 text-xs bg-white border-[#d8d3ca]"
+                    triggerClassName="h-9 text-sm bg-white border-[#d8d3ca] dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]"
                   />
                 </div>
                 <div className="relative w-full sm:w-64">
@@ -1916,11 +1916,11 @@ export function AnalyticsPage() {
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     placeholder="Search End User / Office..."
-                    className="h-8 w-full pl-8 text-xs bg-white border-[#d8d3ca]"
+                    className="h-9 w-full pl-8 text-sm bg-white border-[#d8d3ca] dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8] dark:placeholder:text-[#aeb9c4]"
                   />
                 </div>
                 {(search || selectedOffice) && (
-                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSelectedOffice(""); setCurrentPage(1); }} className="h-8 text-xs shrink-0">
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSelectedOffice(""); setCurrentPage(1); }} className="h-9 text-sm shrink-0">
                     Reset
                   </Button>
                 )}
@@ -1935,8 +1935,8 @@ export function AnalyticsPage() {
           ) : filteredRecords.length ? (
             <div>
               <div className="w-full overflow-x-auto">
-                <table className="w-full min-w-[700px] text-left text-xs">
-                  <thead className="border-b border-[#e5dcce] bg-[#f8f5ee] text-[11px] font-bold uppercase tracking-wider text-[#554433]">
+                <table className="w-full min-w-[700px] text-left text-[13px] sm:text-sm">
+                  <thead className="border-b border-[#e5dcce] bg-[#f8f5ee] text-xs font-bold uppercase tracking-wider text-[#554433] dark:border-[#46515c] dark:bg-[#27323d] dark:text-[#e2e8f0]">
                     <tr>
                       <th
                         className="cursor-pointer select-none px-5 py-3.5 hover:text-[#7b1e1e]"
@@ -1945,7 +1945,7 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center gap-1.5">
                           <span>End User</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "endUser" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "endUser" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                       <th
@@ -1955,7 +1955,7 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-end gap-1.5">
                           <span>PR Count</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "prCount" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "prCount" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                       <th
@@ -1965,7 +1965,7 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-end gap-1.5">
                           <span>Total ABC</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "totalAbc" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "totalAbc" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                       <th
@@ -1975,7 +1975,7 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-end gap-1.5">
                           <span>Total Contract</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "totalContract" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "totalContract" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                       <th
@@ -1985,7 +1985,7 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-end gap-1.5">
                           <span>Savings</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "savings" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "savings" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                       <th
@@ -1995,61 +1995,61 @@ export function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-center gap-1.5">
                           <span>Delayed PRs</span>
-                          <ArrowUpDown className={`h-3 w-3 ${sortField === "delayedPrs" ? "text-[#7b1e1e]" : "text-[#a49988]"}`} />
+                          <ArrowUpDown className={`h-3.5 w-3.5 ${sortField === "delayedPrs" ? "text-[#7b1e1e] dark:text-[#ff837a]" : "text-[#8a7e6e] dark:text-[#aeb9c4]"}`} />
                         </div>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#eeeae1]">
+                  <tbody className="divide-y divide-[#eeeae1] dark:divide-[#46515c]">
                     {paginatedRecords.map((row) => (
-                      <tr key={row.endUser} className="transition-colors hover:bg-[#faf7f0]">
-                        <td className="px-5 py-3 font-semibold text-[#29323f]">
+                      <tr key={row.endUser} className="transition-colors hover:bg-[#faf7f0] dark:hover:bg-[#25313c]">
+                        <td className="px-5 py-3.5 font-semibold leading-6 text-[#29323f] dark:text-[#f1f5f8]">
                           {row.endUser}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-[#465160]">
+                        <td className="px-4 py-3.5 text-right font-medium text-[#465160] dark:text-[#e2e8f0]">
                           {row.prCount.toLocaleString()}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[#374151]">
+                        <td className="px-4 py-3.5 text-right font-mono text-[#374151] dark:text-[#e2e8f0]">
                           {formatMoney(row.totalAbc)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono font-medium text-[#7b1e1e]">
+                        <td className="px-4 py-3.5 text-right font-mono font-medium text-[#7b1e1e] dark:text-[#ff938a]">
                           {formatMoney(row.totalContract)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono font-semibold text-[#0f766e]">
+                        <td className="px-4 py-3.5 text-right font-mono font-semibold text-[#0f766e] dark:text-[#5eead4]">
                           {formatMoney(row.savings)}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {row.delayedPrs > 0 ? (
-                            <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 ring-1 ring-inset ring-red-600/20">
+                            <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-[#3a1d20] dark:text-[#ffb4ad] dark:ring-red-300/30">
                               {row.delayedPrs}
                             </span>
                           ) : (
-                            <span className="text-[#a0aab5]">—</span>
+                            <span className="text-[#7d8996] dark:text-[#aeb9c4]">—</span>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="border-t-2 border-[#d9ccb9] bg-[#f4efe4] font-bold text-[#202833]">
+                  <tfoot className="border-t-2 border-[#d9ccb9] bg-[#f4efe4] font-bold text-[#202833] dark:border-[#596675] dark:bg-[#303b46] dark:text-[#f1f5f8]">
                     <tr>
-                      <td className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#7b1e1e]">
+                      <td className="px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-[#7b1e1e] dark:text-[#ff938a]">
                         Summary Total ({filteredRecords.length} {filteredRecords.length === 1 ? "Office" : "Offices"})
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#202833]">
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[#202833] dark:text-[#f1f5f8]">
                         {summaryTotals.prCount.toLocaleString()}
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#202833]">
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[#202833] dark:text-[#f1f5f8]">
                         {formatMoney(summaryTotals.totalAbc)}
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#7b1e1e]">
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[#7b1e1e] dark:text-[#ff938a]">
                         {formatMoney(summaryTotals.totalContract)}
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs font-bold text-[#0f766e]">
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[#0f766e] dark:text-[#5eead4]">
                         {formatMoney(summaryTotals.savings)}
                       </td>
-                      <td className="px-4 py-3.5 text-center text-xs font-bold text-[#202833]">
+                      <td className="px-4 py-3.5 text-center font-bold text-[#202833] dark:text-[#f1f5f8]">
                         {summaryTotals.delayedPrs > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-sm font-bold text-red-800 dark:bg-[#3a1d20] dark:text-[#ffb4ad]">
                             {summaryTotals.delayedPrs}
                           </span>
                         ) : (
@@ -2062,23 +2062,23 @@ export function AnalyticsPage() {
               </div>
 
               {/* Table pagination & rows per page controls */}
-              <div className="flex flex-col items-center justify-between gap-3 border-t border-[#ece8df] px-6 py-3 text-xs sm:flex-row">
-                <div className="flex items-center gap-2 text-[#707c8a]">
+              <div className="flex flex-col items-center justify-between gap-3 border-t border-[#ece8df] px-6 py-3 text-sm dark:border-[#46515c] sm:flex-row">
+                <div className="flex items-center gap-2 text-[#586575] dark:text-[#c4ced8]">
                   <span>Showing</span>
-                  <span className="font-semibold text-[#29323f]">
+                  <span className="font-semibold text-[#29323f] dark:text-[#f1f5f8]">
                     {filteredRecords.length === 0 ? 0 : pageSize === 0 ? 1 : (currentPage - 1) * pageSize + 1}
                   </span>
                   <span>to</span>
-                  <span className="font-semibold text-[#29323f]">
+                  <span className="font-semibold text-[#29323f] dark:text-[#f1f5f8]">
                     {pageSize === 0 ? filteredRecords.length : Math.min(currentPage * pageSize, filteredRecords.length)}
                   </span>
                   <span>of</span>
-                  <span className="font-semibold text-[#29323f]">{filteredRecords.length}</span>
+                  <span className="font-semibold text-[#29323f] dark:text-[#f1f5f8]">{filteredRecords.length}</span>
                   <span>offices</span>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-[#707c8a]">
+                  <div className="flex items-center gap-1.5 text-[#586575] dark:text-[#c4ced8]">
                     <span>Per page:</span>
                     <select
                       value={pageSize}
@@ -2086,7 +2086,7 @@ export function AnalyticsPage() {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="rounded border border-[#d8d0c2] bg-white px-2 py-1 text-xs text-[#29323f]"
+                      className="rounded border border-[#d8d0c2] bg-white px-2 py-1 text-sm text-[#29323f] dark:border-[#596675] dark:bg-[#1b2229] dark:text-[#f1f5f8]"
                     >
                       <option value={15}>15</option>
                       <option value={25}>25</option>
@@ -2106,7 +2106,7 @@ export function AnalyticsPage() {
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                       </Button>
-                      <span className="px-2 font-medium text-[#29323f]">
+                      <span className="px-2 font-medium text-[#29323f] dark:text-[#f1f5f8]">
                         {currentPage} / {totalPages}
                       </span>
                       <Button
@@ -2124,7 +2124,7 @@ export function AnalyticsPage() {
               </div>
             </div>
           ) : (
-            <div className="p-10 text-center text-xs text-[#707c8a]">
+            <div className="p-10 text-center text-sm text-[#586575] dark:text-[#c4ced8]">
               No office records match the search filter.
             </div>
           )}

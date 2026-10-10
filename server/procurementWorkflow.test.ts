@@ -23,8 +23,9 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
     const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "600.00", status: "draft", ppmpEntryId: 5 };
     const preCanvass = { id: 14, purchaseRequestId: 9, status: "submitted" };
     const quotes = [{ id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" }, { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" }, { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" }];
+    const attachment = { id: 1, entityType: "pre_canvass", entityId: 14, documentType: "Preliminary Abstract of Quotations" };
     const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
-    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [attachment], [allotment]]);
     const result = await advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit });
     expect(result.status).toBe("procurement_review");
     expect(fake.updates).toHaveLength(2);
@@ -39,8 +40,9 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
       { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" },
       { id: 4, preCanvassId: 14, supplierId: 4, totalPrice: "400.00" },
     ];
+    const attachment = { id: 1, entityType: "pre_canvass", entityId: 14, documentType: "Preliminary Abstract of Quotations" };
     const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
-    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [attachment], [allotment]]);
     const result = await advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit });
     expect(result.status).toBe("procurement_review");
     expect(fake.updates).toContainEqual(expect.objectContaining({ status: "submitted" }));
@@ -63,8 +65,9 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
     const pr = { id: 9, prNumber: "PR-2026-00001", officeId: 2, objectOfExpenditureId: 3, totalEstimate: "800.00", status: "draft", ppmpEntryId: 5 };
     const preCanvass = { id: 14, purchaseRequestId: 9, status: "submitted" };
     const quotes = [{ id: 1, preCanvassId: 14, supplierId: 1, totalPrice: "100.00" }, { id: 2, preCanvassId: 14, supplierId: 2, totalPrice: "200.00" }, { id: 3, preCanvassId: 14, supplierId: 3, totalPrice: "300.00" }];
+    const attachment = { id: 1, entityType: "pre_canvass", entityId: 14, documentType: "Preliminary Abstract of Quotations" };
     const allotment = { officeId: 2, objectOfExpenditureId: 3, fiscalYear: new Date().getFullYear(), allottedAmount: "1000.00", committedAmount: "300.00" };
-    const fake = fakeDatabase([[pr], [preCanvass], quotes, [allotment]]);
+    const fake = fakeDatabase([[pr], [preCanvass], quotes, [attachment], [allotment]]);
     await expect(advancePurchaseRequest({ purchaseRequestId: 9, nextStatus: "procurement_review" }, user, { db: fake.db as never, recordAudit: silentAudit })).rejects.toThrow("exceeds the available office-level budget");
     expect(fake.updates).toHaveLength(0);
   });
@@ -81,9 +84,19 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
   it("forwards a three-supplier Pre-Canvass to Procurement only when all mandatory quotes exist", async () => {
     const preCanvass = { id: 14, preparedById: 1, status: "draft" };
     const quotes = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    const fake = fakeDatabase([[preCanvass], quotes]);
+    const attachment = { id: 1, entityType: "pre_canvass", entityId: 14, documentType: "Preliminary Abstract of Quotations" };
+    const fake = fakeDatabase([[preCanvass], quotes, [attachment]]);
     await submitPreCanvass(14, user, { db: fake.db as never, recordAudit: silentAudit });
     expect(fake.updates).toContainEqual({ status: "submitted" });
+  });
+
+  it("blocks forwarding a three-quote Pre-Canvass without its preliminary quotation attachment", async () => {
+    const preCanvass = { id: 14, preparedById: 1, status: "draft" };
+    const quotes = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    const fake = fakeDatabase([[preCanvass], quotes, []]);
+    await expect(submitPreCanvass(14, user, { db: fake.db as never, recordAudit: silentAudit }))
+      .rejects.toThrow("Upload the preliminary quotation attachment before submitting the complete package.");
+    expect(fake.updates).toHaveLength(0);
   });
 
   it("records the Administrative Approver's rejection decision against a Procurement Officer abstract", async () => {

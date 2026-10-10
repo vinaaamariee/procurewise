@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import {
@@ -24,7 +25,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function PmrRegistryPage() {
@@ -43,11 +44,18 @@ export function PmrRegistryPage() {
   const [pmrReferenceInput, setPmrReferenceInput] = useState("");
   const [pmrRemarksInput, setPmrRemarksInput] = useState("");
   const [trackingSlipPr, setTrackingSlipPr] = useState<{ id: number; prNumber: string; trackingToken: string; purpose: string; totalEstimate: string; createdAt: Date | string } | null>(null);
+  const pmrRegisterRef = useRef<HTMLDivElement>(null);
+  const recentRecordedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab !== "register") return;
+    (recentRecordedRef.current ?? pmrRegisterRef.current)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [activeTab]);
 
   const utils = trpc.useUtils();
   const prsQuery = trpc.procurement.purchaseRequests.list.useQuery(undefined, { retry: false });
   const setupQuery = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
-  const pmrAuditsQuery = trpc.procurement.audit.list.useQuery({ action: "recorded_to_pmr" }, { retry: false });
+  const pmrAuditsQuery = trpc.procurement.audit.list.useQuery({ action: "recorded_to_pmr", limit: 500 }, { retry: false });
 
   const prDetailQuery = trpc.procurement.purchaseRequests.detail.useQuery(
     { purchaseRequestId: selectedPrId! },
@@ -64,6 +72,14 @@ export function PmrRegistryPage() {
     { retry: false }
   );
 
+  useSupabaseRealtime({
+    recordTypes: ["purchase_request"],
+    onRecordChanged: () => {
+      void utils.procurement.purchaseRequests.list.invalidate();
+      void utils.procurement.audit.list.invalidate({ action: "recorded_to_pmr" });
+    },
+  });
+
   const verifyMutation = trpc.procurement.purchaseRequests.verifyPackage.useMutation({
     onSuccess: (data) => {
       toast.success(`Purchase Request ${data.prNumber} verified by Procurement Officer.`);
@@ -79,6 +95,7 @@ export function PmrRegistryPage() {
       setRecordPmrPr(null);
       setPmrReferenceInput("");
       setPmrRemarksInput("");
+      setActiveTab("register");
       void utils.procurement.purchaseRequests.list.invalidate();
       void utils.procurement.audit.list.invalidate({ action: "recorded_to_pmr" });
       void utils.procurement.historicalPmr.list.invalidate();
@@ -102,6 +119,21 @@ export function PmrRegistryPage() {
 
   const pendingRecording = filteredPrs.filter((pr) => !recordedPrIds.has(pr.id) && pr.status !== "pmr_logged" && pr.status !== "closed");
   const alreadyRecorded = filteredPrs.filter((pr) => recordedPrIds.has(pr.id) || pr.status === "pmr_logged" || pr.status === "closed");
+  const recordedPmrEntries = (pmrAuditsQuery.data?.items ?? []).flatMap((audit) => {
+    const details = audit.details && typeof audit.details === "object"
+      ? audit.details as Record<string, unknown>
+      : {};
+    const recordedAt = typeof details.recordedAt === "string"
+      ? new Date(details.recordedAt)
+      : audit.createdAt;
+    if (recordedAt.getFullYear() !== selectedFiscalYear) return [];
+
+    const purchaseRequest = prList.find((pr) => pr.id === audit.entityId);
+    const pmrReference = typeof details.pmrReference === "string" && details.pmrReference
+      ? details.pmrReference
+      : `PMR-${recordedAt.getFullYear()}-${String(audit.entityId).padStart(5, "0")}`;
+    return [{ audit, details, recordedAt, purchaseRequest, pmrReference }];
+  }).sort((left, right) => right.recordedAt.getTime() - left.recordedAt.getTime());
 
   const formatCurrency = (amount: number | string | null | undefined) => {
     const val = Number(amount || 0);
@@ -196,7 +228,7 @@ export function PmrRegistryPage() {
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               </div>
               <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-                {pendingRecording.filter((p) => p.procurementReviewedById !== null).length}
+                {pendingRecording.filter((p) => Boolean(p.procurementReviewedById)).length}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Ready for PMR recording</p>
             </div>
@@ -206,18 +238,23 @@ export function PmrRegistryPage() {
                 <ShieldAlert className="h-4 w-4 text-rose-500" />
               </div>
               <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-400">
-                {pendingRecording.filter((p) => p.procurementReviewedById === null).length}
+                {pendingRecording.filter((p) => !p.procurementReviewedById).length}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Officer must verify PR &amp; PPMP first</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setActiveTab("register")}
+              aria-label={`View ${alreadyRecorded.length} recorded PMR entries`}
+              className="w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-blue-500/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Recorded to PMR</span>
                 <FileCheck2 className="h-4 w-4 text-blue-500" />
               </div>
               <p className="mt-2 text-2xl font-bold text-foreground">{alreadyRecorded.length}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Active logged records</p>
-            </div>
+            </button>
           </div>
 
           {/* Search bar */}
@@ -265,7 +302,7 @@ export function PmrRegistryPage() {
                     </tr>
                   ) : (
                     pendingRecording.map((pr) => {
-                      const isVerified = pr.procurementReviewedById !== null || !["draft", "submitted", "procurement_review"].includes(pr.status);
+                      const isVerified = Boolean(pr.procurementReviewedById) || !["draft", "submitted", "procurement_review"].includes(pr.status);
                       const office = officeMap.get(pr.officeId);
 
                       return (
@@ -368,7 +405,7 @@ export function PmrRegistryPage() {
       )}
 
       {activeTab === "register" && (
-        <div className="space-y-6">
+        <div ref={pmrRegisterRef} id="official-pmr-register" className="scroll-mt-4 space-y-6">
           {/* Summary KPIs */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -402,6 +439,52 @@ export function PmrRegistryPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Fiscal efficiency</p>
             </div>
           </div>
+
+          {recordedPmrEntries.length > 0 && (
+            <div ref={recentRecordedRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border p-4">
+                <h3 className="font-semibold text-foreground">Recently Recorded Purchase Requests</h3>
+                <p className="text-xs text-muted-foreground">
+                  PMR entries created from the recording queue for FY {selectedFiscalYear}.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">PMR Reference</th>
+                      <th className="px-4 py-3 font-semibold">Purchase Request</th>
+                      <th className="px-4 py-3 font-semibold">Requesting Office</th>
+                      <th className="px-4 py-3 font-semibold">ABC</th>
+                      <th className="px-4 py-3 font-semibold">Recorded</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {recordedPmrEntries.map((entry) => (
+                      <tr key={entry.audit.id} className="hover:bg-muted/20">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-rose-700 dark:text-rose-400">
+                          {entry.pmrReference}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-foreground">{entry.purchaseRequest?.prNumber ?? String(entry.details.prNumber ?? `PR #${entry.audit.entityId}`)}</div>
+                          <div className="max-w-md text-xs text-muted-foreground">{entry.purchaseRequest?.purpose ?? "Purchase Request"}</div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {entry.purchaseRequest ? officeMap.get(entry.purchaseRequest.officeId)?.name ?? "—" : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-medium text-foreground">
+                          {formatCurrency(entry.purchaseRequest?.totalEstimate)}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {entry.recordedAt.toLocaleDateString("en-PH")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Historical Register Table */}
           <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
@@ -519,7 +602,7 @@ export function PmrRegistryPage() {
           ) : prDetailQuery.data ? (
             <div className="space-y-5 text-sm">
               {/* Status & Verification Alert */}
-              {prDetailQuery.data.purchaseRequest.procurementReviewedById !== null ? (
+              {Boolean(prDetailQuery.data.purchaseRequest.procurementReviewedById) ? (
                 <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
@@ -663,7 +746,7 @@ export function PmrRegistryPage() {
               Close
             </Button>
             <div className="flex items-center gap-2">
-              {isOfficerOrAdmin && prDetailQuery.data && prDetailQuery.data.purchaseRequest.procurementReviewedById === null && (
+              {isOfficerOrAdmin && prDetailQuery.data && !prDetailQuery.data.purchaseRequest.procurementReviewedById && (
                 <Button
                   size="sm"
                   disabled={verifyMutation.isPending}
@@ -679,7 +762,7 @@ export function PmrRegistryPage() {
               {isStaffOrOfficer && prDetailQuery.data && (
                 <Button
                   size="sm"
-                  disabled={prDetailQuery.data.purchaseRequest.procurementReviewedById === null}
+                  disabled={!prDetailQuery.data.purchaseRequest.procurementReviewedById}
                   onClick={() => {
                     const pr = prDetailQuery.data.purchaseRequest;
                     setSelectedPrId(null);
@@ -687,7 +770,7 @@ export function PmrRegistryPage() {
                       id: pr.id,
                       prNumber: pr.prNumber,
                       purpose: pr.purpose,
-                      isVerified: pr.procurementReviewedById !== null,
+                      isVerified: Boolean(pr.procurementReviewedById),
                     });
                   }}
                   className="bg-rose-700 hover:bg-rose-800 text-white"
