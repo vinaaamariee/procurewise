@@ -3600,7 +3600,7 @@ async function getPublicPurchaseRequestTracking(trackingToken) {
   if (!purchaseRequest) throw new Error("Tracking record not found.");
   const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequest.id)).limit(1);
   const [purchaseOrder] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.purchaseRequestId, purchaseRequest.id)).limit(1);
-  const events = await db.select({ action: auditTrails.action, createdAt: auditTrails.createdAt }).from(auditTrails).where(eq(auditTrails.entityId, purchaseRequest.id)).orderBy(auditTrails.createdAt);
+  const events = await db.select({ action: auditTrails.action, createdAt: auditTrails.createdAt }).from(auditTrails).where(and(eq(auditTrails.entityType, "purchase_request"), eq(auditTrails.entityId, purchaseRequest.id))).orderBy(auditTrails.createdAt);
   return { purchaseRequest, preCanvass: preCanvass ? { status: preCanvass.status, updatedAt: preCanvass.updatedAt } : null, purchaseOrder: purchaseOrder ? { poNumber: purchaseOrder.poNumber, status: purchaseOrder.status, updatedAt: purchaseOrder.updatedAt } : null, events };
 }
 async function getEligibleTestOnlyPackage(ppmpEntryId, db) {
