@@ -5,7 +5,7 @@ describe("Supabase PostgreSQL migration connection", () => {
   it("connects to the configured Supabase PostgreSQL database with a lightweight read-only query", async () => {
     const password = process.env.SUPABASE_DB_PASSWORD;
     expect(password).toBeTruthy();
-    const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password!)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+    const connectionString = `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password!)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
     const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
     try {
       await client.connect();

@@ -4,7 +4,7 @@ import { Client } from "pg";
 const password = process.env.SUPABASE_DB_PASSWORD;
 if (!password) throw new Error("SUPABASE_DB_PASSWORD is required.");
 const backup = JSON.parse(await readFile(new URL("../imports/mysql-to-supabase-backup.json", import.meta.url), "utf8"));
-const connectionString = `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+const connectionString = `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
 const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
 const quoteIdentifier = (value) => `"${value.replaceAll('"', '""')}"`;
 

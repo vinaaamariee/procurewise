@@ -4,7 +4,7 @@ const password = process.env.SUPABASE_DB_PASSWORD;
 const configuredConnectionString = process.env.SUPABASE_DATABASE_URL;
 if (!configuredConnectionString && !password) throw new Error("SUPABASE_DATABASE_URL or SUPABASE_DB_PASSWORD is required to run Supabase PostgreSQL Drizzle commands.");
 
-const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
 
 export default defineConfig({
   schema: "./drizzle/schema.ts",

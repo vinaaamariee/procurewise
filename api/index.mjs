@@ -1386,7 +1386,7 @@ async function getDb() {
   const configuredConnectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
   if (!_db && (configuredConnectionString || password)) {
     try {
-      const connectionString = configuredConnectionString ?? `postgresql://postgres.wchgxpvviebvwuhrsrvj:${encodeURIComponent(password)}@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`;
+      const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
       _pool.on("connect", (client) => {
         void client.query("SET search_path TO procurewise, public").catch((error) => {
