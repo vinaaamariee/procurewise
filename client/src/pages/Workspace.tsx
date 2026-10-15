@@ -363,7 +363,7 @@ function PurchaseRequestTable({
         </Button>
       </>
     )}
-    {record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">In progress</span>}
+    {record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">{record.status === "delivered" ? "Final records in progress" : "In progress"}</span>}
   </div>}</td></tr>;
   })}</tbody></RecordTable>;
 }

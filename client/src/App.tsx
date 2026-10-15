@@ -10,7 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Access from "./pages/Access";
 import DocumentsPage from "./pages/Documents";
 import NotificationsPage from "./pages/Notifications";
-import { ForecastPage, NoticesPage, SupplierEvaluationsPage, TransmittalsPage } from "./pages/OfficerPages";
+import { ForecastPage, SupplierEvaluationsPage, TransmittalsPage } from "./pages/OfficerPages";
+import { NoticeWorkflowPage } from "./pages/NoticeWorkflowPage";
 import { PrintBacResolutionPage, PrintNoticePage, PrintPreCanvassAbstractPage, PrintPurchaseOrderPage, PrintTransmittalPage } from "./pages/PrintPages";
 import PublicTrackingPage from "./pages/PublicTracking";
 import Landing from "./pages/Landing";
@@ -59,7 +60,7 @@ function Router() {
       <Route path={"/purchase-orders"}>{protectedPage(<PurchaseOrderPage />)}</Route>
       <Route path={"/documents"}>{protectedPage(<DocumentsPage />)}</Route>
       <Route path={"/notifications"}>{protectedPage(<NotificationsPage />)}</Route>
-      <Route path={"/officer/notices"}>{protectedPage(<NoticesPage />)}</Route>
+      <Route path={"/officer/notices"}>{protectedPage(<NoticeWorkflowPage />)}</Route>
       <Route path={"/officer/transmittals"}>{protectedPage(<TransmittalsPage />)}</Route>
       <Route path={"/officer/forecast"}>{protectedPage(<ForecastPage />)}</Route>
       <Route path={"/supplier-evaluations"}>{protectedPage(<SupplierEvaluationsPage />)}</Route>

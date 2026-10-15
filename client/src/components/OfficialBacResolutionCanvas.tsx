@@ -200,7 +200,7 @@ export function OfficialBacResolutionCanvas({
       </p>
 
       <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, Appendix 18, Section 3.e on the Guidelines for Shopping and Small Value Procurement provides an Abstract of Quotations shall be prepared setting forth the names of those who responded to the RFQ&rsquo;s right after the deadline for submission except for shopping under Section 52.1(b), where at least three (3) price quotations (RFQ) must be obtained;
+        <span className="font-bold tracking-wide">WHEREAS</span>, Section 5.7.1 of the procurement rules provides that after the deadline for submission of quotations, the same shall be forwarded to the BAC Chairperson for opening. An Abstract of Quotations/Canvass/Ratings shall be prepared, setting forth the names of those who responded to the RFQ and their corresponding price quotations;
       </p>
 
       <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
@@ -262,7 +262,7 @@ export function OfficialBacResolutionCanvas({
         <span className="font-semibold underline">
           {localEvaluationMode === "lot_basis" ? "lot basis" : "per item basis"}
         </span>{" "}
-        which means that the determination of the single/lowest calculated and responsive bid (S/LCRB) is the total amount of offered unit price multiplied by the required quantity;
+        which means that the determination of the Single or Lowest Calculated and Responsive Quotation (S/LCRQ) is the total amount of offered unit price multiplied by the required quantity;
       </p>
     </div>
   );

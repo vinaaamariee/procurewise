@@ -20,10 +20,10 @@ describe("official procedure role model", () => {
     expect(normalizeProcurementRole("procurement_staff")).toBe("procurement_staff");
   });
 
-  it("maps BAC, HoPE, and Budget Officer roles to decision capability gates", () => {
-    expect(normalizeProcurementRole("bac_secretariat")).toBe("administrative_approver");
-    expect(normalizeProcurementRole("bac")).toBe("administrative_approver");
-    expect(normalizeProcurementRole("hope")).toBe("administrative_approver");
-    expect(normalizeProcurementRole("budget_officer")).toBe("administrative_approver");
+  it("preserves BAC, HoPE, and Budget Officer roles as distinct official roles", () => {
+    expect(normalizeProcurementRole("bac_secretariat")).toBe("bac_secretariat");
+    expect(normalizeProcurementRole("bac")).toBe("bac");
+    expect(normalizeProcurementRole("hope")).toBe("hope");
+    expect(normalizeProcurementRole("budget_officer")).toBe("budget_officer");
   });
 });

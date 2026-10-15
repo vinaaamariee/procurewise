@@ -1,4 +1,4 @@
-import { Check, Circle, AlertCircle, Clock, PackageCheck, Send, ShieldCheck, ShoppingCart } from "lucide-react";
+import { Check, Circle, AlertCircle, Clock, ClipboardCheck, PackageCheck, Send, ShieldCheck, ShoppingCart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -15,7 +15,8 @@ const STAGES = [
   { label: "Office review", description: "Procurement checks your request", icon: Send },
   { label: "Approval", description: "An approver reviews the request", icon: ShieldCheck },
   { label: "Supplier selection", description: "Quotes are reviewed and purchase details are confirmed", icon: ShoppingCart },
-  { label: "Delivery", description: "Items arrive and final records are completed", icon: PackageCheck },
+  { label: "Delivery", description: "Items arrive and the delivery receipt is recorded", icon: PackageCheck },
+  { label: "Final records", description: "IAR and PMR records are completed", icon: ClipboardCheck },
 ] as const;
 
 const STATUS_STAGE_MAP: Record<string, { stageIndex: number; percent: number; label: string }> = {
@@ -30,9 +31,9 @@ const STATUS_STAGE_MAP: Record<string, { stageIndex: number; percent: number; la
   rfq: { stageIndex: 3, percent: 75, label: "Supplier quotes are being reviewed" },
   po: { stageIndex: 3, percent: 80, label: "The purchase order is being prepared" },
   po_issued: { stageIndex: 4, percent: 85, label: "Purchase order issued: delivery is next" },
-  delivered: { stageIndex: 4, percent: 95, label: "Delivered: final records are being completed" },
-  pmr_logged: { stageIndex: 4, percent: 100, label: "Request complete" },
-  closed: { stageIndex: 4, percent: 100, label: "Request complete" },
+  delivered: { stageIndex: 5, percent: 95, label: "Delivery recorded: final records are pending" },
+  pmr_logged: { stageIndex: 5, percent: 100, label: "Request complete" },
+  closed: { stageIndex: 5, percent: 100, label: "Request complete" },
   rejected: { stageIndex: 0, percent: 0, label: "Request not approved" },
   cancelled: { stageIndex: 0, percent: 0, label: "Request cancelled" },
 };
@@ -128,7 +129,7 @@ export function WorkflowTimeline({
       </div>
 
       {/* Stage Nodes */}
-      <ol className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-5">
+      <ol className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-3 xl:grid-cols-6">
         {STAGES.map((stage, index) => {
           const isDone = index < activeIndex || isCompleted;
           const isCurrent = index === activeIndex && !isCompleted && !isStopped;

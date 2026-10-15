@@ -79,6 +79,17 @@ describe("Procurement Staff RBAC & Procedure 5.2 Boundaries", () => {
         items: [{ description: "Pens", quantity: 10, unit: "box", estimatedUnitCost: 50 }],
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      staffCaller.procurement.officer.transmittals.directLetterToPo({
+        purchaseRequestId: 1,
+        resolutionNumber: "BAC-2026-001",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      staffCaller.procurement.officer.notices.approve({ noticeId: 1 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("allows procurement_staff to call their scoped endpoints: notices, transmittals, PMR list, RFQ actions", async () => {

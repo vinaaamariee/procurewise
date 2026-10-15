@@ -2,7 +2,7 @@
 
 ## Procedure Details 5.1–5.15
 
-**Institutional process basis:** The official procedure assigns work to Procurement Officer II, Procurement Staff, BAC Secretariat/BAC, Procurement Officer I, BAC/HoPE, Budget Officer/HoPE, and Supplier/Contractor. This document uses those official role names instead of the generic Administrative Approver label.
+**Institutional process basis:** The official procedure assigns work to Procurement Officer II, Procurement Staff, BAC Secretariat/BAC, Procurement Officer I, the BAC and HoPE, Budget Officer/HoPE, and Supplier/Contractor. This document uses those official role names instead of the generic Administrative Approver label.
 
 **System scope:** ProcureWise records, routes, validates, and reports the procurement package. A system action does not replace the required institutional signature, BAC action, HoPE decision, PhilGEPS posting, contract signing, or physical delivery activity.
 
@@ -29,7 +29,7 @@ End-User submits PR + PPMP + preliminary quotation/abstract from completed pre-c
 → Distribute and retrieve RFQ; transmit to BAC
 → PhilGEPS posting
 → Forward to BAC for Abstract of Quotations
-→ BAC/HoPE recommendation on award
+→ BAC recommends award to HoPE based on the Single or Lowest Calculated and Responsive Quotation
 → Prepare Letter of Notice
 → Serve Letter of Notice
 → Prepare Purchase Order
@@ -54,7 +54,7 @@ The system also supports document retrieval, notifications, audit events, public
 | **5.5** | Distribute and retrieve RFQ and transmit to BAC | **Procurement Officer I** | Request for Quotation | RFQ distribution/retrieval and BAC transmittal |
 | **5.6** | PhilGEPS posting | **Procurement Officer I** | Request for Quotation | Posting milestone and evidence record |
 | **5.7** | Forward to BAC for final validation and preparation of the official Abstract of Quotations | **Procurement Staff** | Preliminary quotation package and official Abstract of Quotations | Final canvass and BAC abstract handoff |
-| **5.8** | Recommendation on the Award of Contract | **BAC/HoPE** | Letter of Notice | Award recommendation and decision |
+| **5.8** | Recommendation on the Award of Contract | **BAC recommends; HoPE decides** | BAC award recommendation | Recommendation for award to the Single or Lowest Calculated and Responsive Quotation; HoPE approval is a separate decision |
 | **5.9** | Prepare Letter of Notice | **Procurement Staff** | Letter of Notice | Notice drafting and controlled print |
 | **5.10** | Serve Letter of Notice | **Procurement Officer I** | Letter of Notice | Notice service milestone |
 | **5.11** | Prepare Purchase Order | **Procurement Staff** | Purchase Order | PO preparation |
@@ -133,19 +133,19 @@ The Procurement Staff forwards the completed pre-canvass and preliminary quotati
 
 ### 3.9 Procedure 5.8 — Recommendation on the Award of Contract
 
-**Responsible:** BAC/HoPE  
-**Reference:** Letter of Notice
+**Responsible:** BAC (recommends); HoPE (receives and decides)
+**Reference:** Abstract of Quotations and BAC award recommendation
 
-The BAC/HoPE reviews the Abstract of Quotations and makes the recommendation on the award of contract. This is the official decision authority in this process model; it should not be labelled merely as “Administrative Approver.”
+The BAC reviews the Abstract of Quotations and recommends to the HoPE award of contract in favor of the supplier or contractor with the Single or Lowest Calculated and Responsive Quotation. The recommendation must be supported by the quotation evaluation and recorded in the BAC resolution. The HoPE then makes the award decision; the recommendation itself is not HoPE approval.
 
-The system may present a transparent comparison or weighted recommendation aid, but the BAC/HoPE remains responsible for the authorized decision and required signature. A recommendation is not the same as a signed award decision.
+The system may present a transparent comparison or recommendation aid, but it must not automatically select or award a supplier. The BAC remains responsible for its recommendation, and the HoPE remains responsible for the award decision and required approval. A recommendation is not the same as an approved award.
 
 ### 3.10 Procedure 5.9 — Prepare Letter of Notice
 
-**Responsible:** Procurement Staff  
-**Reference:** Letter of Notice
+**Responsible:** Procurement Staff (prepares and submits); HoPE (approves and enters into contract)
+**Reference:** Letter of Notice and approved BAC award recommendation
 
-The Procurement Staff prepares the Letter of Notice using the authorized award or disqualification information. The notice must use approved wording and must not contain placeholder data. ProcureWise can create, link, preview, and print the controlled notice record.
+The Procurement Staff prepares the Letter of Notice using the approved BAC award recommendation and forwards it to the HoPE for approval. ProcureWise records an award notice in a pending HoPE approval state and prevents it from being issued or served before that approval. Upon approval, the HoPE immediately enters into contract with the selected supplier; the subsequent PO preparation, obligation, signing, and release steps document and formalize the contract as specified in Procedures 5.11–5.13. The approved notice then proceeds to service under Procedure 5.10.
 
 ### 3.11 Procedure 5.10 — Serve Letter of Notice
 
@@ -202,7 +202,7 @@ Missing supplier evidence
 → Procurement Officer starts review
 → Evidence accepted
 → Compliance and quotation eligibility recalculated
-→ BAC/HoPE receives a complete comparison
+→ BAC reviews the complete comparison and recommends to HoPE; HoPE decides on the award
 ```
 
 ### Correction path
@@ -237,7 +237,8 @@ The application recognizes the following official role labels:
 | **Procurement Officer II** | PR/PPMP verification, delivery monitoring, receipt verification, PMR completion |
 | **Procurement Staff** | PR-to-PMR recording, RFQ preparation, BAC forwarding, Letter of Notice preparation, PO preparation |
 | **BAC Secretariat/BAC** | Resolution and endorsement preparation; BAC documentation and abstract handoff |
-| **BAC/HoPE** | Recommendation on award of contract and official decision |
+| **BAC** | Recommends award to the HoPE based on the Single or Lowest Calculated and Responsive Quotation |
+| **HoPE** | Reviews and decides on the BAC's award recommendation |
 | **Budget Officer/HoPE** | Contract-signing responsibility |
 | **Supplier/Contractor** | External delivery of goods or contracted performance |
 | **End-User** | Planning, PR preparation, and initial procurement package submission |
@@ -256,7 +257,7 @@ For backward compatibility, the application maps the official roles to existing 
 5. Show the RFQ preparation and HoPE recommendation under 5.4.
 6. Explain that **Procurement Officer I** distributes/retrieves the RFQ, transmits it to BAC, and handles PhilGEPS posting under 5.5–5.6.
 7. Show the quotation comparison and evidence review before BAC abstract preparation under 5.7.
-8. Explain that BAC/HoPE makes the award recommendation under 5.8.
+8. Explain that the BAC recommends award to the HoPE under 5.8, based on the Single or Lowest Calculated and Responsive Quotation; the HoPE makes the award decision.
 9. Show Procurement Staff preparing the Letter of Notice and Procurement Officer I serving it under 5.9–5.10.
 10. Explain PO preparation, contract signing, and release under 5.11–5.13.
 11. Show Supplier/Contractor delivery and Procurement Officer II monitoring under 5.14–5.15.
@@ -266,4 +267,4 @@ For backward compatibility, the application maps the official roles to existing 
 
 ## 7. System boundary statement
 
-> **ProcureWise is the digital control, record, routing, validation, and accountability layer for the official procurement procedure. It does not replace the legal or institutional responsibility of Procurement Officer I, Procurement Officer II, Procurement Staff, BAC Secretariat/BAC, BAC/HoPE, Budget Officer/HoPE, or Supplier/Contractor.**
+> **ProcureWise is the digital control, record, routing, validation, and accountability layer for the official procurement procedure. It does not replace the legal or institutional responsibility of Procurement Officer I, Procurement Officer II, Procurement Staff, BAC Secretariat/BAC, the BAC, the HoPE, Budget Officer/HoPE, or Supplier/Contractor.**

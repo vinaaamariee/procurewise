@@ -149,7 +149,7 @@ const navigation: Array<{
     label: "Letters of Notice",
     path: "/officer/notices",
     icon: FileText,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"],
+    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "hope", "administrative_approver", "admin"],
     category: "processing",
   },
   {

@@ -10,7 +10,7 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
+const redirectToLoginIfUnauthorized = async (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
@@ -19,6 +19,13 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   // A stale protected query may settle after the user is already on the public access page.
   // Do not reload the same route: it causes a visible blank-page flash in Safari.
   if (!isUnauthorized || window.location.pathname === "/access") return;
+
+  try {
+    const { data, error: sessionError } = await supabaseAuth.auth.getSession();
+    if (sessionError || data.session) return;
+  } catch {
+    return;
+  }
 
   window.location.assign("/access");
 };

@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { trpc } from "@/lib/trpc";
+import { getNotificationDestination } from "@/lib/notificationDestination";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import {
   AlertTriangle,
@@ -209,30 +210,7 @@ export function NotificationCenterDrawer({
       markRead.mutate({ notificationId });
     }
     setOpen(false);
-
-    switch (entityType) {
-      case "purchase_request":
-        if (isOfficer) setLocation("/officer/pr-verification");
-        else if (isStaff) setLocation("/pmr-registry");
-        else setLocation("/purchase-requests");
-        break;
-      case "rfq":
-        if (isOfficer) setLocation("/officer/rfq-distribution");
-        else if (isStaff) setLocation("/rfq-management");
-        else setLocation("/rfq");
-        break;
-      case "purchase_order":
-        if (isOfficer) setLocation("/officer/releasing");
-        else setLocation("/purchase-orders");
-        break;
-      case "delivery":
-        if (isOfficer) setLocation("/officer/delivery-monitoring");
-        else if (isEndUser) setLocation("/supplier-evaluation-form");
-        else setLocation("/purchase-orders");
-        break;
-      default:
-        setLocation("/notifications");
-    }
+    setLocation(getNotificationDestination(entityType, user?.role ?? "end_user"));
   };
 
   const handleMarkAllRead = async () => {

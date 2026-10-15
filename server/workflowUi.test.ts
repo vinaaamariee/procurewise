@@ -14,7 +14,7 @@ describe("ProcureWise PPMP-to-PMR workflow workspaces", () => {
     expect(requestSource).toContain("Linked PPMP entry");
     expect(workflowSource).toContain("Pre-Canvass");
     expect(workflowSource).toContain("official Abstract");
-    expect(workflowSource).toContain("Issue PO");
+    expect(workflowSource).toContain("Prepare PO");
     expect(workflowSource).toContain("Record delivery");
     expect(workflowSource).toContain("Log PMR");
   });

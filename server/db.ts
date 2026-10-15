@@ -14,7 +14,7 @@ import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
-type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent };
+type ProcurementWorkflowOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent; notifyRoleGroup?: typeof notifyRoles };
 type UserUpsertOptions = { db?: ReturnType<typeof drizzle> | null };
 type OperationalServiceOptions = { db?: ReturnType<typeof drizzle>; recordAudit?: typeof writeAuditEvent; putDocument?: typeof storagePut; notifyUser?: typeof createWorkflowNotification; notifyRoleGroup?: typeof notifyRoles };
 type DocumentEntityType = "app_ppmp_entry" | "purchase_request" | "pre_canvass" | "pre_canvass_quote" | "abstract_of_canvass" | "purchase_order" | "delivery_receipt" | "pmr_log";
@@ -776,16 +776,67 @@ export async function listEligibleSupplierEvaluationOrders(user: User) {
 export async function createLetterOfNotice(input: { noticeType: "award" | "disqualification" | "clarification" | "demand" | "other"; purchaseRequestId?: number; supplierId?: number; subject: string; body: string; demandDueDate?: Date; issueNow?: boolean }, user: User) {
   const db = await requireDb();
   const noticeNumber = `LON-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
-  const status = input.issueNow ? "issued" : "draft" as const;
+  if (input.noticeType === "award" && input.issueNow) {
+    throw new Error("A Notice of Award must be approved by the HoPE before it can be issued.");
+  }
+  const status = input.noticeType === "award" ? "pending_hope_approval" : input.issueNow ? "issued" : "draft";
   const reminderDate = input.demandDueDate ? new Date(input.demandDueDate.getTime() - 3 * 24 * 60 * 60 * 1000) : null;
   await db.insert(lettersOfNotice).values({ noticeNumber, noticeType: input.noticeType, purchaseRequestId: input.purchaseRequestId ?? null, supplierId: input.supplierId ?? null, subject: input.subject.trim(), body: input.body.trim(), status, issuedById: user.id, issuedAt: input.issueNow ? new Date() : null, demandDueDate: input.demandDueDate ?? null, demandReminderDate: reminderDate });
   const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.noticeNumber, noticeNumber)).limit(1);
   if (!notice) throw new Error("Letter of Notice could not be saved.");
-  await writeAuditEvent({ entityType: "letter_of_notice", entityId: notice.id, action: input.issueNow ? "issued" : "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { noticeNumber } });
+  await writeAuditEvent({ entityType: "letter_of_notice", entityId: notice.id, action: input.noticeType === "award" ? "submitted_for_hope_approval" : input.issueNow ? "issued" : "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { noticeNumber } });
+  if (input.noticeType === "award") {
+    await notifyRoles(["hope", "administrative_approver", "admin"], {
+      kind: "action_required",
+      title: `Notice of Award awaiting HoPE approval (${noticeNumber})`,
+      body: `Procurement Staff prepared a Notice of Award for ${notice.subject}. Review and approve it before it is issued and contract entry proceeds.`,
+      entityType: "letter_of_notice",
+      entityId: notice.id,
+    });
+  }
   return notice;
 }
 
 export async function listLettersOfNotice() { const db = await requireDb(); return db.select().from(lettersOfNotice).orderBy(desc(lettersOfNotice.createdAt)); }
+export async function approveLetterOfNotice(input: { noticeId: number }, user: User) {
+  const db = await requireDb();
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["hope", "administrative_approver", "admin"])) {
+    throw new Error("Only the HoPE may approve a Notice of Award and enter into contract.");
+  }
+  const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.id, input.noticeId)).limit(1);
+  if (!notice) throw new Error("Letter of Notice not found.");
+  if (notice.noticeType !== "award" || notice.status !== "pending_hope_approval") {
+    throw new Error("Only an award notice awaiting HoPE approval can be approved.");
+  }
+
+  const approvedAt = new Date();
+  await db.update(lettersOfNotice).set({
+    status: "issued",
+    issuedById: user.id,
+    issuedAt: approvedAt,
+    updatedAt: approvedAt,
+  }).where(eq(lettersOfNotice.id, notice.id));
+  await writeAuditEvent({
+    entityType: "letter_of_notice",
+    entityId: notice.id,
+    action: "approved_and_contract_entered_by_hope",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: { noticeNumber: notice.noticeNumber, purchaseRequestId: notice.purchaseRequestId },
+  });
+  await notifyRoles(["procurement_officer", "procurement_staff", "admin"], {
+    kind: "action_required",
+    title: `HoPE approved Notice of Award (${notice.noticeNumber})`,
+    body: "The HoPE approved the Notice of Award and entered into contract. The notice is ready for Procurement Officer I service to the supplier.",
+    entityType: "letter_of_notice",
+    entityId: notice.id,
+  });
+  const [approvedNotice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.id, notice.id)).limit(1);
+  if (!approvedNotice) throw new Error("Approved Letter of Notice could not be loaded.");
+  return approvedNotice;
+}
+
 
 export async function serveLetterOfNotice(
   input: {
@@ -804,9 +855,17 @@ export async function serveLetterOfNotice(
   }
   const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.id, input.noticeId)).limit(1);
   if (!notice) throw new Error("Letter of Notice not found.");
+  if (notice.noticeType === "award" && notice.status !== "issued" && notice.status !== "approved") {
+    throw new Error("The HoPE must approve the Notice of Award before it can be served.");
+  }
 
   await db.update(lettersOfNotice).set({
     status: "served",
+    servedById: user.id,
+    servedAt: input.servedAt,
+    recipientName: input.recipientName.trim(),
+    deliveryMode: input.deliveryMode,
+    serviceRemarks: input.remarks?.trim() || null,
     updatedAt: new Date(),
   }).where(eq(lettersOfNotice.id, input.noticeId));
 
@@ -825,7 +884,15 @@ export async function serveLetterOfNotice(
     },
   });
 
-  return { ...notice, status: "served", recipientName: input.recipientName, deliveryMode: input.deliveryMode };
+  return {
+    ...notice,
+    status: "served" as const,
+    servedById: user.id,
+    servedAt: input.servedAt,
+    recipientName: input.recipientName.trim(),
+    deliveryMode: input.deliveryMode,
+    serviceRemarks: input.remarks?.trim() || null,
+  };
 }
 
 export async function createBacTransmittal(input: { purchaseRequestId?: number; fromOffice: string; toOffice: string; subject: string; remarks?: string; sendNow?: boolean }, user: User) {
@@ -936,20 +1003,35 @@ export async function directLetterOfApprovalToPo(
     sentAt: new Date(),
   });
 
-  const noticeNumber = `NOTICE-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
-  await db.insert(lettersOfNotice).values({
-    noticeNumber,
-    noticeType: "award",
-    purchaseRequestId: pr.id,
-    supplierId: supplierId || null,
-    subject: `Notice of Award / Letter of Approval - BAC Res. No. ${input.resolutionNumber}`,
-    body: `Pursuant to the approved BAC Resolution No. ${input.resolutionNumber} and Letter of Approval by the Head of the Procuring Entity (HoPE), you are hereby issued this Notice of Award. Please acknowledge service and coordinate with the Procurement Office for Purchase Order preparation and contract signing.`,
-    status: "issued",
-    issuedById: user.id,
-    issuedAt: new Date(),
-  });
-
+  const [pendingNotice] = await db.select().from(lettersOfNotice).where(and(eq(lettersOfNotice.purchaseRequestId, pr.id), eq(lettersOfNotice.noticeType, "award"), eq(lettersOfNotice.status, "pending_hope_approval"))).orderBy(desc(lettersOfNotice.createdAt)).limit(1);
+  let noticeNumber: string;
+  if (pendingNotice) {
+    noticeNumber = pendingNotice.noticeNumber;
+    await db.update(lettersOfNotice).set({ status: "issued", issuedById: user.id, issuedAt: new Date(), updatedAt: new Date() }).where(eq(lettersOfNotice.id, pendingNotice.id));
+  } else {
+    noticeNumber = `NOTICE-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+    await db.insert(lettersOfNotice).values({
+      noticeNumber,
+      noticeType: "award",
+      purchaseRequestId: pr.id,
+      supplierId: supplierId || null,
+      subject: `Notice of Award / Letter of Approval - BAC Res. No. ${input.resolutionNumber}`,
+      body: `Pursuant to the approved BAC Resolution No. ${input.resolutionNumber} and Letter of Approval by the Head of the Procuring Entity (HoPE), you are hereby issued this Notice of Award. Please acknowledge service and coordinate with the Procurement Office for Purchase Order preparation and contract signing.`,
+      status: "issued",
+      issuedById: user.id,
+      issuedAt: new Date(),
+    });
+  }
   const [notice] = await db.select().from(lettersOfNotice).where(eq(lettersOfNotice.noticeNumber, noticeNumber)).limit(1);
+  if (!notice) throw new Error("Approved Letter of Notice could not be loaded.");
+  await writeAuditEvent({
+    entityType: "letter_of_notice",
+    entityId: notice.id,
+    action: "approved_and_issued_by_hope",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: { noticeNumber, purchaseRequestId: pr.id, resolutionNumber: input.resolutionNumber },
+  });
 
   await writeAuditEvent({
     entityType: "bac_transmittal",
@@ -1267,22 +1349,27 @@ export async function releasePurchaseOrder(
     acknowledgementReference?: string;
     remarks?: string;
   },
-  user: User
+  user: User,
+  options?: ProcurementWorkflowOptions
 ) {
-  const db = await requireDb();
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const actorRole = normalizeProcurementRole(user.role);
   if (!roleCanAct(actorRole, ["procurement_officer", "admin"])) {
     throw new Error("Access restricted to Procurement Officer.");
   }
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
   if (!po) throw new Error("Purchase Order not found.");
+  if (po.status !== "approved") {
+    throw new Error("The Purchase Order must have Budget Officer obligation certification and HoPE approval before it can be released.");
+  }
 
   await db.update(purchaseOrders).set({
     status: "released",
     updatedAt: new Date(),
   }).where(eq(purchaseOrders.id, po.id));
 
-  await writeAuditEvent({
+  await recordAudit({
     entityType: "purchase_order",
     entityId: po.id,
     action: "po_released_to_supplier",
@@ -2409,11 +2496,11 @@ export async function createPurchaseOrderFromPreCanvass(preCanvassId: number, us
   const [settings] = await db.select().from(procurementSettings).where(sql`1 = 1`).limit(1);
   const poNumber = `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   const scheduledDeliveryDate = preCanvass.deliveryPeriodDays ? new Date(Date.now() + preCanvass.deliveryPeriodDays * 86_400_000) : null;
-  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, placeOfDelivery: settings?.entityName || "Batanes State College", scheduledDeliveryDate, deliveryTerm: "FOB Destination", paymentTerm: "15 days upon complete delivery", modeOfProcurement: "Small Value Procurement", fundCluster: pr.fundCluster, fundsAvailable: pr.totalEstimate, authorizedOfficialName: settings?.authorizedOfficialName || null, authorizedOfficialDesignation: settings?.authorizedOfficialDesignation || null, chiefAccountantName: settings?.chiefAccountantName || null, generatedById: user.id, status: "issued" });
-  await db.update(purchaseRequests).set({ status: "po_issued" }).where(eq(purchaseRequests.id, pr.id));
+  await db.insert(purchaseOrders).values({ poNumber, purchaseRequestId: pr.id, preCanvassId, supplierId: quote.supplierId, totalAmount: quote.totalPrice, placeOfDelivery: settings?.entityName || "Batanes State College", scheduledDeliveryDate, deliveryTerm: "FOB Destination", paymentTerm: "15 days upon complete delivery", modeOfProcurement: "Small Value Procurement", fundCluster: pr.fundCluster, chiefAccountantName: settings?.chiefAccountantName || null, generatedById: user.id, status: "pending_approval" });
+  await db.update(purchaseRequests).set({ status: "po" }).where(eq(purchaseRequests.id, pr.id));
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.poNumber, poNumber)).limit(1);
-  if (!po) throw new Error("The Purchase Order could not be issued.");
-  await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "issued", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { poNumber, preCanvassId } });
+  if (!po) throw new Error("The Purchase Order could not be prepared.");
+  await recordAudit({ entityType: "purchase_order", entityId: po.id, action: "prepared", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { poNumber, preCanvassId } });
   return po;
 }
 
@@ -2421,7 +2508,7 @@ export async function recordDelivery(input: { purchaseOrderId: number; receiptNu
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
-  if (!po || (po.status !== "issued" && po.status !== "released")) throw new Error("Only an issued or released Purchase Order may be recorded as delivered.");
+  if (!po || po.status !== "released") throw new Error("Only a formally released Purchase Order may be recorded as delivered.");
   await db.insert(deliveryReceipts).values({ purchaseOrderId: po.id, receiptNumber: input.receiptNumber, receivedByName: input.receivedByName || null, deliveryStatus: input.deliveryStatus ?? "complete", signatureReference: input.signatureReference || null, remarks: input.remarks || null, receivedById: user.id });
   await db.update(purchaseOrders).set({ status: "delivered" }).where(eq(purchaseOrders.id, po.id));
   await db.update(purchaseRequests).set({ status: "delivered" }).where(eq(purchaseRequests.id, po.purchaseRequestId));
@@ -2563,6 +2650,7 @@ export async function createPurchaseOrder(
 ) {
   const db = options?.db ?? (await requireDb());
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
 
   let rfqId: number | undefined;
   let purchaseRequestId: number;
@@ -2618,7 +2706,7 @@ export async function createPurchaseOrder(
   const poNumber =
     (typeof input === "object" ? input.poNumber?.trim() : undefined) ||
     customDetails?.poNumber?.trim() ||
-    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-3)}`;
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-6)}`;
 
   const placeOfDelivery =
     (typeof input === "object" ? input.placeOfDelivery : undefined) ||
@@ -2657,6 +2745,10 @@ export async function createPurchaseOrder(
 
   // Check if a Purchase Order already exists for this PR
   const [existingPo] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.purchaseRequestId, purchaseRequestId)).limit(1);
+  const [numberConflict] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.poNumber, poNumber)).limit(1);
+  if (numberConflict && numberConflict.id !== existingPo?.id) {
+    throw new Error(`Purchase Order number ${poNumber} is already in use. Enter a unique number or leave it blank to auto-generate one.`);
+  }
 
   let poId: number;
   if (existingPo) {
@@ -2712,7 +2804,7 @@ export async function createPurchaseOrder(
     details: { poNumber, totalAmount },
   });
 
-  await notifyRoles(["budget_officer", "hope", "admin"], {
+  await notifyRoleGroup(["budget_officer", "hope", "admin"], {
     kind: "action_required",
     title: `Purchase Order Prepared (${poNumber})`,
     body: `Procurement Staff prepared official Purchase Order ${poNumber}. Awaiting Contract Signing: Budget Officer certification and HoPE signature.`,
@@ -2733,9 +2825,12 @@ export async function signPurchaseOrderContract(
     authorizedOfficialName?: string;
     authorizedOfficialDesignation?: string;
   },
-  user: User
+  user: User,
+  options?: ProcurementWorkflowOptions
 ) {
-  const db = await requireDb();
+  const db = options?.db ?? await requireDb();
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  const notifyRoleGroup = options?.notifyRoleGroup ?? notifyRoles;
   const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.purchaseOrderId)).limit(1);
   if (!po) throw new Error("Purchase Order not found.");
 
@@ -2758,7 +2853,7 @@ export async function signPurchaseOrderContract(
       updates.approvedById = po.approvedById || user.id;
     }
 
-    await writeAuditEvent({
+    await recordAudit({
       entityType: "purchase_order",
       entityId: po.id,
       action: "po_budget_certified",
@@ -2784,7 +2879,7 @@ export async function signPurchaseOrderContract(
       updates.status = "approved";
     }
 
-    await writeAuditEvent({
+    await recordAudit({
       entityType: "purchase_order",
       entityId: po.id,
       action: "po_hope_signed",
@@ -2802,7 +2897,7 @@ export async function signPurchaseOrderContract(
   const [updated] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, po.id)).limit(1);
 
   if (updated && updated.status === "approved") {
-    await notifyRoles(["procurement_officer", "procurement_officer_i", "admin"], {
+    await notifyRoleGroup(["procurement_officer", "procurement_officer_i", "admin"], {
       kind: "action_required",
       title: `PO Contract Signed & Ready for Release (${po.poNumber})`,
       body: `Budget Officer certified and HoPE signed Purchase Order ${po.poNumber}. Procurement Officer I can now release to supplier.`,

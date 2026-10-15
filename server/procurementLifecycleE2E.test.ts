@@ -8,7 +8,9 @@ import {
   createPurchaseOrderFromPreCanvass,
   decideAbstractOfCanvass,
   logPmr,
+  releasePurchaseOrder,
   recordDelivery,
+  signPurchaseOrderContract,
   submitPreCanvass,
   transmitRfqToBac,
 } from "./db";
@@ -449,10 +451,10 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
   // STAGE 6: Budget Officer Allotment & Funds Certification
   // --------------------------------------------------------------------------
   describe("Stage 6: Budget Officer (budget.demo@bsc.edu.ph)", () => {
-    it("verifies budget availability and normalizes role permissions correctly", () => {
+    it("verifies budget availability and keeps the budget officer role distinct", () => {
       const normalized = normalizeProcurementRole(budgetOfficer.role);
-      expect(normalized).toBe("administrative_approver");
-      expect(roleCanAct(normalized, ["administrative_approver", "admin"])).toBe(true);
+      expect(normalized).toBe("budget_officer");
+      expect(roleCanAct(normalized, ["budget_officer", "administrative_approver", "admin"])).toBe(true);
     });
   });
 
@@ -460,13 +462,16 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
   // STAGE 7: Procurement Officer Notice Serving, PO Release & Delivery
   // --------------------------------------------------------------------------
   describe("Stage 7: Procurement Officer PO Releasing & Milestone Tracking", () => {
-    it("successfully creates PO from approved abstract and advances to delivery and PMR close-out", async () => {
+    it("prepares a PO, requires both signatories and formal release, then completes delivery and PMR close-out", async () => {
       const abstract = { id: 701, preCanvassId: 601, status: "approved", recommendedSupplierId: 10 };
       const preCanvass = { id: 601, purchaseRequestId: 501 };
       const pr = { id: 501, status: "approved" };
       const quote = { supplierId: 10, totalPrice: "83500.00" };
-      const po = { id: 801, poNumber: "PO-2026-00085", purchaseRequestId: 501, status: "issued" };
-      const poForPmr = { ...po, status: "delivered" };
+      const po = { id: 801, poNumber: "PO-2026-00085", purchaseRequestId: 501, status: "pending_approval", orsBursNumber: null, fundsAvailable: null, authorizedOfficialName: null };
+      const poBudgetCertified = { ...po, orsBursNumber: "ORS-2026-0085", fundsAvailable: "83500.00" };
+      const poApproved = { ...poBudgetCertified, status: "approved", authorizedOfficialName: "HoPE Demo" };
+      const poReleased = { ...poApproved, status: "released" };
+      const poForPmr = { ...poReleased, status: "delivered" };
 
       const fake = fakeDb([
         [abstract],
@@ -476,6 +481,12 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
         [],
         [po],
         [po],
+        [po],
+        [poBudgetCertified],
+        [poBudgetCertified],
+        [poApproved],
+        [poApproved],
+        [poReleased],
         [poForPmr],
       ]);
 
@@ -484,7 +495,33 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
         recordAudit: fake.recordAudit,
       });
 
-      expect(createdPo).toBeDefined();
+      expect(createdPo).toMatchObject({ status: "pending_approval" });
+
+      await expect(
+        recordDelivery(
+          { purchaseOrderId: 801, receiptNumber: "DR-2026-0085", deliveryStatus: "complete" },
+          officer,
+          { db: fake.db as never, recordAudit: fake.recordAudit }
+        )
+      ).rejects.toThrow("Only a formally released Purchase Order may be recorded as delivered.");
+
+      await signPurchaseOrderContract(
+        { purchaseOrderId: 801, signatoryRole: "budget_officer", orsBursNumber: "ORS-2026-0085", fundsAvailable: 83500 },
+        budgetOfficer,
+        { db: fake.db as never, recordAudit: fake.recordAudit }
+      );
+      const signedPo = await signPurchaseOrderContract(
+        { purchaseOrderId: 801, signatoryRole: "hope", authorizedOfficialName: "HoPE Demo" },
+        hope,
+        { db: fake.db as never, recordAudit: fake.recordAudit, notifyRoleGroup: async () => undefined }
+      );
+      expect(signedPo?.status).toBe("approved");
+
+      await releasePurchaseOrder(
+        { purchaseOrderId: 801, releasedAt: new Date(), recipientName: "Supplier Representative", releaseMode: "in_person_pickup" },
+        officer,
+        { db: fake.db as never, recordAudit: fake.recordAudit }
+      );
 
       await recordDelivery(
         { purchaseOrderId: 801, receiptNumber: "DR-2026-0085", deliveryStatus: "complete" },
@@ -499,6 +536,8 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
       );
 
       expect(fake.updates).toContainEqual({ status: "closed" });
+      expect(fake.inserts).toContainEqual(expect.objectContaining({ status: "pending_approval" }));
+      expect(fake.updates).toContainEqual(expect.objectContaining({ status: "released" }));
     });
   });
 

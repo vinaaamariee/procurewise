@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { User } from "../drizzle/schema";
-import { advancePurchaseRequest, createPurchaseOrderFromPreCanvass, decideAbstractOfCanvass, logPmr, recordDelivery, submitPreCanvass } from "./db";
+import { advancePurchaseRequest, createPurchaseOrder, createPurchaseOrderFromPreCanvass, decideAbstractOfCanvass, logPmr, recordDelivery, releasePurchaseOrder, submitPreCanvass } from "./db";
 
 const user: User = { id: 1, openId: "workflow-test", name: "Workflow Test", email: "workflow@example.com", loginMethod: "test", role: "admin", officeName: null, createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
 
@@ -116,17 +116,55 @@ describe("ProcureWise PPMP-to-PMR workflow gates", () => {
     expect(fake.updates).toContainEqual(expect.objectContaining({ status: "approved", administrativeApprovedById: 1 }));
   });
 
-  it("issues a PO from an approved Abstract of Canvass, then records delivery and PMR close-out", async () => {
+  it("rejects a PO number already assigned to another purchase request with a readable validation error", async () => {
+    const pr = { id: 9, totalEstimate: "950.00" };
+    const existingPo = { id: 21, purchaseRequestId: 8, poNumber: "2025-01-036" };
+    const fake = fakeDatabase([[pr], [pr], [], [existingPo]]);
+
+    await expect(
+      createPurchaseOrder(
+        { purchaseRequestId: 9, supplierId: 4, totalAmount: 950, poNumber: "2025-01-036" },
+        user,
+        { db: fake.db as never, recordAudit: silentAudit, notifyRoleGroup: async () => undefined }
+      )
+    ).rejects.toThrow("Purchase Order number 2025-01-036 is already in use.");
+    expect(fake.inserts).toHaveLength(0);
+  });
+
+  it("generates a PO number when the preparation form leaves the number blank", async () => {
+    const pr = { id: 9, totalEstimate: "950.00" };
+    const preparedPo = { id: 22, poNumber: "2026-10-123456", purchaseRequestId: 9, status: "pending_approval" };
+    const fake = fakeDatabase([[pr], [pr], [], [], [preparedPo], [preparedPo]]);
+
+    await createPurchaseOrder(
+      { purchaseRequestId: 9, supplierId: 4, totalAmount: 950 },
+      user,
+      { db: fake.db as never, recordAudit: silentAudit, notifyRoleGroup: async () => undefined }
+    );
+
+    expect(fake.inserts[0]).toMatchObject({ status: "pending_approval" });
+    expect(fake.inserts[0]).toEqual(expect.objectContaining({ poNumber: expect.stringMatching(/^\d{4}-\d{2}-\d+$/) }));
+  });
+
+  it("prepares a PO and requires formal release before delivery and PMR close-out", async () => {
     const abstract = { id: 8, preCanvassId: 14, status: "approved", recommendedSupplierId: 4 };
     const preCanvass = { id: 14, purchaseRequestId: 9 };
     const pr = { id: 9, status: "approved" };
     const quote = { supplierId: 4, totalPrice: "950.00" };
-    const po = { id: 21, poNumber: "PO-2026-00001", purchaseRequestId: 9, status: "issued" };
-    const poForPmr = { ...po, status: "delivered" };
-    const fake = fakeDatabase([[abstract], [preCanvass], [pr], [quote], [], [po], [po], [poForPmr]]);
+    const po = { id: 21, poNumber: "PO-2026-00001", purchaseRequestId: 9, status: "pending_approval" };
+    const poApproved = { ...po, status: "approved" };
+    const poReleased = { ...po, status: "released" };
+    const poDelivered = { ...po, status: "delivered" };
+    const fake = fakeDatabase([[abstract], [preCanvass], [pr], [quote], [], [po], [poApproved], [poReleased], [poDelivered]]);
     await createPurchaseOrderFromPreCanvass(14, user, { db: fake.db as never, recordAudit: silentAudit });
+    await releasePurchaseOrder(
+      { purchaseOrderId: 21, releasedAt: new Date(), recipientName: "Supplier Representative", releaseMode: "in_person_pickup" },
+      user,
+      { db: fake.db as never, recordAudit: silentAudit }
+    );
     await recordDelivery({ purchaseOrderId: 21, receiptNumber: "DR-2026-01" }, user, { db: fake.db as never, recordAudit: silentAudit });
     await logPmr({ purchaseOrderId: 21, pmrNumber: "PMR-2026-01" }, user, { db: fake.db as never, recordAudit: silentAudit });
+    expect(fake.inserts).toContainEqual(expect.objectContaining({ status: "pending_approval" }));
     expect(fake.inserts).toHaveLength(3);
     expect(fake.updates).toContainEqual({ status: "closed" });
   });

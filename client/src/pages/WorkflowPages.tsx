@@ -897,7 +897,7 @@ export function ExecutionPage() {
                         }
                         className="h-7 rounded-[4px] bg-[#7b1e1e] text-[10px] hover:bg-[#641818]"
                       >
-                        Issue PO
+                        Prepare PO
                       </Button>
                     )}
                   </div>
@@ -940,7 +940,7 @@ export function ExecutionPage() {
                   </div>
                   {isProcurement && (
                     <div className="flex gap-2">
-                      {po.status === "issued" && (
+                      {po.status === "released" && (
                         <Button
                           size="sm"
                           onClick={() => setMode("delivery")}
@@ -979,7 +979,7 @@ export function ExecutionPage() {
         <DeliveryForm
           purchaseOrders={
             dashboard.data?.purchaseOrders.filter(
-              po => po.status === "issued"
+               po => po.status === "released"
             ) ?? []
           }
           saving={delivery.isPending}

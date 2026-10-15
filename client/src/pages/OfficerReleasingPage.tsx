@@ -423,6 +423,7 @@ export function OfficerReleasingPage({
                   poItems.map((item) => {
                     const po = item.order;
                     const isReleased = item.isReleased;
+                    const isReadyForRelease = po.status === "approved";
 
                     return (
                       <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
@@ -460,14 +461,15 @@ export function OfficerReleasingPage({
                             </div>
                           ) : (
                             <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
-                              <Clock className="mr-1 h-3 w-3" /> Ready for Releasing
+                              <Clock className="mr-1 h-3 w-3" />
+                              {isReadyForRelease ? "Ready for Releasing" : "Awaiting Contract Signatures"}
                             </Badge>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button
                             size="sm"
-                            disabled={isReleased}
+                            disabled={isReleased || !isReadyForRelease}
                             onClick={() => handleOpenReleasePo(item)}
                             className={`h-7 text-xs ${
                               isReleased
@@ -476,7 +478,7 @@ export function OfficerReleasingPage({
                             }`}
                           >
                             <FileCheck2 className="mr-1 h-3 w-3" />
-                            {isReleased ? "Released" : "Release to Supplier"}
+                            {isReleased ? "Released" : isReadyForRelease ? "Release to Supplier" : "Awaiting Signatures"}
                           </Button>
                         </td>
                       </tr>

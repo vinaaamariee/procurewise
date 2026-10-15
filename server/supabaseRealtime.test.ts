@@ -32,4 +32,11 @@ describe("Supabase procurement Realtime", () => {
     expect(managementSource).toContain("Download PPMP PDF");
     expect(workflowSource).toContain("Package PDF");
   });
+
+  it("publishes notice creation and refreshes the HoPE approval queue", () => {
+    expect(routerSource).toMatch(/create: protectedProcedure[\s\S]*?publishProcurementRealtimeUpdate\("letter_of_notice"\)/);
+    const noticeWorkflowSource = readFileSync(resolve(projectRoot, "client/src/pages/NoticeWorkflowPage.tsx"), "utf8");
+    expect(noticeWorkflowSource).toContain('recordTypes: ["letter_of_notice"]');
+    expect(noticeWorkflowSource).toContain("utils.procurement.officer.notices.list.invalidate()");
+  });
 });

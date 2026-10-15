@@ -1214,7 +1214,7 @@ function AdminDashboard({
           <div className="divide-y divide-[#f0ede6] dark:divide-[#46515c] px-5 py-1">
             {[
               "End-Users submit complete PR packages for Procurement Officer verification and recording.",
-              "Procurement Staff/BAC validate supplier quotations and prepare the official Abstract of Quotations for BAC/HoPE decision.",
+              "The BAC reviews the Abstract of Quotations and recommends the Single or Lowest Calculated and Responsive Quotation to the HoPE for an award decision.",
               "Purchase Orders are issued after the official decision, then closed only after delivery and PMR logging.",
             ].map((item, index) => (
               <div key={item} className="flex gap-3 py-4">
@@ -1320,7 +1320,7 @@ function ProcurementStaffDashboard({
       id: "4",
       number: "Duty 4",
       title: "Prepare Letter of Notice",
-      condition: "Draft formal Letter of Notice for the awarded supplier.",
+      condition: "Prepare and submit the Letter of Notice to the HoPE for approval before issue.",
       href: "/officer/notices",
       badge: `${notices.length} notices`,
       badgeTone: "pending",

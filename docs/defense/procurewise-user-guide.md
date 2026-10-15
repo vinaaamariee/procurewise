@@ -33,8 +33,8 @@ The official institutional procedure uses the following responsibility assignmen
 | 5.5 | Distribute/retrieve RFQ and transmit to BAC | **Procurement Officer I** | Request for Quotation |
 | 5.6 | PhilGEPS posting | **Procurement Officer I** | Request for Quotation |
 | 5.7 | Forward to BAC for validation and preparation of the official Abstract of Quotations | **Procurement Staff** | Preliminary quotation package and official Abstract of Quotations |
-| 5.8 | Recommendation on Award of Contract | **BAC/HoPE** | Letter of Notice |
-| 5.9 | Prepare Letter of Notice | **Procurement Staff** | Letter of Notice |
+| 5.8 | Recommendation on Award of Contract | **BAC recommends; HoPE decides** | Abstract of Quotations and BAC award recommendation |
+| 5.9 | Prepare Letter of Notice and forward for approval | **Procurement Staff; HoPE approves and enters into contract** | Letter of Notice and approved BAC award recommendation |
 | 5.10 | Serve Letter of Notice | **Procurement Officer I** | Letter of Notice |
 | 5.11 | Prepare Purchase Order | **Procurement Staff** | Purchase Order |
 | 5.12 | Contract signing | **Budget Officer/HoPE** | Purchase Order |

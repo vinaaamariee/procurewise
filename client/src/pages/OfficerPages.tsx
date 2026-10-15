@@ -438,7 +438,7 @@ export function TransmittalsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="lot_basis" className="text-xs">
-                            Lot Basis (S/LCRB on total lot)
+                            Lot Basis (S/LCRQ on total lot)
                           </SelectItem>
                           <SelectItem value="per_item" className="text-xs">
                             Per Item Basis

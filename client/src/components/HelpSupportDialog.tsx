@@ -194,7 +194,7 @@ export function HelpSupportDialog({ open, onOpenChange }: HelpSupportDialogProps
                   <span className="font-mono font-bold text-[#881337] dark:text-[#fda4af]">5.6</span>
                   <div>
                     <p className="font-semibold text-foreground">BAC Abstract of Quotations (AOQ) &amp; Resolution</p>
-                    <p className="text-muted-foreground text-[10px]">BAC reviews canvass quotations, identifies lowest calculated compliant bidder, and recommends award to HoPE.</p>
+                    <p className="text-muted-foreground text-[10px]">BAC reviews the Abstract of Quotations and recommends award to the HoPE in favor of the supplier with the Single or Lowest Calculated and Responsive Quotation.</p>
                   </div>
                 </div>
                 <div className="p-2.5 flex items-start gap-2">

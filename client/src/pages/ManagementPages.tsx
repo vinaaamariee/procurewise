@@ -613,7 +613,7 @@ export function PurchaseOrderPage() {
   // Purchase Order Preparation Studio State (Appendix 61)
   const [prepPrId, setPrepPrId] = useState<string>("");
   const [prepSupplierId, setPrepSupplierId] = useState<string>("");
-  const [poNumber, setPoNumber] = useState<string>("2025-01-036");
+  const [poNumber, setPoNumber] = useState<string>("");
   const [poDate, setPoDate] = useState<string>("September 29, 2026");
   const [modeOfProcurement, setModeOfProcurement] = useState<string>("Small Value Procurement");
   const [placeOfDelivery, setPlaceOfDelivery] = useState<string>("Batanes State College");
@@ -770,7 +770,7 @@ export function PurchaseOrderPage() {
   };
 
   const handleResetPoDefaults = () => {
-    setPoNumber("2025-01-036");
+    setPoNumber("");
     setPoDate("September 29, 2026");
     setModeOfProcurement("Small Value Procurement");
     setPlaceOfDelivery("Batanes State College");
@@ -1002,13 +1002,12 @@ export function PurchaseOrderPage() {
                   </Field>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
-                    <Field label="PO No. (0000-00-0000) *">
+                    <Field label="PO No. (leave blank to auto-generate)">
                       <Input
                         value={poNumber}
                         onChange={(e) => setPoNumber(e.target.value)}
-                        placeholder="e.g. 2025-01-036"
+                        placeholder="Auto-generated when blank"
                         className="h-9 text-xs font-mono font-semibold"
-                        required
                       />
                     </Field>
                     <Field label="Date of Preparation *">
@@ -1473,16 +1472,22 @@ export function PurchaseOrderPage() {
                               </Button>
                             </Link>
                           ) : isContractFullySigned ? (
-                            <Link href="/officer/releasing">
-                              <Button
-                                size="sm"
-                                className="h-7 rounded-[4px] text-[10px] bg-[#7b1e1e] hover:bg-[#641818] text-white gap-1 font-medium"
-                                title="Procurement Officer I formally releases the Purchase Order to the supplier"
-                              >
-                                <Send className="h-3 w-3" />
-                                Release PO / Contract (PO I) →
-                              </Button>
-                            </Link>
+                            canPoi ? (
+                              <Link href="/officer/releasing">
+                                <Button
+                                  size="sm"
+                                  className="h-7 rounded-[4px] text-[10px] bg-[#7b1e1e] hover:bg-[#641818] text-white gap-1 font-medium"
+                                  title="Procurement Officer I formally releases the Purchase Order to the supplier"
+                                >
+                                  <Send className="h-3 w-3" />
+                                  Release PO / Contract (PO I) →
+                                </Button>
+                              </Link>
+                            ) : (
+                              <span className="text-[10px] text-stone-500 italic">
+                                Awaiting Procurement Officer I release
+                              </span>
+                            )
                           ) : null}
                         </div>
                       </div>

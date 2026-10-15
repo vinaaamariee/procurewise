@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,7 @@ export function IntegratedPreCanvassModal({
   const [quotationReference, setQuotationReference] = useState<string>("");
   const [supplierRepresentative, setSupplierRepresentative] = useState<string>("");
   const [preliminaryAoqFile, setPreliminaryAoqFile] = useState<File | null>(null);
+  const preliminaryAoqInputRef = useRef<HTMLInputElement>(null);
 
   const suppliers = setup.data?.suppliers ?? [];
   const filteredSuppliers = filterSuppliersByTag(
@@ -117,6 +118,7 @@ export function IntegratedPreCanvassModal({
     onSuccess: () => {
       toast.success("Pre-canvass attachment uploaded. The package is ready to forward.");
       setPreliminaryAoqFile(null);
+      if (preliminaryAoqInputRef.current) preliminaryAoqInputRef.current.value = "";
       void utils.procurement.dashboard.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -178,23 +180,27 @@ export function IntegratedPreCanvassModal({
       toast.error("The pre-canvass attachment must be 10 MB or smaller.");
       return;
     }
-    const dataBase64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("The selected attachment could not be read."));
-      reader.onload = () => {
-        const result = String(reader.result || "");
-        resolve(result.includes(",") ? result.split(",")[1] || "" : result);
-      };
-      reader.readAsDataURL(preliminaryAoqFile);
-    });
-    attachDocumentMutation.mutate({
-      entityType: "pre_canvass",
-      entityId: existingPreCanvass.id,
-      documentType: "Preliminary Abstract of Quotations",
-      originalFileName: preliminaryAoqFile.name,
-      mimeType: preliminaryAoqFile.type || "application/octet-stream",
-      dataBase64,
-    });
+    try {
+      const dataBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("The selected attachment could not be read."));
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          resolve(result.includes(",") ? result.split(",")[1] || "" : result);
+        };
+        reader.readAsDataURL(preliminaryAoqFile);
+      });
+      attachDocumentMutation.mutate({
+        entityType: "pre_canvass",
+        entityId: existingPreCanvass.id,
+        documentType: "Preliminary Abstract of Quotations",
+        originalFileName: preliminaryAoqFile.name,
+        mimeType: preliminaryAoqFile.type || "application/octet-stream",
+        dataBase64,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The selected attachment could not be read.");
+    }
   };
 
   const quotesCount = existingQuotes.length;
@@ -546,28 +552,46 @@ export function IntegratedPreCanvassModal({
                 <div className="mt-4 rounded-[4px] border border-[#d5c89f] bg-white p-3 dark:border-[#635028] dark:bg-[#1b2229]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Label htmlFor="integrated-preliminary-aoq" className="text-xs font-semibold">
-                      Preliminary quotation attachment <span className="text-rose-600">Required</span>
+                      Preliminary quotation attachment {!hasPreliminaryAoq && <span className="text-rose-600">Required</span>}
                     </Label>
                     {hasPreliminaryAoq && (
                       <StatusBadge tone="approved">ATTACHED</StatusBadge>
                     )}
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Upload the Excel or PDF worksheet that documents your three supplier quotes. Maximum size: 10 MB.
+                    {hasPreliminaryAoq
+                      ? "An attachment is uploaded. Choose a replacement only if needed. Excel or PDF, maximum size: 10 MB."
+                      : "Upload the Excel or PDF worksheet that documents your three supplier quotes. Maximum size: 10 MB."}
                   </p>
                   {preliminaryAoqDocument && (
                     <p className="mt-2 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
                       Attached: {preliminaryAoqDocument.originalFileName}
                     </p>
                   )}
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
+                      ref={preliminaryAoqInputRef}
                       id="integrated-preliminary-aoq"
                       type="file"
                       accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
                       onChange={(event) => setPreliminaryAoqFile(event.target.files?.[0] ?? null)}
-                      className="h-9 min-w-0 text-[11px]"
+                      className="sr-only"
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={attachDocumentMutation.isPending}
+                      onClick={() => preliminaryAoqInputRef.current?.click()}
+                      className="h-9 shrink-0 text-[11px]"
+                    >
+                      Choose file
+                    </Button>
+                    <span
+                      className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+                      title={preliminaryAoqFile?.name ?? preliminaryAoqDocument?.originalFileName ?? undefined}
+                    >
+                      {preliminaryAoqFile?.name ?? (!hasPreliminaryAoq ? "No file selected" : null)}
+                    </span>
                     <Button
                       type="button"
                       variant="outline"

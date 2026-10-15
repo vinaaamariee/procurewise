@@ -47,11 +47,11 @@ ProcureWise enforces strict **Role-Based Access Control (RBAC)** on both the cli
 |---|---|---|---|
 | `end_user` | **Requesting Unit / Department Faculty & Staff** | Identifies procurement needs, uploads department PPMP, conducts preliminary market scans, and submits Purchase Requests. | Upload PPMP document; Draft PR; PhilGEPS catalog lookup; Appendix 60 canvas; Submit PR. |
 | `procurement_officer_ii` / `procurement_officer` | **Procurement Officer II** | Receiving & Verification Gatekeeper under Procedure 5.1; Delivery Monitoring under Procedure 5.15. | Verify PR & PPMP alignment; Return for revision with comments; Verify & endorse; Monitor physical delivery. |
-| `procurement_staff` | **Procurement Staff** | Requisition logging, Procurement Monitoring Report (PMR) custody, and document preparation (RFQ, Notice of Award, PO). | Log PR into PMR (5.2); Generate Tracking Slip; Draft RFQ (5.4); Draft Letter of Notice (5.9); Draft PO (5.11). |
+| `procurement_staff` | **Procurement Staff** | Requisition logging, Procurement Monitoring Report (PMR) custody, and document preparation (RFQ, Notice of Award, PO). | Log PR into PMR (5.2); Generate Tracking Slip; Draft and forward Letter of Notice to HoPE for approval (5.9); Draft RFQ (5.4) and PO (5.11). |
 | `procurement_officer_i` | **Procurement Officer I** | External market transmittal, PhilGEPS posting, and document serving. | Post RFQ to PhilGEPS (5.6); Distribute & retrieve RFQs (5.5); Serve Notice of Award (5.10); Release PO to Supplier (5.13). |
-| `bac_secretariat` / `bac_member` | **BAC Secretariat / Committee** | Resolution formulation, Quotation opening, Abstract of Quotations, and MEARB best-value evaluation. | Prepare Mode of Procurement Resolution (5.3); Encode supplier quotations; Run MCDM / MEARB scoring (5.7); Sign Resolution of Award (5.8). |
+| `bac_secretariat` / `bac_member` | **BAC Secretariat / Committee** | Resolution formulation, quotation opening, Abstract of Quotations, and supplier evaluation. | Prepare Mode of Procurement Resolution (5.3); Encode supplier quotations; Review the Abstract and recommend award to the HoPE for the Single or Lowest Calculated and Responsive Quotation (5.8). |
 | `budget_officer` | **Budget Officer** | Fund availability certification and statutory obligation. | Review PO against appropriations; Assign BURS / ALOBS tracking number; Certify fund availability (5.12). |
-| `hope` / `administrative_approver` | **Head of the Procuring Entity (HoPE) / College President** | Executive governance, approval of high-value thresholds, and contract execution. | Approve BAC Resolutions (5.8); Sign Letter of Notice of Award (5.9); Sign Official Purchase Order & Contract (5.12). |
+| `hope` / `administrative_approver` | **Head of the Procuring Entity (HoPE) / College President** | Executive governance, award decisions, and contract execution. | Review and decide on the BAC award recommendation (5.8); Approve the Letter of Notice and enter into contract with the selected supplier (5.9); Sign Official Purchase Order & Contract (5.12). |
 | `admin` | **System Administrator** | Master data management, user role provisioning, supplier accreditation, and system audit log review. | Manage Users & Roles; Configure Offices & Expenditure Codes; Maintain Supplier Registry; Inspect Audit Trail. |
 
 ---
@@ -222,13 +222,12 @@ Under RA 12009 and BSC Institutional Policy, **no Purchase Request can be initia
 ### Phase 7: Award Recommendation & Letter of Notice (BAC, Staff, HoPE, Officer I)
 *Governing Rules: BSC Procedures 5.8, 5.9 & 5.10*
 
-1. **HoPE / Administrative Approver**:
-   - Opens the submitted BAC Award Resolution.
-   - Reviews the MEARB justification and comparative prices.
-   - Clicks **"Approve Recommendation of Award"**.
-2. **Procurement Staff**:
-   - Clicks **"Draft Letter of Notice of Award"**.
-   - Generates the formal Notice letter with supplier details, contract amount, and required performance commitment.
+1. **Procurement Staff**:
+   - Prepares the Letter of Notice from the approved BAC award recommendation and submits it to the HoPE for approval.
+   - The award notice remains pending and cannot be issued or served before HoPE approval.
+2. **HoPE / Administrative Approver**:
+   - Reviews and approves the Letter of Notice.
+   - Upon approval, immediately enters into contract with the selected supplier; the subsequent PO, budget obligation, signing, and release steps document and formalize the transaction.
 3. **Procurement Officer I**:
    - Delivers/serves the Notice of Award to the winning supplier.
    - Records the date served and attaches the signed acknowledgment copy.

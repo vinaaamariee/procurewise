@@ -17,20 +17,18 @@ import {
   SUPPORTED_FORM_TEMPLATES,
   type FormTemplateKey,
 } from "./excelTemplateEngine";
+import { approveLetterOfNotice } from "./db";
 
 function assertRole(userRole: string, permittedRoles: string[]) {
   const norm = normalizeProcurementRole(userRole as PersistedUserRole);
+  const decisionRoles = ["administrative_approver", "bac", "bac_secretariat", "hope", "budget_officer"];
+  const allowsDecisionAccess = decisionRoles.includes(norm) && decisionRoles.some((role) => permittedRoles.includes(role));
   if (
     userRole === "admin" ||
     norm === "admin" ||
     permittedRoles.includes(userRole) ||
     permittedRoles.includes(norm) ||
-    (norm === "administrative_approver" && (
-      permittedRoles.includes("bac") ||
-      permittedRoles.includes("bac_secretariat") ||
-      permittedRoles.includes("hope") ||
-      permittedRoles.includes("administrative_approver")
-    ))
+    allowsDecisionAccess
   ) {
     return;
   }
@@ -308,7 +306,8 @@ export const appRouter = router({
       issuePurchaseOrder: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]);
         const result = await createPurchaseOrderFromPreCanvass(input.preCanvassId, ctx.user);
-        await notifyRoles(["administrative_approver"], { kind: "status_change", title: "Purchase Order issued", body: "A Purchase Order was issued from an approved Abstract of Canvass.", entityType: "purchase_order", entityId: result.id });
+        await notifyRoles(["budget_officer", "hope", "admin"], { kind: "action_required", title: `Purchase Order Prepared (${result.poNumber})`, body: "An approved Abstract of Canvass is ready for Budget Officer certification and HoPE contract signing before release.", entityType: "purchase_order", entityId: result.id });
+        void publishProcurementRealtimeUpdate("purchase_order");
         return result;
       }),
       returnPurchaseOrder: protectedProcedure.input(z.object({ purchaseOrderId: z.number().int().positive(), reason: z.string().min(10).max(1000) })).mutation(({ ctx, input }) => {
@@ -672,8 +671,14 @@ export const appRouter = router({
         }),
       }),
       notices: router({
-        list: protectedProcedure.query(({ ctx }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]); return listLettersOfNotice(); }),
-        create: protectedProcedure.input(z.object({ noticeType: z.enum(["award", "disqualification", "clarification", "demand", "other"]), purchaseRequestId: z.number().int().positive().optional(), supplierId: z.number().int().positive().optional(), subject: z.string().min(3).max(220), body: z.string().min(10).max(5000), demandDueDate: z.coerce.date().optional(), issueNow: z.boolean().optional() })).mutation(({ ctx, input }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]); return createLetterOfNotice(input, ctx.user); }),
+        list: protectedProcedure.query(({ ctx }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "hope", "administrative_approver", "admin"]); return listLettersOfNotice(); }),
+        create: protectedProcedure.input(z.object({ noticeType: z.enum(["award", "disqualification", "clarification", "demand", "other"]), purchaseRequestId: z.number().int().positive().optional(), supplierId: z.number().int().positive().optional(), subject: z.string().min(3).max(220), body: z.string().min(10).max(5000), demandDueDate: z.coerce.date().optional(), issueNow: z.boolean().optional() })).mutation(async ({ ctx, input }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]); const result = await createLetterOfNotice(input, ctx.user); void publishProcurementRealtimeUpdate("letter_of_notice"); return result; }),
+        approve: protectedProcedure.input(z.object({ noticeId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+          assertRole(normalizeProcurementRole(ctx.user.role), ["hope", "administrative_approver", "admin"]);
+          const result = await approveLetterOfNotice(input, ctx.user);
+          void publishProcurementRealtimeUpdate("letter_of_notice");
+          return result;
+        }),
         serve: protectedProcedure.input(z.object({
           noticeId: z.number().int().positive(),
           servedAt: z.coerce.date(),
@@ -780,7 +785,7 @@ export const appRouter = router({
           supplierId: z.number().int().positive().optional(),
           remarks: z.string().max(3000).optional(),
         })).mutation(async ({ ctx, input }) => {
-          assertRole(ctx.user.role, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "supply_officer", "procurement_staff", "bac", "bac_secretariat", "administrative_approver", "hope", "budget_officer", "admin"]);
+          assertRole(ctx.user.role, ["administrative_approver", "hope", "admin"]);
           const result = await directLetterOfApprovalToPo(input, ctx.user);
           void publishProcurementRealtimeUpdate("bac_transmittal");
           void publishProcurementRealtimeUpdate("purchase_request");

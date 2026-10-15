@@ -1,20 +1,18 @@
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getNotificationDestination } from "@/lib/notificationDestination";
 import { trpc } from "@/lib/trpc";
 import { BellRing, CheckCheck, Inbox, LoaderCircle } from "lucide-react";
 import { useLocation } from "wouter";
 
-function destinationFor(entityType: string) {
-  if (entityType === "pre_canvass" || entityType === "abstract_of_canvass") return "/rfq";
-  if (entityType === "purchase_order" || entityType === "delivery_receipt" || entityType === "pmr_log") return "/purchase-orders";
-  if (entityType === "purchase_request") return "/purchase-requests";
-  return "/dashboard";
-}
-
 export default function NotificationsPage() {
+  const { user } = useAuth();
   const notificationsQuery = trpc.procurement.notifications.list.useQuery(undefined, { retry: false, refetchInterval: 15_000, refetchIntervalInBackground: true });
   const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
+  const destinationFor = (entityType: string) =>
+    getNotificationDestination(entityType, user?.role ?? "end_user");
   const markRead = trpc.procurement.notifications.markRead.useMutation({ onSuccess: () => void utils.procurement.notifications.list.invalidate() });
   const notifications = notificationsQuery.data ?? [];
   const unreadCount = notifications.filter((notification) => !notification.readAt).length;

@@ -84,15 +84,15 @@ export function roleCanAct(role: ProcurementRole, permittedRoles: ProcurementRol
 export function normalizeProcurementRole(role: PersistedUserRole): ProcurementRole {
   if (role === "user") return "end_user";
   if (role === "supply_officer" || role === "procurement_officer_i" || role === "procurement_officer_ii") return "procurement_officer";
-  if (role === "bac_secretariat" || role === "bac" || role === "hope" || role === "budget_officer") return "administrative_approver";
-  return role;
+  return role as ProcurementRole;
 }
 
 export function getNextPrStatus(currentStatus: PrStatus, role: PersistedUserRole): PrStatus | null {
   const norm = normalizeProcurementRole(role);
+  const isDecisionRole = roleCanAct(norm, ["administrative_approver", "bac", "bac_secretariat", "hope", "budget_officer"]) || ["administrative_approver", "bac", "bac_secretariat", "hope", "budget_officer"].includes(role as string);
   if (currentStatus === "draft" && (roleCanAct(norm, ["end_user"]) || role === "end_user")) return "procurement_review";
   if (currentStatus === "procurement_review" && roleCanAct(norm, ["procurement_officer"])) return "approval_review";
-  if (currentStatus === "approval_review" && (roleCanAct(norm, ["administrative_approver"]) || role === "hope" || role === "bac")) return "approved";
+  if (currentStatus === "approval_review" && isDecisionRole) return "approved";
   return null;
 }
 
