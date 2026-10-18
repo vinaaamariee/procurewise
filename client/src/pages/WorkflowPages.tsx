@@ -262,8 +262,8 @@ function OfficialAnnexDStructure() {
       </div>
       <p className="mt-2">
         The form preserves the RFQ Date and supplier instruction followed by the
-        price-evaluation rule, delivery period, sealed-envelope requirement, THE
-        APPROVED BUDGET FOR THIS PROCUREMENT, documentary-requirement note, and
+        price-evaluation rule, delivery period, sealed-envelope requirement,
+        THE APPROVED BUDGET FOR THIS PROCUREMENT, documentary-requirement note, and
         Item # / Qty. / Unit / PARTICULAR / Unit Price / Total schedule. Data
         below populates only from authorised transaction entries.
       </p>

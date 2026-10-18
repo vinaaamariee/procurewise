@@ -597,7 +597,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <span className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-slate-900 dark:text-white">ProcureWise</span>
 
         <div className="ml-auto flex items-center gap-2">
-          <NotificationCenterDrawer triggerVariant="minimal" />
+          <div className="relative">
+            <NotificationCenterDrawer triggerVariant="minimal" />
+            {unreadCount > 0 && (
+              <span className="sr-only">
+                {unreadCount > 9 ? "9+" : unreadCount} unread notifications
+              </span>
+            )}
+          </div>
           <ThemeToggle />
         </div>
       </div>

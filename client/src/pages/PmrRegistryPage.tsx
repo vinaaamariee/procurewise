@@ -10,14 +10,17 @@ import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import {
   AlertCircle,
   BookOpenCheck,
+  Building2,
   CheckCircle2,
   Clock,
   Copy,
+  Download,
   ExternalLink,
   FileCheck2,
   FileSpreadsheet,
   FileText,
   LoaderCircle,
+  Paperclip,
   QrCode,
   RefreshCw,
   Search,
@@ -711,6 +714,178 @@ export function PmrRegistryPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* End-User Uploaded Attachments & Transparency Panel */}
+              <div className="rounded-lg border border-border bg-card p-3.5 space-y-3">
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Paperclip className="h-4 w-4 text-[#881337] dark:text-rose-400" />
+                    <span className="text-xs font-bold text-foreground">
+                      End-User Uploaded Attachments &amp; Transparency
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    RA 12009 &amp; Due Diligence Records
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  {/* Market Scoping Card */}
+                  <div className="rounded-md border border-border bg-muted/20 p-2.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-foreground">Market Scoping</span>
+                        {prDetailQuery.data.marketScopingDoc ? (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                            Attached
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                            Not Attached
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Mandatory under RA 12009 Article II.
+                      </p>
+                      {prDetailQuery.data.marketScopingDoc && (
+                        <p className="text-[11px] font-medium text-foreground mt-1.5 truncate">
+                          {prDetailQuery.data.marketScopingDoc.originalFileName}
+                        </p>
+                      )}
+                    </div>
+                    {prDetailQuery.data.marketScopingDoc ? (
+                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
+                        <a href={prDetailQuery.data.marketScopingDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="mr-1 h-3 w-3" /> View / Download
+                        </a>
+                      </Button>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic mt-2">No file uploaded</p>
+                    )}
+                  </div>
+
+                  {/* PPMP Document Card */}
+                  <div className="rounded-md border border-border bg-muted/20 p-2.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-foreground">PPMP Document</span>
+                        {prDetailQuery.data.uploadedPpmpDoc ? (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                            Attached
+                          </span>
+                        ) : prDetailQuery.data.purchaseRequest.ppmpEntryId ? (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                            Linked Entry
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            Unlinked
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Approved Department PPMP.
+                      </p>
+                      {prDetailQuery.data.uploadedPpmpDoc && (
+                        <p className="text-[11px] font-medium text-foreground mt-1.5 truncate">
+                          {prDetailQuery.data.uploadedPpmpDoc.originalFileName}
+                        </p>
+                      )}
+                    </div>
+                    {prDetailQuery.data.uploadedPpmpDoc ? (
+                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
+                        <a href={prDetailQuery.data.uploadedPpmpDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="mr-1 h-3 w-3" /> View / Download
+                        </a>
+                      </Button>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic mt-2">
+                        {prDetailQuery.data.purchaseRequest.ppmpEntryId ? "Refer to linked PPMP schedule" : "No file uploaded"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Pre-Canvass AOQ Card */}
+                  <div className="rounded-md border border-border bg-muted/20 p-2.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-foreground">Pre-Canvass / AOQ</span>
+                        {prDetailQuery.data.preCanvassDoc ? (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                            Attached
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            Optional
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Preliminary Abstract / Quotations.
+                      </p>
+                      {prDetailQuery.data.preCanvassDoc && (
+                        <p className="text-[11px] font-medium text-foreground mt-1.5 truncate">
+                          {prDetailQuery.data.preCanvassDoc.originalFileName}
+                        </p>
+                      )}
+                    </div>
+                    {prDetailQuery.data.preCanvassDoc ? (
+                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
+                        <a href={prDetailQuery.data.preCanvassDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="mr-1 h-3 w-3" /> View / Download
+                        </a>
+                      </Button>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic mt-2">No file uploaded</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preliminary Supplier Quotes if available */}
+                {prDetailQuery.data.preCanvassQuotes && prDetailQuery.data.preCanvassQuotes.length > 0 && (
+                  <div className="rounded-md border border-border bg-muted/10 p-2.5">
+                    <span className="text-[11px] font-semibold text-foreground block mb-1.5">
+                      Preliminary Supplier Quotations ({prDetailQuery.data.preCanvassQuotes.length})
+                    </span>
+                    <div className="space-y-1">
+                      {prDetailQuery.data.preCanvassQuotes.map((quote: any) => (
+                        <div key={quote.id} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-card border border-border">
+                          <span className="font-medium">{quote.supplierName || `Supplier #${quote.supplierId}`}</span>
+                          <span className="font-semibold text-foreground">{formatCurrency(quote.totalPrice)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Documents */}
+                {prDetailQuery.data.documents && prDetailQuery.data.documents.length > 0 && (
+                  <div className="pt-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                      Additional Supporting Attachments ({prDetailQuery.data.documents.length})
+                    </span>
+                    <div className="space-y-1">
+                      {prDetailQuery.data.documents.map((doc: any) => (
+                        <div key={doc.id} className="flex items-center justify-between text-xs py-1 px-2 rounded border border-border bg-card">
+                          <span className="truncate max-w-[260px] font-medium text-foreground">
+                            {doc.originalFileName}
+                          </span>
+                          <a
+                            href={doc.storageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="inline-flex items-center gap-1 text-[11px] text-[#881337] dark:text-rose-400 hover:underline"
+                          >
+                            <Download className="h-3 w-3" /> Download
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Procurement Tracking Slip Snippet */}

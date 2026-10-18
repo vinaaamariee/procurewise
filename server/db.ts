@@ -1775,7 +1775,66 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
   if (!purchaseRequest) throw new Error("Purchase Request not found.");
   if (normalizeProcurementRole(user.role) === "end_user" && purchaseRequest.requestedById !== user.id) throw new Error("End-Users may access only their own Purchase Requests.");
   const items = await db.select().from(purchaseRequestItems).where(eq(purchaseRequestItems.purchaseRequestId, purchaseRequestId));
-  return { purchaseRequest, items };
+
+  const [linkedPpmp] = purchaseRequest.ppmpEntryId
+    ? await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.id, purchaseRequest.ppmpEntryId)).limit(1)
+    : [];
+
+  const [linkedPreCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequestId)).limit(1);
+  const rawQuotes = linkedPreCanvass
+    ? await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, linkedPreCanvass.id))
+    : [];
+  const allSuppliers = await db.select().from(suppliers);
+  const supplierMap = new Map(allSuppliers.map((s) => [s.id, s]));
+  const mappedQuotes = rawQuotes.map((q) => ({
+    ...q,
+    supplierName: supplierMap.get(q.supplierId)?.companyName || null,
+    supplier: supplierMap.get(q.supplierId) || null,
+  }));
+
+  const docConditions = [
+    and(eq(procurementDocuments.entityType, "purchase_request"), eq(procurementDocuments.entityId, purchaseRequestId)),
+    ...(linkedPreCanvass ? [and(eq(procurementDocuments.entityType, "pre_canvass"), eq(procurementDocuments.entityId, linkedPreCanvass.id))] : []),
+    ...(purchaseRequest.ppmpEntryId ? [and(eq(procurementDocuments.entityType, "app_ppmp_entry"), eq(procurementDocuments.entityId, purchaseRequest.ppmpEntryId))] : []),
+  ];
+  const documents = docConditions.length > 0
+    ? await db.select().from(procurementDocuments).where(or(...docConditions))
+    : [];
+
+  const uploadedPpmpDoc =
+    documents.find((d) => d.documentType.toLowerCase().includes("ppmp")) || null;
+  const marketScopingDoc =
+    documents.find(
+      (d) =>
+        d.documentType.toLowerCase().includes("market") ||
+        d.documentType.toLowerCase().includes("scoping")
+    ) || null;
+  const preCanvassDoc =
+    documents.find(
+      (d) =>
+        d.documentType.toLowerCase().includes("abstract") ||
+        d.documentType.toLowerCase().includes("pre-canvass") ||
+        d.documentType.toLowerCase().includes("preliminary")
+    ) ||
+    documents.find((d) => d.entityType === "pre_canvass") ||
+    null;
+
+  const corrections = await db.select().from(workflowCorrections).where(
+    and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, purchaseRequestId))
+  );
+
+  return {
+    purchaseRequest,
+    items,
+    linkedPpmp: linkedPpmp || null,
+    preCanvass: linkedPreCanvass || null,
+    preCanvassQuotes: mappedQuotes,
+    documents,
+    uploadedPpmpDoc,
+    marketScopingDoc,
+    preCanvassDoc,
+    corrections,
+  };
 }
 
 export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
@@ -1997,21 +2056,116 @@ export async function listOfficerPrVerifications(user: User) {
   const ppmpEntries = ppmpIds.length > 0
     ? await db.select().from(appPpmpEntries).where(inArray(appPpmpEntries.id, ppmpIds))
     : [];
-  const documents = prIds.length > 0
-    ? await db.select().from(procurementDocuments).where(and(eq(procurementDocuments.entityType, "purchase_request"), inArray(procurementDocuments.entityId, prIds)))
+
+  const prPreCanvasses = prIds.length > 0
+    ? await db.select().from(preCanvasses).where(inArray(preCanvasses.purchaseRequestId, prIds))
     : [];
+  const preCanvassIds = prPreCanvasses.map((pc) => pc.id);
+
+  const quotes = preCanvassIds.length > 0
+    ? await db.select().from(preCanvassQuotes).where(inArray(preCanvassQuotes.preCanvassId, preCanvassIds))
+    : [];
+  const allSuppliers = await db.select().from(suppliers);
+  const supplierMap = new Map(allSuppliers.map((s) => [s.id, s]));
+
+  const docConditions = [
+    ...(prIds.length > 0 ? [and(eq(procurementDocuments.entityType, "purchase_request"), inArray(procurementDocuments.entityId, prIds))] : []),
+    ...(preCanvassIds.length > 0 ? [and(eq(procurementDocuments.entityType, "pre_canvass"), inArray(procurementDocuments.entityId, preCanvassIds))] : []),
+    ...(ppmpIds.length > 0 ? [and(eq(procurementDocuments.entityType, "app_ppmp_entry"), inArray(procurementDocuments.entityId, ppmpIds))] : []),
+  ];
+  const allDocs = docConditions.length > 0
+    ? await db.select().from(procurementDocuments).where(or(...docConditions))
+    : [];
+
+  const correctionConditions = [
+    ...(prIds.length > 0 ? [and(eq(workflowCorrections.entityType, "purchase_request"), inArray(workflowCorrections.entityId, prIds))] : []),
+    ...(preCanvassIds.length > 0 ? [and(eq(workflowCorrections.entityType, "pre_canvass"), inArray(workflowCorrections.entityId, preCanvassIds))] : []),
+  ];
+  const allCorrections = correctionConditions.length > 0
+    ? await db.select().from(workflowCorrections).where(or(...correctionConditions))
+    : [];
+
+  const requesterIds = Array.from(new Set(allPrs.map((p) => p.requestedById).filter((id): id is number => typeof id === "number")));
+  const requesters = requesterIds.length > 0
+    ? await db.select().from(users).where(inArray(users.id, requesterIds))
+    : [];
+  const requesterMap = new Map(requesters.map((u) => [u.id, u]));
+
+  const allOffices = await db.select().from(offices);
+  const officeMap = new Map(allOffices.map((o) => [o.id, o]));
 
   return allPrs.map((pr) => {
     const prItems = items.filter((item) => item.purchaseRequestId === pr.id);
     const linkedPpmp = ppmpEntries.find((e) => e.id === pr.ppmpEntryId) || null;
-    const prDocuments = documents.filter((d) => d.entityId === pr.id);
-    const uploadedPpmpDoc = prDocuments.find((d) => d.documentType.toLowerCase().includes("ppmp")) || null;
+    const linkedPreCanvass = prPreCanvasses.find((pc) => pc.purchaseRequestId === pr.id) || null;
+
+    const prDocuments = allDocs.filter((d) => d.entityType === "purchase_request" && d.entityId === pr.id);
+    const preCanvassDocuments = linkedPreCanvass
+      ? allDocs.filter((d) => d.entityType === "pre_canvass" && d.entityId === linkedPreCanvass.id)
+      : [];
+    const ppmpDocuments = pr.ppmpEntryId
+      ? allDocs.filter((d) => d.entityType === "app_ppmp_entry" && d.entityId === pr.ppmpEntryId)
+      : [];
+
+    const allPackageDocuments = [...prDocuments, ...preCanvassDocuments, ...ppmpDocuments];
+
+    const uploadedPpmpDoc =
+      prDocuments.find((d) => d.documentType.toLowerCase().includes("ppmp")) ||
+      ppmpDocuments.find((d) => d.documentType.toLowerCase().includes("ppmp")) ||
+      ppmpDocuments[0] ||
+      null;
+
+    const marketScopingDoc =
+      prDocuments.find(
+        (d) =>
+          d.documentType.toLowerCase().includes("market") ||
+          d.documentType.toLowerCase().includes("scoping")
+      ) || null;
+
+    const preCanvassDoc =
+      preCanvassDocuments.find((d) =>
+        d.documentType.toLowerCase().includes("abstract") ||
+        d.documentType.toLowerCase().includes("pre-canvass") ||
+        d.documentType.toLowerCase().includes("preliminary")
+      ) ||
+      preCanvassDocuments[0] ||
+      null;
+
+    const otherDocuments = allPackageDocuments.filter(
+      (d) => d !== uploadedPpmpDoc && d !== marketScopingDoc && d !== preCanvassDoc
+    );
+
+    const linkedQuotes = linkedPreCanvass
+      ? quotes
+          .filter((q) => q.preCanvassId === linkedPreCanvass.id)
+          .map((q) => ({
+            ...q,
+            supplier: supplierMap.get(q.supplierId) || null,
+          }))
+      : [];
+
+    const prCorrections = allCorrections.filter(
+      (c) =>
+        (c.entityType === "purchase_request" && c.entityId === pr.id) ||
+        (linkedPreCanvass && c.entityType === "pre_canvass" && c.entityId === linkedPreCanvass.id)
+    );
+
     const segregationAnalysis = detectMixedCategories(prItems);
+
     return {
       purchaseRequest: pr,
       items: prItems,
       linkedPpmp,
       uploadedPpmpDoc,
+      marketScopingDoc,
+      preCanvassDoc,
+      otherDocuments,
+      allDocuments: allPackageDocuments,
+      linkedPreCanvass,
+      linkedQuotes,
+      corrections: prCorrections,
+      requester: pr.requestedById ? requesterMap.get(pr.requestedById) || null : null,
+      office: pr.officeId ? officeMap.get(pr.officeId) || null : null,
       segregationAnalysis,
       isVerified: Boolean(pr.procurementReviewedById),
     };
