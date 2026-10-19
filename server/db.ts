@@ -68,10 +68,14 @@ export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPri
 
 export async function getDb() {
   const password = process.env.SUPABASE_DB_PASSWORD;
-  const configuredConnectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  const configuredConnectionString =
+    process.env.SUPABASE_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL;
   if (!_db && (configuredConnectionString || password)) {
     try {
-      const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
+      const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`;
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
       _pool.on("connect", (client) => {
         void client.query("SET search_path TO procurewise, public").catch((error) => {
