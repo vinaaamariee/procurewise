@@ -1412,6 +1412,9 @@ function validateProcurementDocumentUpload(mimeType, byteLength) {
   if (!byteLength || byteLength > MAX_DOCUMENT_BYTES) return "Document uploads must be between 1 byte and 10 MB.";
   return null;
 }
+function escapeSqlLike(pattern) {
+  return pattern.replace(/[%_\\]/g, "\\$&");
+}
 function isEligibleTestOnlyPackage(input) {
   return Boolean(
     input.description?.startsWith(TEST_ONLY_PREFIX) && input.fundSource?.startsWith(TEST_ONLY_PREFIX) && input.remarks?.includes("non-operational test record") && input.officeCode?.startsWith("TEST-") && input.objectCode?.startsWith("TEST-")
@@ -1721,7 +1724,8 @@ async function listProcurementCatalogItems(input, options) {
   const codeFamily = input?.codeFamily?.trim() || "";
   const page = Math.max(1, input?.page ?? 1);
   const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
-  const condition = search ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${search}%`), like(procurementCatalogItems.productCode, `%${search}%`))) : eq(procurementCatalogItems.isActive, 1);
+  const safeSearch = search ? escapeSqlLike(search) : "";
+  const condition = safeSearch ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${safeSearch}%`), like(procurementCatalogItems.productCode, `%${safeSearch}%`))) : eq(procurementCatalogItems.isActive, 1);
   const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
   const categorizedRecords = codeFamily ? records.filter((record) => getCatalogCodeFamily(record.productCode) === codeFamily) : records;
   const start = (page - 1) * limit;
@@ -3807,7 +3811,8 @@ async function listHistoricalPmrRecords(filters = {}) {
   if (filters.supplier) conditions.push(eq(pmrHistoricalRecords.supplier, filters.supplier));
   if (filters.status) conditions.push(eq(pmrHistoricalRecords.status, filters.status));
   if (filters.search) {
-    const term = `%${filters.search.trim()}%`;
+    const safeTerm = escapeSqlLike(filters.search.trim().slice(0, 120));
+    const term = `%${safeTerm}%`;
     conditions.push(or(like(pmrHistoricalRecords.prNumber, term), like(pmrHistoricalRecords.item, term), like(pmrHistoricalRecords.endUser, term), like(pmrHistoricalRecords.supplier, term)));
   }
   return db.select().from(pmrHistoricalRecords).where(conditions.length ? and(...conditions) : void 0).orderBy(desc(pmrHistoricalRecords.prNumber), pmrHistoricalRecords.id).limit(Math.min(filters.limit ?? 500, 2e3));

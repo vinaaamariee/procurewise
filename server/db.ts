@@ -38,6 +38,14 @@ export function validateProcurementDocumentUpload(mimeType: string, byteLength: 
   return null;
 }
 
+/**
+ * Escapes PostgreSQL LIKE/ILIKE wildcards (%, _, \) to prevent wildcard injection
+ * and expensive full-table pattern matching in search queries.
+ */
+export function escapeSqlLike(pattern: string): string {
+  return pattern.replace(/[%_\\]/g, "\\$&");
+}
+
 export function isEligibleTestOnlyPackage(input: { description?: string | null; fundSource?: string | null; remarks?: string | null; officeCode?: string | null; objectCode?: string | null }) {
   return Boolean(
     input.description?.startsWith(TEST_ONLY_PREFIX)
@@ -106,10 +114,7 @@ export async function upsertUser(user: InsertUser, options?: UserUpsertOptions):
       updateSet[field] = user[field] ?? null;
     }
   });
-  if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
-  } else if (user.role) {
+  if (user.role) {
     values.role = user.role;
     updateSet.role = user.role;
   } else {
@@ -424,8 +429,9 @@ export async function listProcurementCatalogItems(input?: { search?: string; cod
   const codeFamily = input?.codeFamily?.trim() || "";
   const page = Math.max(1, input?.page ?? 1);
   const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
-  const condition = search
-    ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${search}%`), like(procurementCatalogItems.productCode, `%${search}%`)))
+  const safeSearch = search ? escapeSqlLike(search) : "";
+  const condition = safeSearch
+    ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${safeSearch}%`), like(procurementCatalogItems.productCode, `%${safeSearch}%`)))
     : eq(procurementCatalogItems.isActive, 1);
   const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
   const categorizedRecords = codeFamily ? records.filter((record) => getCatalogCodeFamily(record.productCode) === codeFamily) : records;
@@ -3099,7 +3105,8 @@ export async function listHistoricalPmrRecords(filters: { fiscalYear?: number; m
   if (filters.supplier) conditions.push(eq(pmrHistoricalRecords.supplier, filters.supplier));
   if (filters.status) conditions.push(eq(pmrHistoricalRecords.status, filters.status));
   if (filters.search) {
-    const term = `%${filters.search.trim()}%`;
+    const safeTerm = escapeSqlLike(filters.search.trim().slice(0, 120));
+    const term = `%${safeTerm}%`;
     conditions.push(or(like(pmrHistoricalRecords.prNumber, term), like(pmrHistoricalRecords.item, term), like(pmrHistoricalRecords.endUser, term), like(pmrHistoricalRecords.supplier, term)));
   }
   return db.select().from(pmrHistoricalRecords).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(pmrHistoricalRecords.prNumber), pmrHistoricalRecords.id).limit(Math.min(filters.limit ?? 500, 2000));
