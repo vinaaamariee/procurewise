@@ -1,8 +1,7 @@
 import { Client } from "pg";
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-if (!password) throw new Error("SUPABASE_DB_PASSWORD is required.");
-const connectionString = `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
+const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+if (!connectionString) throw new Error("SUPABASE_DATABASE_URL or DATABASE_URL is required.");
 const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
 
 try {

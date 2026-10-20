@@ -67,16 +67,18 @@ export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPri
 }
 
 export async function getDb() {
-  const password = process.env.SUPABASE_DB_PASSWORD;
   const configuredConnectionString =
     process.env.SUPABASE_DATABASE_URL ||
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_PRISMA_URL;
-  if (!_db && (configuredConnectionString || password)) {
+  if (!_db && configuredConnectionString) {
     try {
-      const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`;
+      const connectionString = configuredConnectionString;
       _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
+      _pool.on("error", (err) => {
+        console.error("[Database Pool] Unexpected background error on idle client:", err);
+      });
       _pool.on("connect", (client) => {
         void client.query("SET search_path TO procurewise, public").catch((error) => {
           console.warn("[Database] Failed to set ProcureWise search_path:", error);

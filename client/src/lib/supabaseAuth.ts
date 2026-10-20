@@ -1,23 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl =
+const rawUrl =
   import.meta.env.VITE_SUPABASE_URL ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://itltlayhjndhowyrimyh.supabase.co";
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const supabaseAnonKey =
+const rawAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder";
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const isSupabaseConfigured = Boolean(
-  (import.meta.env.VITE_SUPABASE_URL ||
-    import.meta.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    (import.meta.env.VITE_SUPABASE_ANON_KEY ||
-      import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
-);
+export const isSupabaseConfigured = Boolean(rawUrl && rawAnonKey);
+
+// Neutral placeholders to prevent runtime initialization crash when environment variables are missing
+const supabaseUrl = rawUrl || "https://placeholder.supabase.co";
+const supabaseAnonKey = rawAnonKey || "placeholder-anon-key";
 
 export const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

@@ -1,10 +1,13 @@
 import { defineConfig } from "drizzle-kit";
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-const configuredConnectionString = process.env.SUPABASE_DATABASE_URL;
-if (!configuredConnectionString && !password) throw new Error("SUPABASE_DATABASE_URL or SUPABASE_DB_PASSWORD is required to run Supabase PostgreSQL Drizzle commands.");
+const connectionString =
+  process.env.SUPABASE_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL;
 
-const connectionString = configuredConnectionString ?? `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password as string)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
+if (!connectionString) {
+  throw new Error("A PostgreSQL connection string (DATABASE_URL, SUPABASE_DATABASE_URL, or POSTGRES_URL) is required to run Drizzle commands.");
+}
 
 export default defineConfig({
   schema: "./drizzle/schema.ts",

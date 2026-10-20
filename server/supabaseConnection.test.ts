@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 
 describe("Supabase PostgreSQL migration connection", () => {
   it("connects to the configured Supabase PostgreSQL database with a lightweight read-only query", async () => {
-    const password = process.env.SUPABASE_DB_PASSWORD;
-    expect(password).toBeTruthy();
-    const connectionString = `postgresql://postgres.itltlayhjndhowyrimyh:${encodeURIComponent(password!)}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
+    const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    expect(connectionString).toBeTruthy();
     const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
     try {
       await client.connect();
