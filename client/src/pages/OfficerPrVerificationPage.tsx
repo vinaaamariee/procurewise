@@ -112,6 +112,9 @@ export function OfficerPrVerificationPage() {
   // Document Preview Modal
   const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string; mimeType: string } | null>(null);
 
+  // Officer Document Review Checklist (transparency gate before verification)
+  const [reviewedDocs, setReviewedDocs] = useState<Record<string, boolean>>({});
+
   // Return for Revision Modal
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnReason, setReturnReason] = useState(
@@ -200,12 +203,43 @@ export function OfficerPrVerificationPage() {
     setSelectedVerificationItem(item);
     // If already verified, default to true; otherwise default to false requiring active officer confirmation
     setCategorySegregationConfirmed(item.isVerified);
+    // Reset the document review checklist for the newly opened package
+    setReviewedDocs({});
+  };
+
+  // Opens the in-app document preview and records the document as reviewed by the officer
+  const openDocPreview = (docKey: string, doc: { storageUrl: string; originalFileName: string; mimeType: string }) => {
+    setReviewedDocs((prev) => ({ ...prev, [docKey]: true }));
+    setPreviewDoc({
+      url: doc.storageUrl,
+      title: doc.originalFileName,
+      mimeType: doc.mimeType,
+    });
   };
 
   const handleProceedVerification = () => {
     if (!selectedVerificationItem) return;
     if (!categorySegregationConfirmed) {
       toast.error("You must confirm Section 5.1.1 category segregation before proceeding.");
+      return;
+    }
+    // Transparency gate: the officer must have reviewed each end-user document before verifying
+    const requiredDocKeys: Array<[string, string]> = [
+      ["ppmp", "PPMP"],
+      ["market", "Market Scoping"],
+      ["precanvass", "Pre-Canvass"],
+    ];
+    const missingReview = requiredDocKeys
+      .filter(([key]) =>
+        (key === "ppmp" && selectedVerificationItem.uploadedPpmpDoc) ||
+        (key === "market" && selectedVerificationItem.marketScopingDoc) ||
+        (key === "precanvass" && selectedVerificationItem.preCanvassDoc)
+      )
+      .filter(([key]) => !reviewedDocs[key]);
+    if (missingReview.length > 0) {
+      toast.error(
+        `Please open and review the end-user document(s) first: ${missingReview.map(([, label]) => label).join(", ")} before verifying.`
+      );
       return;
     }
     verifyMutation.mutate({
@@ -743,11 +777,7 @@ export function OfficerPrVerificationPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => setPreviewDoc({
-                              url: selectedVerificationItem.marketScopingDoc.storageUrl,
-                              title: selectedVerificationItem.marketScopingDoc.originalFileName,
-                              mimeType: selectedVerificationItem.marketScopingDoc.mimeType,
-                            })}
+                            onClick={() => openDocPreview("market", selectedVerificationItem.marketScopingDoc)}
                             className="h-7 text-[11px] gap-1 px-2 text-slate-700 dark:text-slate-300"
                           >
                             <Eye className="h-3 w-3" /> Preview
@@ -856,11 +886,7 @@ export function OfficerPrVerificationPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => setPreviewDoc({
-                              url: selectedVerificationItem.uploadedPpmpDoc.storageUrl,
-                              title: selectedVerificationItem.uploadedPpmpDoc.originalFileName,
-                              mimeType: selectedVerificationItem.uploadedPpmpDoc.mimeType,
-                            })}
+                            onClick={() => openDocPreview("ppmp", selectedVerificationItem.uploadedPpmpDoc)}
                             className="h-7 text-[11px] gap-1 px-2 text-slate-700 dark:text-slate-300"
                           >
                             <Eye className="h-3 w-3" /> Preview
@@ -969,11 +995,7 @@ export function OfficerPrVerificationPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => setPreviewDoc({
-                              url: selectedVerificationItem.preCanvassDoc.storageUrl,
-                              title: selectedVerificationItem.preCanvassDoc.originalFileName,
-                              mimeType: selectedVerificationItem.preCanvassDoc.mimeType,
-                            })}
+                            onClick={() => openDocPreview("precanvass", selectedVerificationItem.preCanvassDoc)}
                             className="h-7 text-[11px] gap-1 px-2 text-slate-700 dark:text-slate-300"
                           >
                             <Eye className="h-3 w-3" /> Preview

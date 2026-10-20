@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
   FileText,
   LoaderCircle,
+  Eye,
   Paperclip,
   QrCode,
   RefreshCw,
@@ -43,6 +44,11 @@ export function PmrRegistryPage() {
 
   // Dialog states
   const [selectedPrId, setSelectedPrId] = useState<number | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string; mimeType: string } | null>(null);
+  const openDocPreview = (doc: { storageUrl: string; originalFileName: string; mimeType: string } | null | undefined) => {
+    if (!doc) return;
+    setPreviewDoc({ url: doc.storageUrl, title: doc.originalFileName, mimeType: doc.mimeType });
+  };
   const [recordPmrPr, setRecordPmrPr] = useState<{ id: number; prNumber: string; purpose: string; isVerified: boolean } | null>(null);
   const [pmrReferenceInput, setPmrReferenceInput] = useState("");
   const [pmrRemarksInput, setPmrRemarksInput] = useState("");
@@ -756,11 +762,21 @@ export function PmrRegistryPage() {
                       )}
                     </div>
                     {prDetailQuery.data.marketScopingDoc ? (
-                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
-                        <a href={prDetailQuery.data.marketScopingDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="mr-1 h-3 w-3" /> View / Download
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px]" onClick={() => openDocPreview(prDetailQuery.data.marketScopingDoc)}>
+                          <Eye className="mr-1 h-3 w-3" /> Preview
+                        </Button>
+                        <a
+                          href={prDetailQuery.data.marketScopingDoc.storageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#881337] hover:underline dark:text-rose-400"
+                          title={`Open Market Scoping: ${prDetailQuery.data.marketScopingDoc.originalFileName}`}
+                        >
+                          <ExternalLink className="h-3 w-3" /> Open File
                         </a>
-                      </Button>
+                      </div>
                     ) : (
                       <p className="text-[10px] text-muted-foreground italic mt-2">No file uploaded</p>
                     )}
@@ -795,11 +811,21 @@ export function PmrRegistryPage() {
                       )}
                     </div>
                     {prDetailQuery.data.uploadedPpmpDoc ? (
-                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
-                        <a href={prDetailQuery.data.uploadedPpmpDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="mr-1 h-3 w-3" /> View / Download
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px]" onClick={() => openDocPreview(prDetailQuery.data.uploadedPpmpDoc)}>
+                          <Eye className="mr-1 h-3 w-3" /> Preview
+                        </Button>
+                        <a
+                          href={prDetailQuery.data.uploadedPpmpDoc.storageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#881337] hover:underline dark:text-rose-400"
+                          title={`Open PPMP: ${prDetailQuery.data.uploadedPpmpDoc.originalFileName}`}
+                        >
+                          <ExternalLink className="h-3 w-3" /> Open File
                         </a>
-                      </Button>
+                      </div>
                     ) : (
                       <p className="text-[10px] text-muted-foreground italic mt-2">
                         {prDetailQuery.data.purchaseRequest.ppmpEntryId ? "Refer to linked PPMP schedule" : "No file uploaded"}
@@ -832,11 +858,21 @@ export function PmrRegistryPage() {
                       )}
                     </div>
                     {prDetailQuery.data.preCanvassDoc ? (
-                      <Button asChild size="sm" variant="outline" className="mt-2.5 h-7 text-[11px] w-full">
-                        <a href={prDetailQuery.data.preCanvassDoc.storageUrl} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="mr-1 h-3 w-3" /> View / Download
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px]" onClick={() => openDocPreview(prDetailQuery.data.preCanvassDoc)}>
+                          <Eye className="mr-1 h-3 w-3" /> Preview
+                        </Button>
+                        <a
+                          href={prDetailQuery.data.preCanvassDoc.storageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#881337] hover:underline dark:text-rose-400"
+                          title={`Open Pre-Canvass AOQ: ${prDetailQuery.data.preCanvassDoc.originalFileName}`}
+                        >
+                          <ExternalLink className="h-3 w-3" /> Open File
                         </a>
-                      </Button>
+                      </div>
                     ) : (
                       <p className="text-[10px] text-muted-foreground italic mt-2">No file uploaded</p>
                     )}
@@ -1128,6 +1164,79 @@ export function PmrRegistryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Document In-App Preview Dialog */}
+      {previewDoc && (
+        <Dialog open={Boolean(previewDoc)} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-4 sm:p-6">
+            <DialogHeader className="flex flex-row items-center justify-between space-y-0 border-b border-slate-200 pb-3 dark:border-slate-800">
+              <div className="space-y-0.5 pr-4">
+                <DialogTitle className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate max-w-lg">
+                  {previewDoc.title}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  {previewDoc.mimeType || "Attachment"} · Procurement Transparency Preview
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <a href={previewDoc.url} target="_blank" rel="noopener noreferrer" download>
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    Download Original
+                  </a>
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="my-2 flex-1 overflow-auto rounded-md bg-slate-50 p-2 dark:bg-slate-950/60 min-h-[360px] flex items-center justify-center">
+              {previewDoc.mimeType?.includes("pdf") || previewDoc.url.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={previewDoc.url}
+                  className="w-full h-[62vh] rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                  title={previewDoc.title}
+                />
+              ) : previewDoc.mimeType?.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(previewDoc.url) ? (
+                <div className="flex max-h-[62vh] w-full items-center justify-center overflow-auto p-2">
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.title}
+                    className="max-h-[58vh] max-w-full rounded object-contain shadow-sm"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-800 max-w-md my-auto">
+                  <div className="rounded-full bg-emerald-50 p-3 dark:bg-emerald-950/50 text-emerald-600 mb-3">
+                    <FileSpreadsheet className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{previewDoc.title}</h4>
+                  <p className="text-xs text-slate-500 mt-1 mb-4">
+                    In-browser inline rendering is not supported for this format ({previewDoc.mimeType || "document/spreadsheet"}). Click below to download or view with your local application.
+                  </p>
+                  <Button asChild size="sm" className="bg-[#881337] hover:bg-[#70102e] text-white text-xs">
+                    <a href={previewDoc.url} target="_blank" rel="noopener noreferrer" download>
+                      <Download className="mr-1.5 h-3.5 w-3.5" /> Download / Open Document
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="border-t border-slate-200 pt-3 dark:border-slate-800 flex items-center justify-between sm:justify-between">
+              <span className="text-[11px] text-slate-400">
+                ProcureWise Document Viewer · End-User Transparency
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setPreviewDoc(null)} className="text-xs">
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
