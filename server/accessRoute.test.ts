@@ -23,4 +23,12 @@ describe("ProcureWise account access", () => {
     expect(indexCss).toContain("-webkit-box-shadow: 0 0 0 1000px var(--app-surface) inset");
     expect(appSource).toContain('<Route path={"/access"} component={Access} />');
   });
+
+  it("handles malformed access routes with automatic redirects to /access", () => {
+    const notFoundSource = readFileSync(resolve(projectRoot, "client/src/pages/NotFound.tsx"), "utf8");
+    expect(appSource).toContain('<Route path={"/access%60"}>{() => <Redirect to="/access" replace />}</Route>');
+    expect(appSource).toContain('<Route path={"/access`"}>{() => <Redirect to="/access" replace />}</Route>');
+    expect(notFoundSource).toContain('window.location.pathname.startsWith("/access")');
+    expect(notFoundSource).toContain('setLocation("/access")');
+  });
 });

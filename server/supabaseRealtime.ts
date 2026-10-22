@@ -12,8 +12,8 @@ export type ProcurementRealtimeRecordType =
 const REALTIME_TOPIC = "procurewise:workflow";
 
 export function getSupabaseRealtimePublicConfig() {
-  const url = process.env.VITE_SUPABASE_URL ?? "";
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
+  const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "";
   return { url, anonKey, isConfigured: Boolean(url && anonKey) };
 }
 
@@ -22,8 +22,8 @@ export function buildProcurementRealtimePayload(recordType: ProcurementRealtimeR
 }
 
 export async function publishProcurementRealtimeUpdate(recordType: ProcurementRealtimeRecordType) {
-  const url = process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !serviceRoleKey) return { published: false, reason: "not_configured" as const };
 
   const client = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });

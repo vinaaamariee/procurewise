@@ -137,15 +137,31 @@ export async function upsertSupabaseAuthUser(input: { openId: string; email: str
     ? await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1)
     : [];
   const existing = existingByOpenId[0] ?? existingByEmail[0];
-  const values = { openId: input.openId, email: normalizedEmail, name: input.name, ...(input.officeName !== undefined ? { officeName: input.officeName?.trim() || null } : {}), loginMethod: "supabase", lastSignedIn: new Date() };
 
   if (existing) {
-    const [updated] = await db.update(users).set(values).where(eq(users.id, existing.id)).returning();
+    const updateValues = {
+      openId: input.openId,
+      email: normalizedEmail ?? existing.email,
+      name: input.name ?? existing.name,
+      officeName: input.officeName !== undefined ? (input.officeName?.trim() || null) : existing.officeName,
+      loginMethod: "supabase",
+      lastSignedIn: new Date(),
+    };
+    const [updated] = await db.update(users).set(updateValues).where(eq(users.id, existing.id)).returning();
     if (!updated) throw new Error("The existing ProcureWise user could not be updated.");
     return updated;
   }
 
-  const [created] = await db.insert(users).values({ ...values, role: "end_user" }).returning();
+  const insertValues = {
+    openId: input.openId,
+    email: normalizedEmail,
+    name: input.name,
+    officeName: input.officeName !== undefined ? (input.officeName?.trim() || null) : null,
+    loginMethod: "supabase",
+    lastSignedIn: new Date(),
+    role: "end_user" as const,
+  };
+  const [created] = await db.insert(users).values(insertValues).returning();
   if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
   return created;
 }

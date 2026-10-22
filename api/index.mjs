@@ -1463,13 +1463,29 @@ async function upsertSupabaseAuthUser(input) {
   const existingByOpenId = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
   const existingByEmail = !existingByOpenId[0] && normalizedEmail ? await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1) : [];
   const existing = existingByOpenId[0] ?? existingByEmail[0];
-  const values = { openId: input.openId, email: normalizedEmail, name: input.name, ...input.officeName !== void 0 ? { officeName: input.officeName?.trim() || null } : {}, loginMethod: "supabase", lastSignedIn: /* @__PURE__ */ new Date() };
   if (existing) {
-    const [updated] = await db.update(users).set(values).where(eq(users.id, existing.id)).returning();
+    const updateValues = {
+      openId: input.openId,
+      email: normalizedEmail ?? existing.email,
+      name: input.name ?? existing.name,
+      officeName: input.officeName !== void 0 ? input.officeName?.trim() || null : existing.officeName,
+      loginMethod: "supabase",
+      lastSignedIn: /* @__PURE__ */ new Date()
+    };
+    const [updated] = await db.update(users).set(updateValues).where(eq(users.id, existing.id)).returning();
     if (!updated) throw new Error("The existing ProcureWise user could not be updated.");
     return updated;
   }
-  const [created] = await db.insert(users).values({ ...values, role: "end_user" }).returning();
+  const insertValues = {
+    openId: input.openId,
+    email: normalizedEmail,
+    name: input.name,
+    officeName: input.officeName !== void 0 ? input.officeName?.trim() || null : null,
+    loginMethod: "supabase",
+    lastSignedIn: /* @__PURE__ */ new Date(),
+    role: "end_user"
+  };
+  const [created] = await db.insert(users).values(insertValues).returning();
   if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
   return created;
 }
@@ -4676,16 +4692,16 @@ async function getEndUserPerformanceAnalytics(input) {
 import { createClient as createClient2 } from "@supabase/supabase-js";
 var REALTIME_TOPIC = "procurewise:workflow";
 function getSupabaseRealtimePublicConfig() {
-  const url = process.env.VITE_SUPABASE_URL ?? "";
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
+  const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "";
   return { url, anonKey, isConfigured: Boolean(url && anonKey) };
 }
 function buildProcurementRealtimePayload(recordType) {
   return { recordType, occurredAt: (/* @__PURE__ */ new Date()).toISOString() };
 }
 async function publishProcurementRealtimeUpdate(recordType) {
-  const url = process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !serviceRoleKey) return { published: false, reason: "not_configured" };
   const client = createClient2(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const channel = client.channel(REALTIME_TOPIC, { config: { broadcast: { ack: true, self: false } } });
@@ -6823,75 +6839,95 @@ var appRouter = router({
 // server/supabaseAuth.ts
 import { createClient as createClient3 } from "@supabase/supabase-js";
 function getBearerToken(req) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice("Bearer ".length).trim();
+  const headers = req.headers ?? {};
+  const header = headers.authorization || headers.Authorization;
+  const authStr = Array.isArray(header) ? header[0] : typeof header === "string" ? header : null;
+  if (!authStr?.startsWith("Bearer ")) return null;
+  const token = authStr.slice("Bearer ".length).trim();
   return token || null;
 }
 function getAuthClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) {
     console.warn("[Supabase Auth] Missing server Supabase configuration", {
       hasUrl: Boolean(url),
-      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY)
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY),
+      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY)
     });
     return null;
   }
   return createClient3(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
-async function authenticateSupabaseRequest(req) {
+async function authenticateSupabaseRequestWithDiagnostic(req) {
   const token = getBearerToken(req);
   const client = getAuthClient();
   if (!token) {
-    console.warn("[Supabase Auth] Request did not include a bearer token");
-    return null;
+    return { user: null, diagnostic: { code: "MISSING_SESSION", message: "No bearer token found in request headers." } };
   }
-  if (!client) return null;
+  if (!client) {
+    console.error("[Supabase Auth] Configuration missing: ensure Supabase project URL and key are configured.");
+    return { user: null, diagnostic: { code: "CONFIG_MISSING", message: "Server Supabase configuration is missing." } };
+  }
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) {
-    console.warn("[Supabase Auth] Access token verification failed", {
-      message: error?.message ?? "Supabase returned no user"
-    });
-    return null;
+    const errorMsg = error?.message ?? "Supabase returned no user";
+    console.warn("[Supabase Auth] Access token verification failed:", errorMsg);
+    return { user: null, diagnostic: { code: "TOKEN_REJECTED", message: errorMsg } };
   }
   const fullName = typeof data.user.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : typeof data.user.user_metadata?.name === "string" ? data.user.user_metadata.name : null;
   const officeName = typeof data.user.user_metadata?.office_name === "string" ? data.user.user_metadata.office_name : null;
   try {
-    return await upsertSupabaseAuthUser({
+    const user = await upsertSupabaseAuthUser({
       openId: data.user.id,
       email: data.user.email ?? null,
       name: fullName,
       officeName
     });
+    return { user, diagnostic: { code: "AUTHENTICATED", message: "User authenticated successfully." } };
   } catch (error2) {
+    const errMessage = error2 instanceof Error ? error2.message : "Unknown profile bridge error";
+    let code = "PROFILE_FAILED";
+    if (errMessage.includes("Database is unavailable") || errMessage.includes("ECONNREFUSED") || errMessage.includes("ETIMEDOUT")) {
+      code = "DATABASE_UNAVAILABLE";
+    } else if (errMessage.includes("does not exist") || errMessage.includes("42P01")) {
+      code = "MISSING_TABLE";
+    }
     console.error("[Supabase Auth] Profile bridge failed", {
-      message: error2 instanceof Error ? error2.message : "Unknown profile bridge error",
+      code,
+      message: errMessage,
       userId: data.user.id,
-      email: data.user.email ?? null
+      email: data.user.email ? `${data.user.email.slice(0, 2)}***@***` : null
     });
-    return null;
+    return { user: null, diagnostic: { code, message: errMessage } };
   }
 }
 
 // server/_core/context.ts
 async function createContext(opts) {
   let user = null;
+  let authDiagnostic = { code: "MISSING_SESSION", message: "No session token provided" };
   try {
-    user = await authenticateSupabaseRequest(
+    const result = await authenticateSupabaseRequestWithDiagnostic(
       opts.req
     );
+    user = result.user;
+    authDiagnostic = result.diagnostic;
+    if (!user && authDiagnostic.code !== "MISSING_SESSION") {
+      console.warn(`[Auth Context] User profile not resolved: [${authDiagnostic.code}] ${authDiagnostic.message}`);
+    }
   } catch (error) {
     console.error("[Auth Context] Unexpected authentication failure", {
       message: error instanceof Error ? error.message : "Unknown authentication error"
     });
     user = null;
+    authDiagnostic = { code: "PROFILE_FAILED", message: error instanceof Error ? error.message : "Unknown error" };
   }
   return {
     req: opts.req,
     res: opts.res,
-    user
+    user,
+    authDiagnostic
   };
 }
 

@@ -5,7 +5,7 @@
 **Version:** Defense-ready user manual  
 **Audience:** End-Users, Procurement Officers, Administrative Approvers, and Administrators  
 **System:** ProcureWise  
-**Primary deployment:** `https://procurewise-a5x2.vercel.app`  
+**Primary deployment:** `https://<your-project>.vercel.app` (e.g. `https://procurewise-a5x2.vercel.app`)  
 **Final-defense date:** 29 September 2026
 
 ---

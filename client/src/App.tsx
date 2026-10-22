@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import { AppearanceRuntime } from "./components/AppearanceRuntime";
@@ -44,6 +44,8 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Landing} />
       <Route path={"/access"} component={Access} />
+      <Route path={"/access%60"}>{() => <Redirect to="/access" replace />}</Route>
+      <Route path={"/access`"}>{() => <Redirect to="/access" replace />}</Route>
       <Route path={"/track"} component={PublicTrackingPage} />
       <Route path={"/dashboard"}>{protectedPage(<Dashboard />)}</Route>
       <Route path={"/officer/pr-verification"}>{protectedPage(<OfficerPrVerificationPage />)}</Route>

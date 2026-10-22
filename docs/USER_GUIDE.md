@@ -59,7 +59,7 @@ ProcureWise enforces strict **Role-Based Access Control (RBAC)** on both the cli
 ## 3. System Access & Authentication
 
 ### 3.1 Sign In (Registered Users)
-1. Open the ProcureWise portal in your browser: `https://procurewise-a5x2.vercel.app/access`.
+1. Open the ProcureWise portal in your browser by navigating to `/access` on your deployed application URL (e.g., `https://<your-project>.vercel.app/access`).
 2. Enter your institutional email address (e.g., `user@bsc.edu.ph` or pre-provisioned demo account).
 3. Enter your password (minimum 6 characters).
 4. Click **"Sign in securely"**.

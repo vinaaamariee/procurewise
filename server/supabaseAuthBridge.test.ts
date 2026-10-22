@@ -30,5 +30,15 @@ describe("Supabase Auth identity bridge", () => {
     expect(clientAuthSource).toContain("import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
     expect(bridgeSource).toContain("process.env.SUPABASE_URL");
     expect(bridgeSource).toContain("process.env.NEXT_PUBLIC_SUPABASE_URL");
+    expect(bridgeSource).toContain("process.env.SUPABASE_SECRET_KEY");
+    expect(bridgeSource).toContain("process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  });
+
+  it("provides structured diagnostics and preserves user profile metadata", () => {
+    expect(bridgeSource).toContain("authenticateSupabaseRequestWithDiagnostic");
+    expect(bridgeSource).toContain('"DATABASE_UNAVAILABLE"');
+    expect(bridgeSource).toContain('"MISSING_TABLE"');
+    expect(bridgeSource).toContain('"TOKEN_REJECTED"');
+    expect(databaseSource).toContain("name: input.name ?? existing.name");
   });
 });
