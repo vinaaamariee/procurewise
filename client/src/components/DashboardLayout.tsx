@@ -485,7 +485,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userInitials = (user?.name || "U").split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 
   // ── Loading state ──────────────────────────────────────────────────────────
-  if (loading) return <div className="min-h-screen bg-slate-50 dark:bg-[#090d16]" />;
+  if (loading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-50 dark:bg-[#090d16] px-5 transition-colors">
+        <div className="flex flex-col items-center gap-3">
+          <LoaderCircle className="h-8 w-8 animate-spin text-[#881337] dark:text-[#fda4af]" />
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loading ProcureWise workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Unauthenticated guard ──────────────────────────────────────────────────
   if (!user) {
@@ -786,7 +795,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200 shadow-md z-50">
-                      <p className="font-semibold">{user.name || "Procurement User"}</p>
+                      <p className="font-semibold">{user?.name || "Procurement User"}</p>
                       <p className="text-[#881337] dark:text-[#fda4af] text-[10px]">{roleLabel}</p>
                     </TooltipContent>
                   </Tooltip>
@@ -807,7 +816,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {/* Name + role */}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold leading-tight text-slate-800 dark:text-slate-100">
-                      {user.name || "Procurement User"}
+                      {user?.name || "Procurement User"}
                     </p>
                     <p className="truncate text-[10px] leading-tight text-[#881337] dark:text-[#fda4af] font-medium mt-0.5">{roleLabel}</p>
                   </div>

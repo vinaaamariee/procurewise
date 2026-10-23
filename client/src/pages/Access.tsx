@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { ProcureWiseLogo } from "@/components/ProcureWiseLogo";
 import { GlobalAppearanceControls } from "@/components/GlobalAppearanceControls";
 import { OfficeSelect } from "@/components/OfficeSelect";
@@ -15,6 +16,7 @@ type AccessMode = "sign-in" | "register";
 
 export default function Access() {
   const { user, loading, refresh } = useAuth();
+  const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const requestedMode = new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "sign-in";
   const [mode, setMode] = useState<AccessMode>(requestedMode);
@@ -48,13 +50,14 @@ export default function Access() {
         if (error) throw error;
         let refreshed = await refresh();
         if (!refreshed.data) {
-          await new Promise((resolve) => setTimeout(resolve, 350));
+          await new Promise((resolve) => setTimeout(resolve, 200));
           refreshed = await refresh();
         }
         if (!refreshed.data) {
           const failureDetail = refreshed.error?.message ? ` (${refreshed.error.message})` : "";
           throw new Error(`Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile.${failureDetail} Please contact an administrator or verify the production database configuration.`);
         }
+        utils.auth.me.setData(undefined, refreshed.data);
         setLocation("/dashboard");
         return;
       }
@@ -71,13 +74,14 @@ export default function Access() {
       }
       let refreshed = await refresh();
       if (!refreshed.data) {
-        await new Promise((resolve) => setTimeout(resolve, 350));
+        await new Promise((resolve) => setTimeout(resolve, 200));
         refreshed = await refresh();
       }
       if (!refreshed.data) {
         const failureDetail = refreshed.error?.message ? ` (${refreshed.error.message})` : "";
         throw new Error(`Your account was created, but ProcureWise could not load your workspace profile.${failureDetail} Please sign in again after the account is provisioned.`);
       }
+      utils.auth.me.setData(undefined, refreshed.data);
       setLocation("/dashboard");
     } catch (error) {
       const message = error instanceof TypeError && error.message.toLowerCase().includes("fetch")

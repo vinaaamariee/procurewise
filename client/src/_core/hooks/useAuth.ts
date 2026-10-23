@@ -8,6 +8,8 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+let globalSessionReady = false;
+
 export function useAuth(options?: UseAuthOptions) {
   // Login is started via startLogin() in the effect below, only when we actually
   // navigate — never during render. startLogin() mints a one-time nonce + writes
@@ -21,18 +23,26 @@ export function useAuth(options?: UseAuthOptions) {
     enabled: sessionReady,
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
     let mounted = true;
+    if (globalSessionReady && mounted) {
+      setSessionReady(true);
+    }
     void supabaseAuth.auth
       .getSession()
+      .then(({ data }) => {
+        if (data?.session) globalSessionReady = true;
+      })
       .catch(() => ({ data: { session: null }, error: null }))
       .finally(() => {
         if (mounted) setSessionReady(true);
       });
-    const { data } = supabaseAuth.auth.onAuthStateChange(() => {
+    const { data } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+      globalSessionReady = Boolean(session);
       setSessionReady(true);
       void utils.auth.me.invalidate();
     });
@@ -71,11 +81,12 @@ export function useAuth(options?: UseAuthOptions) {
       "manus-runtime-user-info",
       JSON.stringify(meQuery.data)
     );
+    const hasData = Boolean(meQuery.data);
     return {
       user: meQuery.data ?? null,
-      loading: !sessionReady || meQuery.isLoading || logoutMutation.isPending,
+      loading: (!sessionReady && !hasData) || (meQuery.isLoading && !hasData) || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: hasData,
     };
   }, [
     meQuery.data,
@@ -107,9 +118,17 @@ export function useAuth(options?: UseAuthOptions) {
     state.user,
   ]);
 
+  const refresh = useCallback(async () => {
+    const res = await meQuery.refetch();
+    if (res.data) {
+      utils.auth.me.setData(undefined, res.data);
+    }
+    return res;
+  }, [meQuery, utils]);
+
   return {
     ...state,
-    refresh: () => meQuery.refetch(),
+    refresh,
     logout,
   };
 }
