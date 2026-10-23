@@ -83,6 +83,50 @@ export function PurchaseRequestsPage() {
     onSuccess: () => { toast.success("Purchase Request rejected and the employee was notified."); void utils.procurement.purchaseRequests.list.invalidate(); void utils.procurement.dashboard.invalidate(); },
     onError: (error) => toast.error(formatFriendlyError(error)),
   });
+  const resubmitRequest = trpc.procurement.purchaseRequests.resubmit.useMutation({
+    onSuccess: () => { toast.success("Corrected package resubmitted to the Procurement Officer."); setResubmitFiles([]); setResubmitRemarks(""); void utils.procurement.purchaseRequests.list.invalidate(); void utils.procurement.dashboard.invalidate(); },
+    onError: (error) => toast.error(formatFriendlyError(error)),
+  });
+  const [resubmitFiles, setResubmitFiles] = useState<Array<{ name: string; type: string; size: number; base64: string }>>([]);
+  const [resubmitRemarks, setResubmitRemarks] = useState("");
+  const resubmitFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleResubmitFile = (file: File) => {
+    if (!/\.(pdf|xlsx|xls|docx|doc|png|jpe?g)$/i.test(file.name)) {
+      toast.error("Choose a PDF, Excel, Word, or image document.");
+      return;
+    }
+    if (file.size > 14 * 1024 * 1024) {
+      toast.error("File exceeds 14MB limit. Please upload a smaller document.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      setResubmitFiles((prev) => [...prev, { name: file.name, type: file.type, size: file.size, base64 }]);
+      toast.success(`Attached corrected document: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResubmit = async (purchaseRequestId: number) => {
+    for (const file of resubmitFiles) {
+      try {
+        await attachDocumentMutation.mutateAsync({
+          entityType: "purchase_request",
+          entityId: purchaseRequestId,
+          documentType: "Corrected Attachment",
+          originalFileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          dataBase64: file.base64,
+        });
+      } catch (attachErr: any) {
+        toast.warning(`Document ${file.name} could not be attached: ${attachErr.message || "upload issue"}`);
+      }
+    }
+    resubmitRequest.mutate({ purchaseRequestId, remarks: resubmitRemarks.trim() || undefined });
+  };
   const createPpmpMutation = trpc.procurement.setup.createAppPpmpEntry.useMutation();
   const attachDocumentMutation = trpc.procurement.documents.attach.useMutation();
   const [isSubmittingPackage, setIsSubmittingPackage] = useState(false);
@@ -249,6 +293,8 @@ export function PurchaseRequestsPage() {
               submitRequest.mutate({ purchaseRequestId });
             }}
             onReject={(purchaseRequestId, reason) => rejectRequest.mutate({ purchaseRequestId, reason })}
+            onResubmit={(purchaseRequestId) => handleResubmit(purchaseRequestId)}
+            resubmittingId={resubmitRequest.isPending ? resubmitRequest.variables?.purchaseRequestId : undefined}
             onOpenCanvass={(pr) => {
               setSelectedPrId(pr.id);
               setActiveCanvassPr(pr);
@@ -257,6 +303,71 @@ export function PurchaseRequestsPage() {
             selectedPrId={selectedPr?.id}
             onSelectPr={(id) => setSelectedPrId(id)}
           />
+          {selectedPr?.status === "returned" && (
+            <div className="mt-5 rounded-[4px] border border-[#e4c88a] bg-[#fffaf0] p-4 sm:p-5 dark:border-[#8a6a1f] dark:bg-[#2a2010]">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#9a6d19] dark:text-[#f0c36a]" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[#79551a] dark:text-[#f0c36a]">This package was returned for correction — action needed</p>
+                  <p className="mt-1 text-xs leading-5 text-[#75643e] dark:text-[#d9c58e]">
+                    Review the reviewer comments in the history, make the requested changes, attach any corrected documents below, then resubmit. The resubmitted package goes back to the Procurement Officer for verification.
+                  </p>
+                  <input
+                    ref={resubmitFileInputRef}
+                    type="file"
+                    accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) handleResubmitFile(file);
+                      event.target.value = "";
+                    }}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resubmitFileInputRef.current?.click()}
+                      className="h-8 rounded-[4px] border-[#d8c39a] text-xs font-semibold text-[#79551a] hover:bg-[#fdf4dd] dark:border-[#8a6a1f] dark:text-[#f0c36a] dark:hover:bg-[#3a2d12]"
+                    >
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Upload corrected document
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={resubmitRequest.isPending}
+                      onClick={() => selectedPr && handleResubmit(selectedPr.id)}
+                      className="h-8 rounded-[4px] bg-[#9a6d19] text-xs font-semibold text-white hover:bg-[#7e5712] dark:bg-[#b98a2b] dark:hover:bg-[#a1771f]"
+                    >
+                      {resubmitRequest.isPending ? <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin text-white" /> : <FileCheck2 className="mr-1.5 h-3.5 w-3.5" />}
+                      Update and Resubmit
+                    </Button>
+                  </div>
+                  {resubmitFiles.length > 0 && (
+                    <ul className="mt-3 space-y-1">
+                      {resubmitFiles.map((file, index) => (
+                        <li key={index} className="flex items-center justify-between gap-2 rounded-[4px] bg-white/70 px-2.5 py-1.5 text-xs text-[#5c4d21] dark:bg-black/20 dark:text-[#e6d9ae]">
+                          <span className="truncate">{file.name} · {(file.size / 1024).toFixed(0)} KB</span>
+                          <button type="button" onClick={() => setResubmitFiles((prev) => prev.filter((_, i) => i !== index))} className="shrink-0 text-[#9c2525] hover:underline dark:text-[#ff837a]">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-3">
+                    <Label className="text-xs text-[#75643e] dark:text-[#d9c58e]">Remarks for the Procurement Officer (optional)</Label>
+                    <Textarea
+                      value={resubmitRemarks}
+                      onChange={(event) => setResubmitRemarks(event.target.value)}
+                      placeholder="Describe the corrections you made..."
+                      className="mt-1.5 min-h-16 border-[#d8c39a] bg-white/70 text-xs dark:border-[#8a6a1f] dark:bg-black/20"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           <WorkflowTimeline
             status={selectedPr?.status ?? "draft"}
             pr={selectedPr}
@@ -291,8 +402,10 @@ function PurchaseRequestTable({
   canReject,
   onSubmit,
   onReject,
+  onResubmit,
   onOpenCanvass,
   submittingId,
+  resubmittingId,
   selectedPrId,
   onSelectPr,
 }: {
@@ -302,8 +415,10 @@ function PurchaseRequestTable({
   canReject: boolean;
   onSubmit: (purchaseRequestId: number) => void;
   onReject: (purchaseRequestId: number, reason: string) => void;
+  onResubmit: (purchaseRequestId: number) => void;
   onOpenCanvass: (pr: { id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string }) => void;
   submittingId?: number;
+  resubmittingId?: number;
   selectedPrId?: number;
   onSelectPr?: (id: number) => void;
 }) {
@@ -363,7 +478,18 @@ function PurchaseRequestTable({
         </Button>
       </>
     )}
-    {record.status !== "draft" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">{record.status === "delivered" ? "Final records in progress" : "In progress"}</span>}
+    {record.status === "returned" && !canReject && (
+      <Button
+        size="sm"
+        onClick={() => { onSelectPr?.(record.id); onResubmit(record.id); }}
+        disabled={resubmittingId === record.id}
+        className="h-7 rounded-[4px] bg-[#9a6d19] px-2.5 text-[10px] font-semibold text-white hover:bg-[#7e5712] dark:bg-[#b98a2b] dark:hover:bg-[#a1771f]"
+      >
+        {resubmittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <FileCheck2 className="mr-1 h-3 w-3" />}
+        Update and Resubmit
+      </Button>
+    )}
+    {record.status !== "draft" && record.status !== "returned" && !canReject && <span className="text-[11px] text-[#87909b] dark:text-[#aeb9c4]">{record.status === "delivered" ? "Final records in progress" : "In progress"}</span>}
   </div>}</td></tr>;
   })}</tbody></RecordTable>;
 }

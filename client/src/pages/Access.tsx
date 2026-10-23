@@ -52,7 +52,8 @@ export default function Access() {
           refreshed = await refresh();
         }
         if (!refreshed.data) {
-          throw new Error("Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile. Please contact an administrator or verify the production database configuration.");
+          const failureDetail = refreshed.error?.message ? ` (${refreshed.error.message})` : "";
+          throw new Error(`Your Supabase sign-in succeeded, but ProcureWise could not load your workspace profile.${failureDetail} Please contact an administrator or verify the production database configuration.`);
         }
         setLocation("/dashboard");
         return;
@@ -74,7 +75,8 @@ export default function Access() {
         refreshed = await refresh();
       }
       if (!refreshed.data) {
-        throw new Error("Your account was created, but ProcureWise could not load your workspace profile. Please sign in again after the account is provisioned.");
+        const failureDetail = refreshed.error?.message ? ` (${refreshed.error.message})` : "";
+        throw new Error(`Your account was created, but ProcureWise could not load your workspace profile.${failureDetail} Please sign in again after the account is provisioned.`);
       }
       setLocation("/dashboard");
     } catch (error) {

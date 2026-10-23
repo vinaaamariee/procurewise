@@ -83,16 +83,16 @@ export async function getDb() {
   if (!_db && configuredConnectionString) {
     try {
       const connectionString = configuredConnectionString;
-      _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined });
+      _pool = new Pool({
+        connectionString,
+        ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined,
+        max: 5,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+      });
       _pool.on("error", (err) => {
         console.error("[Database Pool] Unexpected background error on idle client:", err);
       });
-      _pool.on("connect", (client) => {
-        void client.query("SET search_path TO procurewise, public").catch((error) => {
-          console.warn("[Database] Failed to set ProcureWise search_path:", error);
-        });
-      });
-      await _pool.query("SET search_path TO procurewise, public");
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -161,9 +161,15 @@ export async function upsertSupabaseAuthUser(input: { openId: string; email: str
     lastSignedIn: new Date(),
     role: "end_user" as const,
   };
-  const [created] = await db.insert(users).values(insertValues).returning();
-  if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
-  return created;
+  try {
+    const [created] = await db.insert(users).values(insertValues).returning();
+    if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
+    return created;
+  } catch (err: unknown) {
+    const retry = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
+    if (retry[0]) return retry[0];
+    throw err;
+  }
 }
 
 export async function getUserByOpenId(openId: string) {

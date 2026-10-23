@@ -23,11 +23,11 @@ export type AuthResult = {
 
 function getBearerToken(req: AuthRequest) {
   const headers = (req.headers ?? {}) as Record<string, string | string[] | undefined>;
-  const header = headers.authorization || headers.Authorization;
-  const authStr = Array.isArray(header) ? header[0] : typeof header === "string" ? header : null;
-  if (!authStr?.startsWith("Bearer ")) return null;
-  const token = authStr.slice("Bearer ".length).trim();
-  return token || null;
+  const authHeader = Object.entries(headers).find(([k]) => k.toLowerCase() === "authorization")?.[1];
+  const authStr = Array.isArray(authHeader) ? authHeader[0] : typeof authHeader === "string" ? authHeader : null;
+  if (!authStr) return null;
+  const match = authStr.match(/^bearer\s+(\S+)$/i);
+  return match ? match[1].trim() : null;
 }
 
 function getAuthClient() {

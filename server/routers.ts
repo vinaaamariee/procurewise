@@ -38,7 +38,15 @@ function assertRole(userRole: string, permittedRoles: string[]) {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query(({ ctx }) => {
+      if (!ctx.user && ctx.authDiagnostic && ctx.authDiagnostic.code !== "MISSING_SESSION") {
+        throw new TRPCError({
+          code: ctx.authDiagnostic.code === "TOKEN_REJECTED" ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
+          message: `[${ctx.authDiagnostic.code}] ${ctx.authDiagnostic.message}`,
+        });
+      }
+      return ctx.user;
+    }),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
     updateMyOffice: protectedProcedure.input(z.object({ officeName: z.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user)),
   }),

@@ -1439,16 +1439,16 @@ async function getDb() {
   if (!_db && configuredConnectionString) {
     try {
       const connectionString = configuredConnectionString;
-      _pool = new Pool({ connectionString, ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0 });
+      _pool = new Pool({
+        connectionString,
+        ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0,
+        max: 5,
+        connectionTimeoutMillis: 1e4,
+        idleTimeoutMillis: 3e4
+      });
       _pool.on("error", (err) => {
         console.error("[Database Pool] Unexpected background error on idle client:", err);
       });
-      _pool.on("connect", (client) => {
-        void client.query("SET search_path TO procurewise, public").catch((error) => {
-          console.warn("[Database] Failed to set ProcureWise search_path:", error);
-        });
-      });
-      await _pool.query("SET search_path TO procurewise, public");
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -1485,9 +1485,15 @@ async function upsertSupabaseAuthUser(input) {
     lastSignedIn: /* @__PURE__ */ new Date(),
     role: "end_user"
   };
-  const [created] = await db.insert(users).values(insertValues).returning();
-  if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
-  return created;
+  try {
+    const [created] = await db.insert(users).values(insertValues).returning();
+    if (!created) throw new Error("The Supabase Auth user could not be provisioned.");
+    return created;
+  } catch (err) {
+    const retry = await db.select().from(users).where(eq(users.openId, input.openId)).limit(1);
+    if (retry[0]) return retry[0];
+    throw err;
+  }
 }
 async function requireDb() {
   const db = await getDb();
@@ -5975,7 +5981,15 @@ function assertRole(userRole, permittedRoles) {
 var appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query(({ ctx }) => {
+      if (!ctx.user && ctx.authDiagnostic && ctx.authDiagnostic.code !== "MISSING_SESSION") {
+        throw new TRPCError3({
+          code: ctx.authDiagnostic.code === "TOKEN_REJECTED" ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
+          message: `[${ctx.authDiagnostic.code}] ${ctx.authDiagnostic.message}`
+        });
+      }
+      return ctx.user;
+    }),
     logout: publicProcedure.mutation(() => ({ success: true })),
     updateMyOffice: protectedProcedure.input(z2.object({ officeName: z2.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user))
   }),
@@ -6840,11 +6854,11 @@ var appRouter = router({
 import { createClient as createClient3 } from "@supabase/supabase-js";
 function getBearerToken(req) {
   const headers = req.headers ?? {};
-  const header = headers.authorization || headers.Authorization;
-  const authStr = Array.isArray(header) ? header[0] : typeof header === "string" ? header : null;
-  if (!authStr?.startsWith("Bearer ")) return null;
-  const token = authStr.slice("Bearer ".length).trim();
-  return token || null;
+  const authHeader = Object.entries(headers).find(([k]) => k.toLowerCase() === "authorization")?.[1];
+  const authStr = Array.isArray(authHeader) ? authHeader[0] : typeof authHeader === "string" ? authHeader : null;
+  if (!authStr) return null;
+  const match = authStr.match(/^bearer\s+(\S+)$/i);
+  return match ? match[1].trim() : null;
 }
 function getAuthClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -6936,7 +6950,31 @@ var app = express();
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 registerStorageProxy(app);
-app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
+app.use((req, _res, next) => {
+  const matched = req.headers["x-matched-path"];
+  if (typeof matched === "string" && (matched.startsWith("/api/trpc") || matched.startsWith("/trpc"))) {
+    req.url = matched;
+  }
+  next();
+});
+var trpcMiddleware = createExpressMiddleware({ router: appRouter, createContext });
+app.use("/api/trpc", trpcMiddleware);
+app.use("/trpc", trpcMiddleware);
+app.get(["/api/health", "/health"], async (_req, res) => {
+  try {
+    const db = await getDb();
+    res.json({
+      status: "ok",
+      database: Boolean(db),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
 var vercelApiEntrypoint_default = app;
 export {
   vercelApiEntrypoint_default as default
