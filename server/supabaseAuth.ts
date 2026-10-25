@@ -97,20 +97,46 @@ export async function authenticateSupabaseRequestWithDiagnostic(req: AuthRequest
     });
     return { user, diagnostic: { code: "AUTHENTICATED", message: "User authenticated successfully." } };
   } catch (error) {
-    const errMessage = error instanceof Error ? error.message : "Unknown profile bridge error";
+    const rawMessage = error instanceof Error ? error.message : "Unknown profile bridge error";
+    const cause = error instanceof Error && "cause" in error ? (error.cause as Record<string, unknown> | undefined) : undefined;
+    const causeMessage = typeof cause?.message === "string" ? cause.message : "";
+    const causeCode = typeof cause?.code === "string" ? cause.code : typeof (error as Record<string, unknown> | undefined)?.code === "string" ? (error as Record<string, unknown>).code as string : "";
+    const combinedError = `${rawMessage} ${causeMessage} ${causeCode}`.toLowerCase();
+
     let code: AuthDiagnosticCode = "PROFILE_FAILED";
-    if (errMessage.includes("Database is unavailable") || errMessage.includes("ECONNREFUSED") || errMessage.includes("ETIMEDOUT")) {
-      code = "DATABASE_UNAVAILABLE";
-    } else if (errMessage.includes("does not exist") || errMessage.includes("42P01")) {
+    let userFacingMessage = "Database operation failed while loading profile.";
+
+    if (
+      causeCode === "42P01" ||
+      combinedError.includes("does not exist") ||
+      combinedError.includes("42p01")
+    ) {
       code = "MISSING_TABLE";
+      userFacingMessage = "The workspace users table does not exist in the configured database.";
+    } else if (
+      causeCode === "28P01" ||
+      causeCode === "XX000" ||
+      causeCode === "ECONNREFUSED" ||
+      causeCode === "ETIMEDOUT" ||
+      combinedError.includes("database is unavailable") ||
+      combinedError.includes("econnrefused") ||
+      combinedError.includes("etimedout") ||
+      combinedError.includes("password authentication failed") ||
+      combinedError.includes("tenant")
+    ) {
+      code = "DATABASE_UNAVAILABLE";
+      userFacingMessage = "Database connection failed. Please verify that the production database URL and credentials are valid and reachable.";
     }
+
     console.error("[Supabase Auth] Profile bridge failed", {
       code,
-      message: errMessage,
+      message: userFacingMessage,
+      causeCode,
+      causeMessage,
       userId: data.user.id,
       email: data.user.email ? `${data.user.email.slice(0, 2)}***@***` : null,
     });
-    return { user: null, diagnostic: { code, message: errMessage } };
+    return { user: null, diagnostic: { code, message: userFacingMessage } };
   }
 }
 

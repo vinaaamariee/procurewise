@@ -74,24 +74,269 @@ export function calculateMcdmScores(quotes: Array<{ supplierId: number; totalPri
   }).sort((left, right) => right.totalScore - left.totalScore || Number(left.quote.totalPrice) - Number(right.quote.totalPrice));
 }
 
+export function extractSupabaseProjectRef(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    const hostMatch = url.hostname.match(/^(?:db\.)?([a-z0-9]{20})\.supabase\.co$/i);
+    if (hostMatch) return hostMatch[1].toLowerCase();
+    const userMatch = url.username.match(/^postgres\.([a-z0-9]{20})$/i);
+    if (userMatch) return userMatch[1].toLowerCase();
+  } catch {
+    // not a full URL
+  }
+  const match = trimmed.match(/([a-z0-9]{20})/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+export type ResolvedDatabaseConfig = {
+  connectionString: string | null;
+  source: string | null;
+  projectRef: string | null;
+  authProjectRef: string | null;
+  isProjectMatched: boolean | null;
+};
+
+export function resolveDatabaseConnectionString(): ResolvedDatabaseConfig {
+  const authUrl =
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const authProjectRef = extractSupabaseProjectRef(authUrl);
+
+  const candidates = [
+    { name: "SUPABASE_DATABASE_URL", value: process.env.SUPABASE_DATABASE_URL || "", projectRef: extractSupabaseProjectRef(process.env.SUPABASE_DATABASE_URL) },
+    { name: "DATABASE_URL", value: process.env.DATABASE_URL || "", projectRef: extractSupabaseProjectRef(process.env.DATABASE_URL) },
+    { name: "POSTGRES_URL", value: process.env.POSTGRES_URL || "", projectRef: extractSupabaseProjectRef(process.env.POSTGRES_URL) },
+    { name: "POSTGRES_PRISMA_URL", value: process.env.POSTGRES_PRISMA_URL || "", projectRef: extractSupabaseProjectRef(process.env.POSTGRES_PRISMA_URL) },
+  ].filter((c) => Boolean(c.value.trim()));
+
+  if (candidates.length === 0) {
+    return {
+      connectionString: null,
+      source: null,
+      projectRef: null,
+      authProjectRef,
+      isProjectMatched: null,
+    };
+  }
+
+  // If Auth project is known, prioritize candidate whose project ref matches Auth
+  if (authProjectRef) {
+    const matching = candidates.find((c) => c.projectRef === authProjectRef);
+    if (matching) {
+      return {
+        connectionString: matching.value.trim(),
+        source: matching.name,
+        projectRef: matching.projectRef,
+        authProjectRef,
+        isProjectMatched: true,
+      };
+    }
+  }
+
+  // Fallback to first configured variable
+  const chosen = candidates[0];
+  const isProjectMatched = authProjectRef && chosen.projectRef ? authProjectRef === chosen.projectRef : null;
+  return {
+    connectionString: chosen.value.trim(),
+    source: chosen.name,
+    projectRef: chosen.projectRef,
+    authProjectRef,
+    isProjectMatched,
+  };
+}
+
+export type DiagnosticErrorCategory =
+  | "MISSING_CONFIG"
+  | "AUTH_FAILED"
+  | "TENANT_NOT_FOUND"
+  | "HOST_UNREACHABLE"
+  | "TIMEOUT"
+  | "SCHEMA_ERROR"
+  | "UNKNOWN";
+
+export type DatabaseDiagnostics = {
+  configured: boolean;
+  source: string | null;
+  authProjectRef: string | null;
+  dbProjectRef: string | null;
+  isProjectMatched: boolean | null;
+  host: string | null;
+  port: number | null;
+  isPooler: boolean;
+  connectivity: boolean;
+  latencyMs?: number;
+  usersTableExists?: boolean;
+  usersCount?: number;
+  error?: {
+    category: DiagnosticErrorCategory;
+    code?: string;
+    message: string;
+  };
+};
+
+export async function testDatabaseConnectivity(): Promise<DatabaseDiagnostics> {
+  const { connectionString, source, projectRef, authProjectRef, isProjectMatched } = resolveDatabaseConnectionString();
+
+  if (!connectionString) {
+    return {
+      configured: false,
+      source: null,
+      authProjectRef,
+      dbProjectRef: null,
+      isProjectMatched: null,
+      host: null,
+      port: null,
+      isPooler: false,
+      connectivity: false,
+      error: {
+        category: "MISSING_CONFIG",
+        message: "No database connection string found. Expected SUPABASE_DATABASE_URL or DATABASE_URL.",
+      },
+    };
+  }
+
+  let host: string | null = null;
+  let port: number | null = null;
+  let isPooler = false;
+
+  try {
+    const parsed = new URL(connectionString);
+    host = parsed.hostname;
+    port = parsed.port ? parseInt(parsed.port, 10) : 5432;
+    isPooler = host.includes("pooler.supabase.com") || port === 6543;
+  } catch {
+    // connection string format fallback
+  }
+
+  const client = new Pool({
+    connectionString,
+    ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 7000,
+  });
+
+  const start = Date.now();
+  try {
+    const conn = await client.connect();
+    const pingRes = await conn.query("SELECT 1 as ping");
+    const latencyMs = Date.now() - start;
+
+    if (!pingRes.rows[0]) {
+      conn.release();
+      await client.end();
+      return {
+        configured: true,
+        source,
+        authProjectRef,
+        dbProjectRef: projectRef,
+        isProjectMatched,
+        host,
+        port,
+        isPooler,
+        connectivity: false,
+        latencyMs,
+        error: { category: "UNKNOWN", message: "Database ping returned no response." },
+      };
+    }
+
+    const tableRes = await conn.query("SELECT to_regclass('procurewise.users') as regclass");
+    const usersTableExists = Boolean(tableRes.rows[0]?.regclass);
+
+    let usersCount = 0;
+    if (usersTableExists) {
+      const countRes = await conn.query("SELECT count(*) as count FROM procurewise.users");
+      usersCount = Number(countRes.rows[0]?.count ?? 0);
+    }
+
+    conn.release();
+    await client.end();
+
+    return {
+      configured: true,
+      source,
+      authProjectRef,
+      dbProjectRef: projectRef,
+      isProjectMatched,
+      host,
+      port,
+      isPooler,
+      connectivity: true,
+      latencyMs,
+      usersTableExists,
+      usersCount,
+      error: !usersTableExists
+        ? { category: "SCHEMA_ERROR", message: "Table procurewise.users was not found in the database." }
+        : undefined,
+    };
+  } catch (err: unknown) {
+    try { await client.end(); } catch {}
+    const latencyMs = Date.now() - start;
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    const cause = err instanceof Error && "cause" in err ? (err.cause as Record<string, unknown> | undefined) : undefined;
+    const causeMsg = typeof cause?.message === "string" ? cause.message : "";
+    const code = typeof (err as { code?: string })?.code === "string"
+      ? (err as { code: string }).code
+      : typeof cause?.code === "string"
+        ? cause.code
+        : undefined;
+
+    const fullErr = `${rawMsg} ${causeMsg} ${code ?? ""}`.toLowerCase();
+
+    let category: DiagnosticErrorCategory = "UNKNOWN";
+    let message = "Database connection failed.";
+
+    if (code === "28P01" || fullErr.includes("password authentication failed")) {
+      category = "AUTH_FAILED";
+      message = "PostgreSQL password authentication failed. Check database password in connection string.";
+    } else if (code === "XX000" || fullErr.includes("tenant") || fullErr.includes("not found")) {
+      category = "TENANT_NOT_FOUND";
+      message = "Supabase project tenant not found on pooler. Check that the project reference in username matches an existing active project.";
+    } else if (code === "ECONNREFUSED" || fullErr.includes("econnrefused")) {
+      category = "HOST_UNREACHABLE";
+      message = "Database connection refused by host. Verify database host and port.";
+    } else if (code === "ETIMEDOUT" || fullErr.includes("timeout") || fullErr.includes("etimedout")) {
+      category = "TIMEOUT";
+      message = "Database connection timed out. Check network routing and pooler host.";
+    } else {
+      message = rawMsg.replace(/:\/\/[^:@]+:[^@]+@/, "://***:***@");
+    }
+
+    return {
+      configured: true,
+      source,
+      authProjectRef,
+      dbProjectRef: projectRef,
+      isProjectMatched,
+      host,
+      port,
+      isPooler,
+      connectivity: false,
+      latencyMs,
+      error: { category, code, message },
+    };
+  }
+}
+
 export async function getDb() {
-  const configuredConnectionString =
-    process.env.SUPABASE_DATABASE_URL ||
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL;
-  if (!_db && configuredConnectionString) {
+  const { connectionString, source, projectRef, authProjectRef, isProjectMatched } = resolveDatabaseConnectionString();
+  if (!_db && connectionString) {
     try {
-      const connectionString = configuredConnectionString;
+      if (isProjectMatched === false) {
+        console.warn(
+          `[Database] Project mismatch detected: Auth project is ${authProjectRef}, but ${source} references ${projectRef}. User lookup may fail if projects differ.`
+        );
+      }
       _pool = new Pool({
         connectionString,
         ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : undefined,
-        max: 5,
+        max: process.env.NODE_ENV === "production" ? 3 : 5,
         connectionTimeoutMillis: 10000,
         idleTimeoutMillis: 30000,
       });
       _pool.on("error", (err) => {
-        console.error("[Database Pool] Unexpected background error on idle client:", err);
+        console.error("[Database Pool] Unexpected background error on idle client:", err.message);
       });
       _db = drizzle(_pool);
     } catch (error) {

@@ -1,16 +1,7 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { extractSupabaseProjectRef, getDb } from "../db";
 
-const projectRef = (value: string | undefined) => {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    const fromHost = url.hostname.match(/^(?:db\.)?([a-z0-9]{20})\.supabase\.co$/)?.[1];
-    return fromHost ?? url.username.match(/^postgres\.([a-z0-9]{20})$/)?.[1] ?? null;
-  } catch {
-    return null;
-  }
-};
+const projectRef = extractSupabaseProjectRef;
 
 /** Logs startup problems that otherwise surface only as "could not load your workspace profile". */
 export async function checkSupabaseConfig() {

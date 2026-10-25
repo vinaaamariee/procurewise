@@ -4,7 +4,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./_core/storageProxy";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
-import { getDb } from "./db";
+import { getDb, testDatabaseConnectivity } from "./db";
 
 const app = express();
 
@@ -40,32 +40,36 @@ app.use(["/api/trpc", "/trpc"], trpcMiddleware);
 
 app.get(["/api/health", "/health"], async (_req, res) => {
   try {
-    const db = await getDb();
-    let usersCount = 0;
-    let usersTableFound = false;
-    if (db) {
-      const result = await db.execute(sql`select count(*) from procurewise.users`);
-      usersCount = Number(result.rows[0]?.count ?? 0);
-      usersTableFound = true;
-    }
-    const authUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    const diag = await testDatabaseConnectivity();
+    const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY);
+    const hasAnonKey = Boolean(
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    );
 
-    const getRef = (val?: string) => {
-      if (!val) return null;
-      const m = val.match(/([a-z0-9]{20})/);
-      return m ? `${m[1].slice(0, 4)}...${m[1].slice(-4)}` : "set";
-    };
+    const maskRef = (ref: string | null) => (ref ? `${ref.slice(0, 4)}...${ref.slice(-4)}` : null);
+    const isHealthy = diag.connectivity && Boolean(diag.usersTableExists);
 
-    res.json({
-      status: "ok",
-      database: Boolean(db),
-      usersTable: usersTableFound,
-      usersCount,
-      authProjectRef: getRef(authUrl),
-      dbProjectRef: getRef(dbUrl),
-      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY),
-      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY),
+    res.status(isHealthy ? 200 : (diag.configured ? 503 : 500)).json({
+      status: isHealthy ? "ok" : "degraded",
+      database: diag.connectivity,
+      usersTable: Boolean(diag.usersTableExists),
+      usersCount: diag.usersCount ?? 0,
+      authProjectRef: maskRef(diag.authProjectRef),
+      dbProjectRef: maskRef(diag.dbProjectRef),
+      connectionSource: diag.source,
+      projectMatch: diag.isProjectMatched,
+      host: diag.host,
+      port: diag.port,
+      isPooler: diag.isPooler,
+      latencyMs: diag.latencyMs,
+      hasServiceRoleKey,
+      hasAnonKey,
+      error: diag.error?.message ?? null,
+      errorCategory: diag.error?.category ?? null,
+      errorCode: diag.error?.code ?? null,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

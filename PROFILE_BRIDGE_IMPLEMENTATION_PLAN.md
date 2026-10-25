@@ -35,12 +35,12 @@ SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_DATABASE_URL
 ```
 
-The variables must reference the active project `tfswokhkuxwvpcpxekso`, not the older project. Do not paste secret values into source control, screenshots, or chat.
+The variables must reference the active project `itltlayhjndhowyrimyh`, which contains the migrated `procurewise` schema and auth users. (Do not use `tfswokhkuxwvpcpxekso`, which is decommissioned/nonexistent and causes tenant resolution errors). Do not paste secret values into source control, screenshots, or chat.
 
 The database URL must follow this shape:
 
 ```text
-postgresql://postgres.PROJECT_REF:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&options=-c%20search_path%3Dprocurewise%2Cpublic
+postgresql://postgres.itltlayhjndhowyrimyh:PASSWORD@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
 ### Phase 2 — Verify the database from Supabase SQL Editor

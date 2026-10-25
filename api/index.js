@@ -1,6 +1,5 @@
 // server/vercelApiEntrypoint.ts
 import express from "express";
-import { sql as sql2 } from "drizzle-orm";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 
 // server/storage.ts
@@ -1435,20 +1434,201 @@ function calculateMcdmScores(quotes) {
     return { quote, priceScore, deliveryScore, complianceScore: 20, totalScore: priceScore + deliveryScore + 20 };
   }).sort((left, right) => right.totalScore - left.totalScore || Number(left.quote.totalPrice) - Number(right.quote.totalPrice));
 }
-async function getDb() {
-  const configuredConnectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
-  if (!_db && configuredConnectionString) {
+function extractSupabaseProjectRef(value) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    const hostMatch = url.hostname.match(/^(?:db\.)?([a-z0-9]{20})\.supabase\.co$/i);
+    if (hostMatch) return hostMatch[1].toLowerCase();
+    const userMatch = url.username.match(/^postgres\.([a-z0-9]{20})$/i);
+    if (userMatch) return userMatch[1].toLowerCase();
+  } catch {
+  }
+  const match = trimmed.match(/([a-z0-9]{20})/i);
+  return match ? match[1].toLowerCase() : null;
+}
+function resolveDatabaseConnectionString() {
+  const authUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const authProjectRef = extractSupabaseProjectRef(authUrl);
+  const candidates = [
+    { name: "SUPABASE_DATABASE_URL", value: process.env.SUPABASE_DATABASE_URL || "", projectRef: extractSupabaseProjectRef(process.env.SUPABASE_DATABASE_URL) },
+    { name: "DATABASE_URL", value: process.env.DATABASE_URL || "", projectRef: extractSupabaseProjectRef(process.env.DATABASE_URL) },
+    { name: "POSTGRES_URL", value: process.env.POSTGRES_URL || "", projectRef: extractSupabaseProjectRef(process.env.POSTGRES_URL) },
+    { name: "POSTGRES_PRISMA_URL", value: process.env.POSTGRES_PRISMA_URL || "", projectRef: extractSupabaseProjectRef(process.env.POSTGRES_PRISMA_URL) }
+  ].filter((c) => Boolean(c.value.trim()));
+  if (candidates.length === 0) {
+    return {
+      connectionString: null,
+      source: null,
+      projectRef: null,
+      authProjectRef,
+      isProjectMatched: null
+    };
+  }
+  if (authProjectRef) {
+    const matching = candidates.find((c) => c.projectRef === authProjectRef);
+    if (matching) {
+      return {
+        connectionString: matching.value.trim(),
+        source: matching.name,
+        projectRef: matching.projectRef,
+        authProjectRef,
+        isProjectMatched: true
+      };
+    }
+  }
+  const chosen = candidates[0];
+  const isProjectMatched = authProjectRef && chosen.projectRef ? authProjectRef === chosen.projectRef : null;
+  return {
+    connectionString: chosen.value.trim(),
+    source: chosen.name,
+    projectRef: chosen.projectRef,
+    authProjectRef,
+    isProjectMatched
+  };
+}
+async function testDatabaseConnectivity() {
+  const { connectionString, source, projectRef, authProjectRef, isProjectMatched } = resolveDatabaseConnectionString();
+  if (!connectionString) {
+    return {
+      configured: false,
+      source: null,
+      authProjectRef,
+      dbProjectRef: null,
+      isProjectMatched: null,
+      host: null,
+      port: null,
+      isPooler: false,
+      connectivity: false,
+      error: {
+        category: "MISSING_CONFIG",
+        message: "No database connection string found. Expected SUPABASE_DATABASE_URL or DATABASE_URL."
+      }
+    };
+  }
+  let host = null;
+  let port = null;
+  let isPooler = false;
+  try {
+    const parsed = new URL(connectionString);
+    host = parsed.hostname;
+    port = parsed.port ? parseInt(parsed.port, 10) : 5432;
+    isPooler = host.includes("pooler.supabase.com") || port === 6543;
+  } catch {
+  }
+  const client = new Pool({
+    connectionString,
+    ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0,
+    connectionTimeoutMillis: 7e3
+  });
+  const start = Date.now();
+  try {
+    const conn = await client.connect();
+    const pingRes = await conn.query("SELECT 1 as ping");
+    const latencyMs = Date.now() - start;
+    if (!pingRes.rows[0]) {
+      conn.release();
+      await client.end();
+      return {
+        configured: true,
+        source,
+        authProjectRef,
+        dbProjectRef: projectRef,
+        isProjectMatched,
+        host,
+        port,
+        isPooler,
+        connectivity: false,
+        latencyMs,
+        error: { category: "UNKNOWN", message: "Database ping returned no response." }
+      };
+    }
+    const tableRes = await conn.query("SELECT to_regclass('procurewise.users') as regclass");
+    const usersTableExists = Boolean(tableRes.rows[0]?.regclass);
+    let usersCount = 0;
+    if (usersTableExists) {
+      const countRes = await conn.query("SELECT count(*) as count FROM procurewise.users");
+      usersCount = Number(countRes.rows[0]?.count ?? 0);
+    }
+    conn.release();
+    await client.end();
+    return {
+      configured: true,
+      source,
+      authProjectRef,
+      dbProjectRef: projectRef,
+      isProjectMatched,
+      host,
+      port,
+      isPooler,
+      connectivity: true,
+      latencyMs,
+      usersTableExists,
+      usersCount,
+      error: !usersTableExists ? { category: "SCHEMA_ERROR", message: "Table procurewise.users was not found in the database." } : void 0
+    };
+  } catch (err) {
     try {
-      const connectionString = configuredConnectionString;
+      await client.end();
+    } catch {
+    }
+    const latencyMs = Date.now() - start;
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    const cause = err instanceof Error && "cause" in err ? err.cause : void 0;
+    const causeMsg = typeof cause?.message === "string" ? cause.message : "";
+    const code = typeof err?.code === "string" ? err.code : typeof cause?.code === "string" ? cause.code : void 0;
+    const fullErr = `${rawMsg} ${causeMsg} ${code ?? ""}`.toLowerCase();
+    let category = "UNKNOWN";
+    let message = "Database connection failed.";
+    if (code === "28P01" || fullErr.includes("password authentication failed")) {
+      category = "AUTH_FAILED";
+      message = "PostgreSQL password authentication failed. Check database password in connection string.";
+    } else if (code === "XX000" || fullErr.includes("tenant") || fullErr.includes("not found")) {
+      category = "TENANT_NOT_FOUND";
+      message = "Supabase project tenant not found on pooler. Check that the project reference in username matches an existing active project.";
+    } else if (code === "ECONNREFUSED" || fullErr.includes("econnrefused")) {
+      category = "HOST_UNREACHABLE";
+      message = "Database connection refused by host. Verify database host and port.";
+    } else if (code === "ETIMEDOUT" || fullErr.includes("timeout") || fullErr.includes("etimedout")) {
+      category = "TIMEOUT";
+      message = "Database connection timed out. Check network routing and pooler host.";
+    } else {
+      message = rawMsg.replace(/:\/\/[^:@]+:[^@]+@/, "://***:***@");
+    }
+    return {
+      configured: true,
+      source,
+      authProjectRef,
+      dbProjectRef: projectRef,
+      isProjectMatched,
+      host,
+      port,
+      isPooler,
+      connectivity: false,
+      latencyMs,
+      error: { category, code, message }
+    };
+  }
+}
+async function getDb() {
+  const { connectionString, source, projectRef, authProjectRef, isProjectMatched } = resolveDatabaseConnectionString();
+  if (!_db && connectionString) {
+    try {
+      if (isProjectMatched === false) {
+        console.warn(
+          `[Database] Project mismatch detected: Auth project is ${authProjectRef}, but ${source} references ${projectRef}. User lookup may fail if projects differ.`
+        );
+      }
       _pool = new Pool({
         connectionString,
         ssl: connectionString.startsWith("postgres") ? { rejectUnauthorized: false } : void 0,
-        max: 5,
+        max: process.env.NODE_ENV === "production" ? 3 : 5,
         connectionTimeoutMillis: 1e4,
         idleTimeoutMillis: 3e4
       });
       _pool.on("error", (err) => {
-        console.error("[Database Pool] Unexpected background error on idle client:", err);
+        console.error("[Database Pool] Unexpected background error on idle client:", err.message);
       });
       _db = drizzle(_pool);
     } catch (error) {
@@ -6901,20 +7081,29 @@ async function authenticateSupabaseRequestWithDiagnostic(req) {
     });
     return { user, diagnostic: { code: "AUTHENTICATED", message: "User authenticated successfully." } };
   } catch (error2) {
-    const errMessage = error2 instanceof Error ? error2.message : "Unknown profile bridge error";
+    const rawMessage = error2 instanceof Error ? error2.message : "Unknown profile bridge error";
+    const cause = error2 instanceof Error && "cause" in error2 ? error2.cause : void 0;
+    const causeMessage = typeof cause?.message === "string" ? cause.message : "";
+    const causeCode = typeof cause?.code === "string" ? cause.code : typeof error2?.code === "string" ? error2.code : "";
+    const combinedError = `${rawMessage} ${causeMessage} ${causeCode}`.toLowerCase();
     let code = "PROFILE_FAILED";
-    if (errMessage.includes("Database is unavailable") || errMessage.includes("ECONNREFUSED") || errMessage.includes("ETIMEDOUT")) {
-      code = "DATABASE_UNAVAILABLE";
-    } else if (errMessage.includes("does not exist") || errMessage.includes("42P01")) {
+    let userFacingMessage = "Database operation failed while loading profile.";
+    if (causeCode === "42P01" || combinedError.includes("does not exist") || combinedError.includes("42p01")) {
       code = "MISSING_TABLE";
+      userFacingMessage = "The workspace users table does not exist in the configured database.";
+    } else if (causeCode === "28P01" || causeCode === "XX000" || causeCode === "ECONNREFUSED" || causeCode === "ETIMEDOUT" || combinedError.includes("database is unavailable") || combinedError.includes("econnrefused") || combinedError.includes("etimedout") || combinedError.includes("password authentication failed") || combinedError.includes("tenant")) {
+      code = "DATABASE_UNAVAILABLE";
+      userFacingMessage = "Database connection failed. Please verify that the production database URL and credentials are valid and reachable.";
     }
     console.error("[Supabase Auth] Profile bridge failed", {
       code,
-      message: errMessage,
+      message: userFacingMessage,
+      causeCode,
+      causeMessage,
       userId: data.user.id,
       email: data.user.email ? `${data.user.email.slice(0, 2)}***@***` : null
     });
-    return { user: null, diagnostic: { code, message: errMessage } };
+    return { user: null, diagnostic: { code, message: userFacingMessage } };
   }
 }
 
@@ -6972,30 +7161,31 @@ var trpcMiddleware = createExpressMiddleware({ router: appRouter, createContext 
 app.use(["/api/trpc", "/trpc"], trpcMiddleware);
 app.get(["/api/health", "/health"], async (_req, res) => {
   try {
-    const db = await getDb();
-    let usersCount = 0;
-    let usersTableFound = false;
-    if (db) {
-      const result = await db.execute(sql2`select count(*) from procurewise.users`);
-      usersCount = Number(result.rows[0]?.count ?? 0);
-      usersTableFound = true;
-    }
-    const authUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    const getRef = (val) => {
-      if (!val) return null;
-      const m = val.match(/([a-z0-9]{20})/);
-      return m ? `${m[1].slice(0, 4)}...${m[1].slice(-4)}` : "set";
-    };
-    res.json({
-      status: "ok",
-      database: Boolean(db),
-      usersTable: usersTableFound,
-      usersCount,
-      authProjectRef: getRef(authUrl),
-      dbProjectRef: getRef(dbUrl),
-      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY),
-      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY),
+    const diag = await testDatabaseConnectivity();
+    const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY);
+    const hasAnonKey = Boolean(
+      process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    );
+    const maskRef = (ref) => ref ? `${ref.slice(0, 4)}...${ref.slice(-4)}` : null;
+    const isHealthy = diag.connectivity && Boolean(diag.usersTableExists);
+    res.status(isHealthy ? 200 : diag.configured ? 503 : 500).json({
+      status: isHealthy ? "ok" : "degraded",
+      database: diag.connectivity,
+      usersTable: Boolean(diag.usersTableExists),
+      usersCount: diag.usersCount ?? 0,
+      authProjectRef: maskRef(diag.authProjectRef),
+      dbProjectRef: maskRef(diag.dbProjectRef),
+      connectionSource: diag.source,
+      projectMatch: diag.isProjectMatched,
+      host: diag.host,
+      port: diag.port,
+      isPooler: diag.isPooler,
+      latencyMs: diag.latencyMs,
+      hasServiceRoleKey,
+      hasAnonKey,
+      error: diag.error?.message ?? null,
+      errorCategory: diag.error?.category ?? null,
+      errorCode: diag.error?.code ?? null,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   } catch (error) {

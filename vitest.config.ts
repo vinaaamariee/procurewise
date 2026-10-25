@@ -20,6 +20,6 @@ export default defineConfig({
       "client/src/features/**/*.test.ts",
       "client/src/features/**/*.spec.ts",
     ],
-
+    setupFiles: ["dotenv/config"],
   },
 });
