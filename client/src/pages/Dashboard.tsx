@@ -373,11 +373,11 @@ function EndUserPersonalDashboard({
 
       {/* Request List and Toolbar Section */}
       <section className="flat-panel mt-6" aria-label="Request list and filters">
-        <div className="border-b border-[#ece8df] px-4 py-4 sm:px-6 dark:border-[#384554]">
-          <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
-            {/* Heading and Counter */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+        {/* Section Heading Row - Full width to prevent any text clipping or squishing */}
+        <div className="border-b border-[#ece8df] px-5 py-4 sm:px-6 dark:border-[#384554]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2.5">
                 <h2 className="text-base font-semibold text-[#2c3644] dark:text-[#f1f5f8]">
                   {categoryTitles[selectedCategory]}
                 </h2>
@@ -398,15 +398,21 @@ function EndUserPersonalDashboard({
                 )}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Select any request to see its details, progress, or feedback.
+                {userPrs.length === 0
+                  ? "All submitted purchase requests will appear here."
+                  : "Select any request to see its details, progress, or feedback."}
               </p>
             </div>
+          </div>
+        </div>
 
-            {/* Filter Pills and Search */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center shrink-0">
+        {/* Filter Pills and Search Toolbar — shown when there are requests in the account */}
+        {userPrs.length > 0 && (
+          <div className="border-b border-[#ece8df] bg-[#faf8f5]/60 px-5 py-3 sm:px-6 dark:border-[#384554] dark:bg-[#1a232c]/40">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               {/* Status Filter Pills */}
               <div
-                className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-muted/30 p-1 text-xs"
+                className="flex flex-wrap items-center gap-1.5"
                 role="tablist"
                 aria-label="Filter requests by status"
               >
@@ -430,17 +436,17 @@ function EndUserPersonalDashboard({
                     role="tab"
                     aria-selected={selectedCategory === tab.id}
                     onClick={() => setSelectedCategory(tab.id)}
-                    className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-all ${
+                    className={`inline-flex items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-xs font-medium transition-all ${
                       selectedCategory === tab.id
                         ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                        : "text-muted-foreground hover:bg-background hover:text-foreground"
+                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     }`}
                   >
                     <span>{tab.label}</span>
                     <span
                       className={`rounded-full px-1.5 py-0.2 text-[10px] ${
                         selectedCategory === tab.id
-                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          ? "bg-primary-foreground/20 text-primary-foreground font-bold"
                           : tab.isAction
                           ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold"
                           : "bg-muted text-muted-foreground"
@@ -453,20 +459,20 @@ function EndUserPersonalDashboard({
               </div>
 
               {/* Search Field */}
-              <div className="relative w-full sm:w-64">
-                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <div className="relative w-full sm:w-72 lg:w-80 shrink-0">
+                <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by request number or name"
-                  className="h-8.5 w-full pl-8 pr-7 text-xs"
+                  className="h-8.5 w-full pl-9 pr-8 text-xs bg-background"
                   aria-label="Search by request number or name"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
                     title="Clear search"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -475,7 +481,7 @@ function EndUserPersonalDashboard({
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Table Content or Contextual Empty State */}
         {isLoading ? (
@@ -644,11 +650,11 @@ function EndUserPersonalDashboard({
           </div>
         ) : userPrs.length === 0 ? (
           /* Genuinely empty state */
-          <div className="py-12 px-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <div className="py-8 sm:py-10 px-6 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#faeed2] text-[#7b1e1e] dark:bg-[#342618] dark:text-[#f4d081]">
               <ClipboardList className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+            <h3 className="mt-3.5 font-display text-base sm:text-lg font-semibold text-foreground">
               No purchase requests yet
             </h3>
             <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
@@ -656,7 +662,7 @@ function EndUserPersonalDashboard({
             </p>
             <Button
               onClick={() => setLocation("/purchase-requests?create=1")}
-              className="mt-5 h-9 bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 shadow-xs"
+              className="mt-4 h-9 bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 shadow-xs"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Create purchase request
@@ -1112,8 +1118,10 @@ function PersonalKpiCard({
       type="button"
       onClick={onClick}
       aria-pressed={Boolean(isActive)}
-      aria-label={`${label}: ${count} requests. ${description}. Click to filter.`}
-      className={`flat-panel min-w-0 cursor-pointer p-4.5 text-left transition-all select-none hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      aria-label={`${label}: ${count} requests. ${description}. ${
+        isActive ? "Active filter. Click to clear filter." : "Click to filter list by this status."
+      }`}
+      className={`flat-panel group min-w-0 cursor-pointer p-4 text-left transition-all select-none hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         styles.border
       } ${isActive ? styles.activeRing : ""}`}
     >
@@ -1129,7 +1137,9 @@ function PersonalKpiCard({
             {highlightBadge}
           </span>
         ) : isActive ? (
-          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Active</span>
+          <span className="inline-flex items-center gap-1 rounded bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold dark:bg-primary/25 dark:text-[#ff837a]">
+            <Check className="h-2.5 w-2.5" /> Filter active
+          </span>
         ) : null}
       </div>
 
@@ -1140,9 +1150,19 @@ function PersonalKpiCard({
       {/* Full readable description without line-clamp truncation */}
       <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{description}</p>
 
-      <p className="mt-2 text-[10px] font-medium text-muted-foreground/75">
-        {isActive ? "✓ Filtering by this status" : "Click to filter list"}
-      </p>
+      {/* Interactive affordance */}
+      <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+        <span className={isActive ? "font-semibold text-primary dark:text-[#ff837a]" : "group-hover:text-foreground"}>
+          {isActive ? "Clear this filter" : "Filter requests"}
+        </span>
+        <ArrowRight
+          className={`h-3 w-3 transition-transform ${
+            isActive
+              ? "rotate-90 text-primary dark:text-[#ff837a]"
+              : "text-muted-foreground/60 group-hover:translate-x-0.5 group-hover:text-foreground"
+          }`}
+        />
+      </div>
     </button>
   );
 }
