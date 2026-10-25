@@ -30,9 +30,12 @@ import {
   Ban,
   BellRing,
   BookOpenCheck,
+  Check,
   CheckCircle2,
   CircleDollarSign,
+  ClipboardList,
   Clock,
+  Copy,
   ExternalLink,
   Eye,
   FileCheck2,
@@ -134,8 +137,7 @@ function EndUserPersonalDashboard({
   const [selectedCategory, setSelectedCategory] = useState<PrFilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPrForModal, setSelectedPrForModal] = useState<any | null>(null);
-  const [dismissedBannerIds, setDismissedBannerIds] = useState<Record<number, boolean>>({});
-  const [bannerCategoryOverride, setBannerCategoryOverride] = useState<"returned" | "rejected" | "successful" | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
 
   // All PRs returned by the backend for this End-User account
   const userPrs = useMemo(() => {
@@ -155,7 +157,7 @@ function EndUserPersonalDashboard({
     }>;
   }, [data?.purchaseRequests]);
 
-  // 1. Pursued / Active PRs: Total PRs currently ongoing in the procurement pipeline
+  // 1. In progress: active in the procurement pipeline
   const activePrs = useMemo(() => {
     return userPrs.filter((pr) =>
       ["draft", "procurement_review", "approval_review", "budget_review", "supply_review", "bac_review", "rfq"].includes(
@@ -164,52 +166,29 @@ function EndUserPersonalDashboard({
     );
   }, [userPrs]);
 
-  // 2. Returned for Revision: Count of PRs returned needing user correction
+  // 2. Needs your action: user feedback / revision required (underlying status: returned)
   const returnedPrs = useMemo(() => {
     return userPrs.filter((pr) => pr.status === "returned");
   }, [userPrs]);
 
-  // 3. Successful / Completed PRs: Count of fully awarded/completed PRs
+  // 3. Completed: fully awarded and completed requests
   const successfulPrs = useMemo(() => {
     return userPrs.filter((pr) =>
       ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(pr.status)
     );
   }, [userPrs]);
 
-  // 4. Rejected / Cancelled: Count of disapproved requests
+  // 4. Unable to proceed: rejected or cancelled requests
   const rejectedPrs = useMemo(() => {
     return userPrs.filter((pr) => pr.status === "rejected" || pr.status === "cancelled");
   }, [userPrs]);
 
-  // Find latest PRs in each category for contextual banners
   const sortByLatest = (list: typeof userPrs) => {
     return [...list].sort(
       (a, b) =>
         new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
     );
   };
-
-  const latestReturned = sortByLatest(returnedPrs)[0];
-  const latestRejected = sortByLatest(rejectedPrs)[0];
-  const latestSuccessful = sortByLatest(successfulPrs)[0];
-
-  // Active banner resolution
-  const activeBannerCategory = useMemo<"returned" | "rejected" | "successful" | null>(() => {
-    if (bannerCategoryOverride) return bannerCategoryOverride;
-    if (latestReturned && !dismissedBannerIds[latestReturned.id]) return "returned";
-    if (latestRejected && !dismissedBannerIds[latestRejected.id]) return "rejected";
-    if (latestSuccessful && !dismissedBannerIds[latestSuccessful.id]) return "successful";
-    return null;
-  }, [bannerCategoryOverride, latestReturned, latestRejected, latestSuccessful, dismissedBannerIds]);
-
-  const activeBannerPr =
-    activeBannerCategory === "returned"
-      ? latestReturned
-      : activeBannerCategory === "rejected"
-      ? latestRejected
-      : activeBannerCategory === "successful"
-      ? latestSuccessful
-      : null;
 
   // Filtered PR list for table view
   const filteredPrs = useMemo(() => {
@@ -231,300 +210,159 @@ function EndUserPersonalDashboard({
     return sortByLatest(list);
   }, [userPrs, activePrs, returnedPrs, successfulPrs, rejectedPrs, selectedCategory, searchQuery]);
 
+  const categoryTitles: Record<PrFilterCategory, string> = {
+    all: "All requests",
+    active: "In progress",
+    returned: "Needs your action",
+    successful: "Completed",
+    rejected: "Unable to proceed",
+  };
+
+  const isFilterActive = selectedCategory !== "all" || searchQuery.trim().length > 0;
+
+  const handleCopyTrackingToken = (token?: string) => {
+    if (!token) return;
+    navigator.clipboard?.writeText(token);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
+  };
+
   return (
     <div className="content-shell pb-12">
-      {/* Page Header */}
+      {/* Page Heading & Single Primary CTA */}
       <PageHeader
         eyebrow="Your workspace"
         title="Your purchase requests"
-        description="See what is happening with each request, review any feedback, and find the next step."
+        description="Track what is happening with your requests, respond to updates, and create new requests."
         action={{
-          label: "Start a purchase request",
+          label: "Create purchase request",
           onClick: () => setLocation("/purchase-requests?create=1"),
         }}
       />
 
-      {/* Contextual Feedback Banner Section */}
-      <section className="mt-6">
-        {/* Banner Switcher Chips if user has multiple update types */}
-        {(returnedPrs.length > 0 || rejectedPrs.length > 0 || successfulPrs.length > 0) && (
-          <div className="mb-2.5 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7e8b9b] dark:text-[#aeb9c4]">
-              Updates about your requests:
-            </span>
-            {returnedPrs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setBannerCategoryOverride("returned")}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition ${
-                  activeBannerCategory === "returned"
-                    ? "border-[#d4a029] bg-[#fff6df] text-[#845b14] shadow-xs dark:bg-[#342410] dark:text-[#f8d486]"
-                    : "border-[#e5dfd5] bg-white text-[#5e6977] hover:border-[#d4a029] dark:bg-[#1a232c] dark:border-[#384554] dark:text-[#d1dae2]"
-                }`}
-              >
-                <FileEdit className="h-3 w-3 text-[#b47a16]" />
-                <span>Changes requested ({returnedPrs.length})</span>
-              </button>
-            )}
-            {rejectedPrs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setBannerCategoryOverride("rejected")}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition ${
-                  activeBannerCategory === "rejected"
-                    ? "border-[#e07d7d] bg-[#fdf2f2] text-[#8e2424] shadow-xs dark:bg-[#341818] dark:text-[#fca5a5]"
-                    : "border-[#e5dfd5] bg-white text-[#5e6977] hover:border-[#e07d7d] dark:bg-[#1a232c] dark:border-[#384554] dark:text-[#d1dae2]"
-                }`}
-              >
-                <Ban className="h-3 w-3 text-[#b93232]" />
-                <span>Could not proceed ({rejectedPrs.length})</span>
-              </button>
-            )}
-            {successfulPrs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setBannerCategoryOverride("successful")}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition ${
-                  activeBannerCategory === "successful"
-                    ? "border-[#85d0ad] bg-[#eefaf3] text-[#136a43] shadow-xs dark:bg-[#122e20] dark:text-[#86efac]"
-                    : "border-[#e5dfd5] bg-white text-[#5e6977] hover:border-[#85d0ad] dark:bg-[#1a232c] dark:border-[#384554] dark:text-[#d1dae2]"
-                }`}
-              >
-                <PartyPopper className="h-3 w-3 text-[#136a43]" />
-                <span>Completed ({successfulPrs.length})</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Dynamic Contextual Banner Rendering */}
-        {activeBannerCategory === "returned" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4 shadow-sm dark:border-[#5a431c] dark:from-[#251b0f] dark:via-[#2a2418] dark:to-[#1a232c]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* High-priority Action Required Notice (only shown when user response is needed) */}
+      {returnedPrs.length > 0 && selectedCategory !== "rejected" && selectedCategory !== "successful" && (
+        <section className="mt-6" aria-label="Action required notice">
+          <div className="rounded-lg border border-[#f1d28c] bg-gradient-to-r from-[#fffaf0] via-[#fffbf4] to-[#fffdf9] p-4 text-[#795010] shadow-xs dark:border-[#5a431c] dark:from-[#251b0f] dark:via-[#2a2418] dark:to-[#1a232c] dark:text-[#f4d081]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#faeed2] text-[#936418] dark:bg-[#3a2c16] dark:text-[#f4d081]">
-                  <FileEdit className="h-5 w-5" />
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#faeed2] text-[#936418] dark:bg-[#3a2c16] dark:text-[#f4d081]">
+                  <AlertCircle className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-[#f9e7be] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#795010] dark:bg-[#493414] dark:text-[#ffd98e]">
-                      ACTION REQUIRED
-                    </span>
-                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      <FileEdit className="h-4 w-4 shrink-0 text-[#9a6d19]" />
-                      Please update request {activeBannerPr.prNumber}.
-                    </h3>
-                  </div>
-                  <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    Review the feedback below, make the requested changes, and submit it again.
-                    {activeBannerPr.latestReturnReason && (
-                      <span className="mt-1 block rounded border border-[#fae5b8] bg-[#fffcf5] p-2 text-xs font-medium text-[#7d5615] dark:border-[#523d1a] dark:bg-[#20180d] dark:text-[#f3cd82]">
-                        Feedback: &ldquo;{activeBannerPr.latestReturnReason}&rdquo;
-                      </span>
-                    )}
+                  <h2 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                    {returnedPrs.length === 1
+                      ? `Action needed on request ${returnedPrs[0].prNumber}`
+                      : `${returnedPrs.length} requests need your action`}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
+                    Review the reviewer feedback and submit your updates to continue processing.
                   </p>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => setSelectedPrForModal(activeBannerPr)}
-                  className="h-8 rounded-[4px] bg-[#9a6d19] px-3 text-xs font-semibold text-white hover:bg-[#7e5712] shadow-xs"
-                >
-                  <Eye className="mr-1.5 h-3.5 w-3.5" />
-                  Review Comments &amp; Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDismissedBannerIds((prev) => ({ ...prev, [activeBannerPr.id]: true }))}
-                  className="h-8 w-8 text-[#8b95a1] hover:text-[#2c3644] dark:text-[#aeb9c4]"
-                  title="Dismiss banner"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeBannerCategory === "rejected" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#f3c8c8] bg-gradient-to-r from-[#fef7f7] via-[#fff9f9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#5e2727] dark:from-[#2a1414] dark:via-[#2d1b1d] dark:to-[#1a232c]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#fee8e8] text-[#a52a2a] dark:bg-[#431c1c] dark:text-[#fca5a5]">
-                  <Info className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-[#fedbdb] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8b1e1e] dark:bg-[#4d1f1f] dark:text-[#fca5a5]">
-                      DISAPPROVED / CANCELLED
-                    </span>
-                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      <Info className="h-4 w-4 shrink-0 text-[#a52a2a]" />
-                      Request {activeBannerPr.prNumber} could not proceed.
-                    </h3>
-                  </div>
-                  <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    Review the note below. Contact the Procurement Office if you are unsure what to do next.
-                    {activeBannerPr.latestRejectionReason && (
-                      <span className="mt-1 block rounded border border-[#fbd3d3] bg-[#fffaf9] p-2 text-xs font-medium text-[#932323] dark:border-[#522121] dark:bg-[#201010] dark:text-[#fca5a5]">
-                        Note: &ldquo;{activeBannerPr.latestRejectionReason}&rdquo;
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => setSelectedPrForModal(activeBannerPr)}
-                  className="h-8 rounded-[4px] bg-[#7b1e1e] px-3 text-xs font-semibold text-white hover:bg-[#641818] shadow-xs"
-                >
-                  <Info className="mr-1.5 h-3.5 w-3.5" />
-                  View explanation
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDismissedBannerIds((prev) => ({ ...prev, [activeBannerPr.id]: true }))}
-                  className="h-8 w-8 text-[#8b95a1] hover:text-[#2c3644] dark:text-[#aeb9c4]"
-                  title="Dismiss banner"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeBannerCategory === "successful" && activeBannerPr && (
-          <div className="relative rounded-lg border border-[#b2e5cb] bg-gradient-to-r from-[#f0fbf5] via-[#f5fdf9] to-[#ffffff] p-4.5 shadow-sm dark:border-[#225838] dark:from-[#11291b] dark:via-[#173522] dark:to-[#1a232c]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#ddf7e8] text-[#136a43] dark:bg-[#1a442b] dark:text-[#86efac]">
-                  <PartyPopper className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-[#c8eed9] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#0e5c38] dark:bg-[#205335] dark:text-[#86efac]">
-                      AWARDED &amp; COMPLETED
-                    </span>
-                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#136a43]" />
-                      Request {activeBannerPr.prNumber} is complete.
-                    </h3>
-                  </div>
-                  <p className="mt-1.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
-                    The approved amount is{" "}
-                    <span className="font-semibold font-mono text-[#136a43] dark:text-[#86efac]">
-                      {formatMoney(activeBannerPr.totalEstimate)}
-                    </span>
-                    . Open the request details to review the outcome or delivery progress.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => setSelectedPrForModal(activeBannerPr)}
-                  className="h-8 rounded-[4px] bg-[#0f766e] px-3 text-xs font-semibold text-white hover:bg-[#0c5f59] shadow-xs"
-                >
-                  <Award className="mr-1.5 h-3.5 w-3.5" />
-                  View Approval Details
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDismissedBannerIds((prev) => ({ ...prev, [activeBannerPr.id]: true }))}
-                  className="h-8 w-8 text-[#8b95a1] hover:text-[#2c3644] dark:text-[#aeb9c4]"
-                  title="Dismiss banner"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Friendly guidance banner if no high-priority alert is active */}
-        {!activeBannerCategory && userPrs.length > 0 && (
-          <div className="rounded-lg border border-[#e4dfd5] bg-gradient-to-r from-[#fbf9f5] to-white p-4 shadow-xs dark:border-[#384554] dark:from-[#1b2229] dark:to-[#1a232c]">
-            <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded bg-[#f3ede1] text-[#7b1e1e] dark:bg-[#341f1f] dark:text-[#ff837a]">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-[#2f3946] dark:text-[#f1f5f8]">
-                  Nothing needs your attention right now.
-                </p>
-                <p className="text-[11px] text-[#707c8a] dark:text-[#aeb9c4]">
-                  {activePrs.length} request{activePrs.length === 1 ? " is" : "s are"} being reviewed. We’ll show any requested changes or important updates here.
-                </p>
               </div>
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => setLocation("/purchase-requests?create=1")}
-                className="hidden sm:inline-flex h-7 text-xs font-medium shrink-0"
+                onClick={() => {
+                  if (returnedPrs.length === 1) {
+                    setSelectedPrForModal(returnedPrs[0]);
+                  } else {
+                    setSelectedCategory("returned");
+                  }
+                }}
+                className="h-8 shrink-0 rounded-[4px] bg-[#9a6d19] px-3.5 text-xs font-semibold text-white hover:bg-[#7e5712] shadow-xs"
               >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                New request
+                <FileEdit className="mr-1.5 h-3.5 w-3.5" />
+                {returnedPrs.length === 1 ? "Review feedback & edit" : "View requests needing action"}
               </Button>
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* 1. Metrics Cards (KPIs) Grid */}
-      <section className="mt-6">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {/* Request status summaries */}
+      {/* Contextual Notice for Unable to Proceed when filtered */}
+      {selectedCategory === "rejected" && rejectedPrs.length > 0 && (
+        <section className="mt-6" aria-label="Unable to proceed notice">
+          <div className="rounded-lg border border-[#f3c8c8] bg-gradient-to-r from-[#fef7f7] via-[#fff9f9] to-[#ffffff] p-4 text-[#a52a2a] shadow-xs dark:border-[#5e2727] dark:from-[#2a1414] dark:via-[#2d1b1d] dark:to-[#1a232c] dark:text-[#fca5a5]">
+            <div className="flex items-start gap-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#fee8e8] text-[#a52a2a] dark:bg-[#431c1c] dark:text-[#fca5a5]">
+                <Ban className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                  {rejectedPrs.length === 1 ? "1 request unable to proceed" : `${rejectedPrs.length} requests unable to proceed`}
+                </h2>
+                <p className="mt-0.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
+                  These requests need further review or cannot continue. Select a request to see reviewer notes.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Contextual Notice for Completed when filtered */}
+      {selectedCategory === "successful" && successfulPrs.length > 0 && (
+        <section className="mt-6" aria-label="Completed notice">
+          <div className="rounded-lg border border-[#b2e5cb] bg-gradient-to-r from-[#f0fbf5] via-[#f5fdf9] to-[#ffffff] p-4 text-[#136a43] shadow-xs dark:border-[#225838] dark:from-[#11291b] dark:via-[#173522] dark:to-[#1a232c] dark:text-[#86efac]">
+            <div className="flex items-start gap-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#ddf7e8] text-[#136a43] dark:bg-[#1a442b] dark:text-[#86efac]">
+                <CheckCircle2 className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-[#2a3442] dark:text-[#f1f5f8]">
+                  {successfulPrs.length === 1 ? "1 successfully completed request" : `${successfulPrs.length} successfully completed requests`}
+                </h2>
+                <p className="mt-0.5 text-xs text-[#5e6a78] dark:text-[#d1dae2]">
+                  These purchase requests have been successfully approved, ordered, or delivered.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 4 Status Summary Panels */}
+      <section className="mt-6" aria-label="Request status overview">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
+          {/* 1. In progress */}
           <PersonalKpiCard
             label="In progress"
             count={activePrs.length}
-            subtitle="Requests currently being reviewed"
-            detail="Select to view these requests"
+            description="Requests being processed."
             tone="blue"
-            icon={Layers}
+            icon={Clock}
             isActive={selectedCategory === "active"}
             onClick={() => setSelectedCategory(selectedCategory === "active" ? "all" : "active")}
           />
 
-          {/* 2. Returned for Revision */}
+          {/* 2. Needs your action */}
           <PersonalKpiCard
-            label="Changes requested"
+            label="Needs your action"
             count={returnedPrs.length}
-            subtitle="Requests that need an update from you"
-            detail="Open a request to read the feedback"
+            description="Requests waiting for your response."
             tone="amber"
-            icon={FileEdit}
+            icon={AlertCircle}
             highlightBadge={returnedPrs.length > 0 ? "ACTION NEEDED" : undefined}
             isActive={selectedCategory === "returned"}
             onClick={() => setSelectedCategory(selectedCategory === "returned" ? "all" : "returned")}
           />
 
-          {/* 3. Successful / Completed PRs */}
+          {/* 3. Completed */}
           <PersonalKpiCard
             label="Completed"
             count={successfulPrs.length}
-            subtitle="Requests that have been approved"
-            detail="Select to review completed requests"
+            description="Successfully processed requests."
             tone="emerald"
             icon={CheckCircle2}
             isActive={selectedCategory === "successful"}
             onClick={() => setSelectedCategory(selectedCategory === "successful" ? "all" : "successful")}
           />
 
-          {/* 4. Rejected / Cancelled */}
+          {/* 4. Unable to proceed */}
           <PersonalKpiCard
-            label="Could not proceed"
+            label="Unable to proceed"
             count={rejectedPrs.length}
-            subtitle="Requests that were not approved"
-            detail="Open a request to read the explanation"
+            description="Requests that need further review or cannot continue."
             tone="rose"
             icon={Ban}
             isActive={selectedCategory === "rejected"}
@@ -533,111 +371,148 @@ function EndUserPersonalDashboard({
         </div>
       </section>
 
-      {/* PR Register & Table Filter Section */}
-      <section className="flat-panel mt-6">
+      {/* Request List and Toolbar Section */}
+      <section className="flat-panel mt-6" aria-label="Request list and filters">
         <div className="border-b border-[#ece8df] px-4 py-4 sm:px-6 dark:border-[#384554]">
           <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-semibold text-[#2c3644] dark:text-[#f1f5f8]">
-                  All your requests
-                </h3>
-                <span className="rounded-[4px] border border-[#e2d5bd] bg-[#fffaf0] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#8a6520] dark:border-[#52411e] dark:bg-[#251d10] dark:text-[#f0c36a]">
-                  YOUR REQUESTS
+            {/* Heading and Counter */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-[#2c3644] dark:text-[#f1f5f8]">
+                  {categoryTitles[selectedCategory]}
+                </h2>
+                <span className="rounded-[4px] border border-border bg-muted/50 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {filteredPrs.length} {filteredPrs.length === 1 ? "request" : "requests"}
                 </span>
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setSearchQuery("");
+                    }}
+                    className="text-xs font-medium text-primary hover:underline ml-1"
+                  >
+                    Clear filter
+                  </button>
+                )}
               </div>
-              <p className="mt-1 text-xs text-[#707c8a] dark:text-[#aeb9c4]">
-                Select a request to see its progress, feedback, and available next steps. Choose a status below to narrow the list.
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Select any request to see its details, progress, or feedback.
               </p>
             </div>
 
-            {/* Filter Pills & Search Box */}
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center shrink-0">
-              {/* Category Filter Tabs — suppress zero-count unselected pills */}
-              <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-card p-0.5 text-xs shadow-xs">
+            {/* Filter Pills and Search */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center shrink-0">
+              {/* Status Filter Pills */}
+              <div
+                className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-muted/30 p-1 text-xs"
+                role="tablist"
+                aria-label="Filter requests by status"
+              >
                 {(
                   [
-                    { id: "all", label: "All requests", count: userPrs.length },
+                    { id: "all", label: "All", count: userPrs.length },
                     { id: "active", label: "In progress", count: activePrs.length },
-                    { id: "returned", label: "Changes requested", count: returnedPrs.length },
+                    {
+                      id: "returned",
+                      label: "Needs your action",
+                      count: returnedPrs.length,
+                      isAction: returnedPrs.length > 0,
+                    },
                     { id: "successful", label: "Completed", count: successfulPrs.length },
-                    { id: "rejected", label: "Could not proceed", count: rejectedPrs.length },
+                    { id: "rejected", label: "Unable to proceed", count: rejectedPrs.length },
                   ] as const
-                ).filter((tab) => tab.id === "all" || tab.count > 0 || selectedCategory === tab.id).map((tab) => (
+                ).map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
+                    role="tab"
+                    aria-selected={selectedCategory === tab.id}
                     onClick={() => setSelectedCategory(tab.id)}
-                    className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
+                    className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-all ${
                       selectedCategory === tab.id
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:bg-background hover:text-foreground"
                     }`}
                   >
-                    {tab.label}{tab.count > 0 ? ` (${tab.count})` : ""}
+                    <span>{tab.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                        selectedCategory === tab.id
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : tab.isAction
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
                 ))}
               </div>
 
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-60">
-                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#8b95a1]" />
+              {/* Search Field */}
+              <div className="relative w-full sm:w-64">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search number or purpose..."
-                  className="h-8 w-full pl-8 text-xs"
+                  placeholder="Search by request number or name"
+                  className="h-8.5 w-full pl-8 pr-7 text-xs"
+                  aria-label="Search by request number or name"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    title="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery("")}
-                  className="h-8 text-xs shrink-0"
-                >
-                  Reset
-                </Button>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Table Content */}
+        {/* Table Content or Contextual Empty State */}
         {isLoading ? (
-          <div className="p-12 text-center text-xs text-[#77818d] dark:text-[#aeb9c4]">
-            Loading your personal purchase requests...
+          <div className="p-12 text-center text-xs text-muted-foreground">
+            Loading your purchase requests...
           </div>
-        ) : filteredPrs.length ? (
+        ) : filteredPrs.length > 0 ? (
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-xs">
-              <thead className="border-b border-border bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <table className="w-full min-w-[620px] text-left text-xs">
+              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-5 py-3.5">Request number</th>
-                  <th className="px-4 py-3.5">Purpose</th>
-                  <th className="px-4 py-3.5">Status and progress</th>
-                  <th className="px-4 py-3.5 text-right">Submitted</th>
-                  <th className="px-4 py-3.5 text-center">Next step</th>
+                  <th className="px-5 py-3">Request</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Progress</th>
+                  <th className="px-4 py-3 text-right">Submitted</th>
+                  <th className="px-4 py-3 text-center">Next step</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredPrs.map((pr) => {
-                      const prStatusInfo = getEndUserRequestStatus(pr.status);
+                  const prStatusInfo = getEndUserRequestStatus(pr.status);
                   const isReturned = pr.status === "returned";
                   const isRejected = pr.status === "rejected" || pr.status === "cancelled";
-                  const isSuccessful = ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(pr.status);
-                  const hasFeedback = isReturned || isRejected;
+                  const isSuccessful = ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(
+                    pr.status
+                  );
                   const workflowStageInfo = getWorkflowStageInfo(pr.status);
                   const isWorkflowComplete = ["pmr_logged", "closed"].includes(pr.status);
                   const isFinalWorkflowStage = workflowStageInfo.stageIndex === workflowStageInfo.stageCount - 1;
-                  const workflowPercent = isFinalWorkflowStage ? 100 : workflowStageInfo.percent;
+                  const workflowPercent = isWorkflowComplete || isFinalWorkflowStage ? 100 : workflowStageInfo.percent;
                   const workflowProgressText = isReturned
                     ? "Action needed · make changes and resubmit"
                     : isRejected
-                      ? `Stopped · ${prStatusInfo.label}`
-                      : isWorkflowComplete
-                        ? "Complete"
-                        : `Step ${workflowStageInfo.stageIndex + 1} of ${workflowStageInfo.stageCount}`;
+                    ? "Unable to proceed"
+                    : isWorkflowComplete
+                    ? "Completed"
+                    : `Step ${workflowStageInfo.stageIndex + 1} of ${workflowStageInfo.stageCount}`;
 
                   return (
                     <tr
@@ -645,110 +520,119 @@ function EndUserPersonalDashboard({
                       className="hover:bg-accent/40 transition-colors cursor-pointer"
                       onClick={() => setSelectedPrForModal(pr)}
                     >
-                      {/* Column 1: PR Number + creation date subtitle */}
-                      <td className="px-5 py-3">
+                      {/* Column 1: Request Number & Purpose */}
+                      <td className="px-5 py-3 max-w-[280px]">
                         <p className="font-semibold text-primary">{pr.prNumber}</p>
-                        {pr.trackingToken && (
-                          <p className="mt-0.5 text-[10px] text-muted-foreground" title={`Token: ${pr.trackingToken}`}>
-                            {pr.trackingToken.slice(0, 8)}…
-                          </p>
-                        )}
+                        <p
+                          className="mt-0.5 line-clamp-2 text-foreground text-xs leading-snug font-normal"
+                          title={pr.purpose}
+                        >
+                          {pr.purpose}
+                        </p>
                       </td>
 
-                      {/* Column 2: Purpose */}
-                      <td className="max-w-[320px] px-4 py-3 text-foreground">
-                        <p className="line-clamp-2 break-words font-medium leading-snug" title={pr.purpose}>{pr.purpose}</p>
+                      {/* Column 2: Status */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <StatusBadge
+                          tone={
+                            isReturned
+                              ? "pending"
+                              : isRejected
+                              ? "returned"
+                              : isSuccessful
+                              ? "approved"
+                              : "active"
+                          }
+                        >
+                          {isReturned
+                            ? "NEEDS YOUR ACTION"
+                            : isRejected
+                            ? "UNABLE TO PROCEED"
+                            : isSuccessful
+                            ? "COMPLETED"
+                            : "IN PROGRESS"}
+                        </StatusBadge>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{prStatusInfo.label}</p>
                       </td>
 
-                      {/* Column 3: Status + inline feedback indicator */}
-                      <td className="px-4 py-3">
+                      {/* Column 3: Progress Bar & Plain Label */}
+                      <td className="px-4 py-3 min-w-[180px]">
                         <div className="flex flex-col gap-1">
-                          <StatusBadge
-                            tone={
-                              isSuccessful ? "approved"
-                              : isReturned ? "pending"
-                              : isRejected ? "returned"
-                              : pr.status.includes("review") || ["rfq", "po"].includes(pr.status) ? "active"
-                              : "draft"
-                            }
+                          <div
+                            role="progressbar"
+                            aria-label={`${pr.prNumber}: ${workflowProgressText}`}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={workflowPercent}
+                            className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
                           >
-                            {prStatusInfo.label.toUpperCase()}
-                          </StatusBadge>
-                          <div className="mt-0.5 max-w-[280px] min-w-[170px]">
                             <div
-                              role="progressbar"
-                              aria-label={`${pr.prNumber}: ${workflowProgressText}`}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                              aria-valuenow={workflowPercent}
-                              aria-valuetext={workflowProgressText}
-                              className="h-1.5 overflow-hidden rounded-full bg-muted"
-                            >
-                              <div
-                                aria-hidden="true"
-                                className={`h-full rounded-full transition-[width] duration-300 ${
-                                  isRejected ? "bg-destructive" : isReturned ? "bg-amber-500" : isWorkflowComplete ? "bg-emerald-600" : "bg-primary"
-                                }`}
-                                style={{ width: `${workflowPercent}%` }}
-                              />
-                            </div>
-                            <p className={`mt-1 text-[10px] leading-tight ${
-                              isRejected ? "text-destructive" : isReturned ? "text-amber-700 dark:text-amber-300" : isWorkflowComplete ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"
-                            }`}>
-                              {workflowProgressText}
-                            </p>
-                          </div>
-                          {/* Compact inline feedback indicator — clicking opens full modal */}
-                          {hasFeedback && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedPrForModal(pr); }}
-                              className={`inline-flex items-center gap-1 text-[10px] font-medium leading-4 ${
-                                isReturned ? "text-[#9a6d19] dark:text-[#f0c36a]" : "text-[#a52a2a] dark:text-[#fca5a5]"
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                isRejected
+                                  ? "bg-destructive"
+                                  : isReturned
+                                  ? "bg-amber-500"
+                                  : isSuccessful
+                                  ? "bg-emerald-600"
+                                  : "bg-primary"
                               }`}
-                              title={isReturned ? (pr.latestReturnReason || "Returned for revision") : (pr.latestRejectionReason || "Disapproved")}
-                            >
-                              {isReturned ? <FileEdit className="h-3 w-3 shrink-0" /> : <Ban className="h-3 w-3 shrink-0" />}
-                              <span className="truncate max-w-[120px]">
-                                {isReturned
-                                  ? (pr.latestReturnReason?.slice(0, 30) || "Read feedback") + (pr.latestReturnReason && pr.latestReturnReason.length > 30 ? "…" : "")
-                                  : (pr.latestRejectionReason?.slice(0, 30) || "Read explanation") + (pr.latestRejectionReason && pr.latestRejectionReason.length > 30 ? "…" : "")}
-                              </span>
-                            </button>
-                          )}
-                          {isSuccessful && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#0f766e] dark:text-[#86efac]">
-                              <CheckCircle2 className="h-3 w-3 shrink-0" />Approved
-                            </span>
-                          )}
+                              style={{ width: `${workflowPercent}%` }}
+                            />
+                          </div>
+                          <p
+                            className={`text-[11px] font-medium leading-tight ${
+                              isReturned
+                                ? "text-amber-700 dark:text-amber-300 font-semibold"
+                                : isRejected
+                                ? "text-destructive font-semibold"
+                                : isSuccessful
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {workflowProgressText}
+                          </p>
                         </div>
                       </td>
 
                       {/* Column 4: Date */}
-                      <td className="px-4 py-3 text-right text-[11px] text-muted-foreground whitespace-nowrap">
-                        {new Date(pr.createdAt).toLocaleDateString("en-PH")}
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(pr.createdAt).toLocaleDateString("en-PH", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                       </td>
 
                       {/* Column 5: Action */}
                       <td className="px-4 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <Button
-                          variant="outline"
+                          variant={isReturned ? "default" : "outline"}
                           size="sm"
                           onClick={() => setSelectedPrForModal(pr)}
-                          className={`h-7 px-2.5 text-[11px] font-medium ${
+                          className={`h-7 px-2.5 text-xs font-semibold ${
                             isReturned
-                              ? "border-[#d8a834] bg-[#fffaf0] text-[#8a6520] hover:bg-[#faeed2] dark:border-[#635028] dark:bg-[#251d10] dark:text-[#f0c36a]"
+                              ? "bg-[#9a6d19] hover:bg-[#7e5712] text-white shadow-xs"
                               : isRejected
-                              ? "border-[#e28c8c] bg-[#fff5f5] text-[#932323] hover:bg-[#fedcdc] dark:border-[#6b2525] dark:bg-[#251212] dark:text-[#fca5a5]"
-                              : "border-border text-muted-foreground hover:bg-accent"
+                              ? "border-destructive/30 text-destructive hover:bg-destructive/10"
+                              : "border-border text-foreground hover:bg-accent"
                           }`}
                         >
                           {isReturned ? (
-                            <><FileEdit className="mr-1 h-3 w-3" />Update</>
+                            <>
+                              <FileEdit className="mr-1 h-3.5 w-3.5" />
+                              Update
+                            </>
                           ) : isRejected ? (
-                            <><Info className="mr-1 h-3 w-3" />Reason</>
+                            <>
+                              <Info className="mr-1 h-3.5 w-3.5" />
+                              View reason
+                            </>
                           ) : (
-                            <><Eye className="mr-1 h-3 w-3" />Open</>
+                            <>
+                              <Eye className="mr-1 h-3.5 w-3.5" />
+                              View details
+                            </>
                           )}
                         </Button>
                       </td>
@@ -758,181 +642,189 @@ function EndUserPersonalDashboard({
               </tbody>
             </table>
           </div>
+        ) : userPrs.length === 0 ? (
+          /* Genuinely empty state */
+          <div className="py-12 px-6 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <ClipboardList className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+              No purchase requests yet
+            </h3>
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+              When you need to purchase something, create a request to get started.
+            </p>
+            <Button
+              onClick={() => setLocation("/purchase-requests?create=1")}
+              className="mt-5 h-9 bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 shadow-xs"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Create purchase request
+            </Button>
+          </div>
         ) : (
-          <div className="p-8 text-center">
-            <EmptyWorkspace
-              eyebrow="Filter results"
-              title={
-                selectedCategory === "all"
-                  ? "No Purchase Requests created yet"
-                  : `No ${selectedCategory} Purchase Requests found`
-              }
-              description={
-                searchQuery
-                  ? "No requests matched your search query. Try clearing the filter or searching by a different term."
-                  : "Start by planning your procurement and submitting your first itemized Purchase Request."
-              }
-              actionLabel="Create Purchase Request"
-              actionOnClick={() => setLocation("/purchase-requests?create=1")}
-            />
+          /* Filtered empty results state */
+          <div className="py-10 px-6 text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Search className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">No requests found</h3>
+            <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+              {searchQuery
+                ? `No requests match "${searchQuery}". Check the request number or clear your search.`
+                : `There are currently no requests under "${categoryTitles[selectedCategory]}".`}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedCategory("all");
+                setSearchQuery("");
+              }}
+              className="mt-4 h-8 text-xs font-medium"
+            >
+              Clear filters
+            </Button>
           </div>
         )}
       </section>
 
-      {/* 2. Contextual Feedback Modal (Dialog) */}
+      {/* Individual Request Details & Progress Modal */}
       {selectedPrForModal && (
         <Dialog open={Boolean(selectedPrForModal)} onOpenChange={(open) => !open && setSelectedPrForModal(null)}>
-          <DialogContent className="max-w-xl border-[#dcd7cb] bg-white p-6 dark:border-[#384554] dark:bg-[#1b2229]">
-            <DialogHeader>
-              <div className="flex items-center gap-2">
-                {selectedPrForModal.status === "returned" ? (
-                  <span className="grid h-7 w-7 place-items-center rounded bg-[#faeed2] text-[#936418] dark:bg-[#3a2c16] dark:text-[#f4d081]">
-                    <FileEdit className="h-4 w-4" />
-                  </span>
-                ) : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled" ? (
-                  <span className="grid h-7 w-7 place-items-center rounded bg-[#fee8e8] text-[#a52a2a] dark:bg-[#431c1c] dark:text-[#fca5a5]">
-                    <Ban className="h-4 w-4" />
-                  </span>
-                ) : (
-                  <span className="grid h-7 w-7 place-items-center rounded bg-[#ddf7e8] text-[#136a43] dark:bg-[#1a442b] dark:text-[#86efac]">
-                    <PartyPopper className="h-4 w-4" />
-                  </span>
-                )}
+          <DialogContent className="max-w-xl border-border bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="border-b border-border pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <DialogTitle className="text-base font-bold text-[#202833] dark:text-[#f1f5f8]">
-                    {selectedPrForModal.status === "returned"
-                      ? `Changes requested: ${selectedPrForModal.prNumber}`
-                      : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled"
-                        ? `Request update: ${selectedPrForModal.prNumber}`
-                        : `Request details: ${selectedPrForModal.prNumber}`}
+                  <DialogTitle className="font-display text-lg font-bold text-foreground">
+                    Request {selectedPrForModal.prNumber}
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-[#707c8a] dark:text-[#aeb9c4]">
+                  <DialogDescription className="mt-1 text-xs text-muted-foreground line-clamp-2">
                     {selectedPrForModal.purpose}
                   </DialogDescription>
+                </div>
+                <div className="self-start sm:self-center">
+                  <StatusBadge
+                    tone={
+                      selectedPrForModal.status === "returned"
+                        ? "pending"
+                        : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled"
+                        ? "returned"
+                        : ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(
+                            selectedPrForModal.status
+                          )
+                        ? "approved"
+                        : "active"
+                    }
+                  >
+                    {selectedPrForModal.status === "returned"
+                      ? "NEEDS YOUR ACTION"
+                      : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled"
+                      ? "UNABLE TO PROCEED"
+                      : ["approved", "po", "po_issued", "delivered", "pmr_logged", "closed"].includes(
+                          selectedPrForModal.status
+                        )
+                      ? "COMPLETED"
+                      : "IN PROGRESS"}
+                  </StatusBadge>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="mt-4 space-y-4 text-xs">
-              {/* Key PR Metadata Summary — includes Estimated ABC (moved from table) */}
-              <div className="grid grid-cols-2 gap-2.5 rounded border border-border bg-muted/30 p-3 text-[11px]">
-                <div>
-                  <span className="text-muted-foreground">Current status:</span>
-                  <div className="mt-0.5">
-                    <StatusBadge
-                      tone={
-                        selectedPrForModal.status === "returned"
-                          ? "pending"
-                          : selectedPrForModal.status === "rejected"
-                          ? "returned"
-                          : ["approved", "po_issued", "delivered", "closed"].includes(selectedPrForModal.status)
-                          ? "approved"
-                          : "active"
-                      }
-                    >
-                      {getEndUserRequestStatus(selectedPrForModal.status).label.toUpperCase()}
-                    </StatusBadge>
+            <div className="mt-4 space-y-5 text-xs">
+              {/* Plain-Language 5-Step Progress Tracker */}
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  Procurement Progress
+                </h3>
+                <RequestProgressStepper
+                  status={selectedPrForModal.status}
+                  latestReturnReason={selectedPrForModal.latestReturnReason}
+                  latestRejectionReason={selectedPrForModal.latestRejectionReason}
+                />
+              </div>
+
+              {/* Action Required Box (when changes are requested) */}
+              {selectedPrForModal.status === "returned" && (
+                <div className="rounded-lg border border-[#f1d28c] bg-[#fffaf0] p-4 text-[#795010] dark:border-[#5a431c] dark:bg-[#251d10] dark:text-[#f4d081]">
+                  <div className="flex items-center gap-2 font-bold text-xs">
+                    <FileEdit className="h-4 w-4 text-[#9a6d19]" />
+                    <span>Reviewer Feedback & Action Needed</span>
+                  </div>
+                  <p className="mt-2 rounded border border-[#fae5b8] bg-white p-3 text-xs italic font-medium text-[#63430f] dark:border-[#4d3615] dark:bg-[#1a140b] dark:text-[#fcd88b]">
+                    &ldquo;{selectedPrForModal.latestReturnReason || "Please review the specifications and update your request."}&rdquo;
+                  </p>
+                  <div className="mt-3 text-[11px] leading-relaxed">
+                    <p className="font-semibold">Next steps:</p>
+                    <ol className="mt-1 list-decimal list-inside space-y-0.5 text-muted-foreground dark:text-[#f4d081]">
+                      <li>Open this request in the Purchase Requests workspace.</li>
+                      <li>Make the requested modifications to line items or attachments.</li>
+                      <li>Click &ldquo;Resubmit&rdquo; to send the package back for review.</li>
+                    </ol>
                   </div>
                 </div>
+              )}
 
+              {/* Unable to Proceed Box (when rejected) */}
+              {(selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled") && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
+                  <div className="flex items-center gap-2 font-bold text-xs">
+                    <Ban className="h-4 w-4" />
+                    <span>Why this request could not proceed</span>
+                  </div>
+                  <p className="mt-2 rounded border border-destructive/20 bg-background p-3 text-xs italic font-medium text-foreground">
+                    &ldquo;{selectedPrForModal.latestRejectionReason || "The request could not proceed due to budgetary or specification constraints under RA 12009 guidelines."}&rdquo;
+                  </p>
+                  <p className="mt-2.5 text-[11px] text-muted-foreground leading-relaxed">
+                    Contact the Procurement Office if you need guidance, or create a new request with updated specifications.
+                  </p>
+                </div>
+              )}
+
+              {/* Request Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-lg border border-border bg-card p-3.5 text-[11px]">
                 <div>
                   <span className="text-muted-foreground">Estimated total:</span>
                   <p className="mt-0.5 font-mono font-bold text-sm text-foreground">
                     {formatMoney(selectedPrForModal.totalEstimate)}
                   </p>
                 </div>
-
                 <div>
-                  <span className="text-muted-foreground">Date Created:</span>
+                  <span className="text-muted-foreground">Date submitted:</span>
                   <p className="mt-0.5 font-medium text-foreground">
                     {new Date(selectedPrForModal.createdAt).toLocaleDateString("en-PH", {
-                      year: "numeric",
-                      month: "long",
+                      month: "short",
                       day: "numeric",
+                      year: "numeric",
                     })}
                   </p>
                 </div>
-
-                <div>
-                  <span className="text-muted-foreground">Tracking code:</span>
-                  <p className="mt-0.5 font-mono font-medium text-primary">
-                    {selectedPrForModal.trackingToken || "Pending"}
-                  </p>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Public tracking code:</span>
+                  <div className="mt-0.5 flex items-center gap-1.5 font-mono font-medium text-primary">
+                    <span className="truncate">{selectedPrForModal.trackingToken || "Pending"}</span>
+                    {selectedPrForModal.trackingToken && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTrackingToken(selectedPrForModal.trackingToken)}
+                        className="rounded p-1 hover:bg-muted text-muted-foreground hover:text-foreground"
+                        title="Copy tracking code"
+                      >
+                        {copiedToken ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Status Explanation from Procurement Rules */}
-              <div className="rounded border border-[#e8e2d5] bg-white p-3 dark:border-[#384554] dark:bg-[#1a232c]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b95a1] dark:text-[#aeb9c4]">
-                  What this means
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[#465261] dark:text-[#d1dae2]">
-                  {getEndUserRequestStatus(selectedPrForModal.status).meaning}
-                </p>
-              </div>
-
-              {/* Contextual Feedback Callout Box */}
-              {selectedPrForModal.status === "returned" ? (
-                <div className="rounded-md border border-[#f1d28c] bg-[#fffaf0] p-4 text-[#795010] dark:border-[#5a431c] dark:bg-[#251d10] dark:text-[#f4d081]">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <FileEdit className="h-4 w-4 text-[#9a6d19]" />
-                    <span>Feedback</span>
-                  </div>
-                  <p className="mt-2 rounded border border-[#fae5b8] bg-white p-2.5 text-xs font-semibold italic text-[#63430f] dark:border-[#4d3615] dark:bg-[#1a140b] dark:text-[#fcd88b]">
-                    &ldquo;{selectedPrForModal.latestReturnReason || "Please update the item details or add the supplier quotes requested by the reviewer."}&rdquo;
-                  </p>
-                  <div className="mt-3 text-[11px] leading-4 text-[#795010] dark:text-[#f4d081]">
-                    <p className="font-bold">How to update it:</p>
-                    <ol className="mt-1 list-decimal list-inside space-y-1">
-                      <li>Open this request from My Purchase Requests.</li>
-                      <li>Make the requested changes or add the missing documents.</li>
-                      <li>Choose &ldquo;Resubmit&rdquo; when you are finished.</li>
-                    </ol>
-                  </div>
-                </div>
-              ) : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled" ? (
-                <div className="rounded-md border border-[#f3c8c8] bg-[#fef7f7] p-4 text-[#8b1e1e] dark:border-[#5e2727] dark:bg-[#281313] dark:text-[#fca5a5]">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Ban className="h-4 w-4 text-[#a52a2a]" />
-                    <span>Why this request could not proceed</span>
-                  </div>
-                  <p className="mt-2 rounded border border-[#fbd3d3] bg-white p-2.5 text-xs font-semibold italic text-[#771515] dark:border-[#522121] dark:bg-[#1a0c0c] dark:text-[#fca5a5]">
-                    &ldquo;{selectedPrForModal.latestRejectionReason || "The request could not proceed due to budgetary or specification constraints under RA 12009 (NGPA) guidelines."}&rdquo;
-                  </p>
-                  <div className="mt-3 text-[11px] leading-4 text-[#8b1e1e] dark:text-[#fca5a5]">
-                    <p className="font-bold">What you can do:</p>
-                    <ul className="mt-1 list-disc list-inside space-y-1">
-                      <li>Check the explanation above and confirm the request details with your department.</li>
-                      <li>Contact the Procurement Office if you need help understanding the decision.</li>
-                      <li>You can start a new request with updated information.</li>
-                    </ul>
-                  </div>
-                </div>
-              ) : ["approved", "po_issued", "delivered", "closed"].includes(selectedPrForModal.status) ? (
-                <div className="rounded-md border border-[#b2e5cb] bg-[#f0fbf5] p-4 text-[#0e5c38] dark:border-[#225838] dark:bg-[#11291b] dark:text-[#86efac]">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Award className="h-4 w-4 text-[#136a43]" />
-                    <span>Request approved</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-[#136a43] dark:text-[#86efac]">
-                    Your request has been approved. The purchase order or delivery may still be in progress; open the request for the latest update.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-md border border-[#cbe1f3] bg-[#f3f9fe] p-4 text-[#20517d] dark:border-[#1e3f5e] dark:bg-[#122436] dark:text-[#93c5fd]">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Clock className="h-4 w-4 text-[#20517d]" />
-                    <span>What is happening now</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-[#2c5f8e] dark:text-[#93c5fd]">
-                    Your request is being checked by the relevant offices. We will notify you if they need more information.
-                  </p>
-                </div>
-              )}
             </div>
 
-            <DialogFooter className="mt-5 gap-2 sm:gap-0">
-              <Button variant="outline" size="sm" onClick={() => setSelectedPrForModal(null)} className="h-8 text-xs">
+            <DialogFooter className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPrForModal(null)}
+                className="h-8.5 text-xs"
+              >
                 Close
               </Button>
               {selectedPrForModal.status === "returned" ? (
@@ -942,22 +834,10 @@ function EndUserPersonalDashboard({
                     setSelectedPrForModal(null);
                     setLocation("/purchase-requests");
                   }}
-                  className="h-8 rounded-[4px] bg-[#9a6d19] px-4 text-xs font-semibold text-white hover:bg-[#7e5712]"
+                  className="h-8.5 bg-[#9a6d19] hover:bg-[#7e5712] text-white text-xs font-semibold shadow-xs"
                 >
                   <FileEdit className="mr-1.5 h-3.5 w-3.5" />
-                  Update and resubmit
-                </Button>
-              ) : selectedPrForModal.status === "rejected" || selectedPrForModal.status === "cancelled" ? (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedPrForModal(null);
-                    setLocation("/purchase-requests?create=1");
-                  }}
-                  className="h-8 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold text-white hover:bg-[#641818]"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Start a new request
+                  Update in Purchase Requests
                 </Button>
               ) : (
                 <Button
@@ -966,10 +846,10 @@ function EndUserPersonalDashboard({
                     setSelectedPrForModal(null);
                     setLocation("/purchase-requests");
                   }}
-                  className="h-8 rounded-[4px] bg-[#7b1e1e] px-4 text-xs font-semibold text-white hover:bg-[#641818]"
+                  className="h-8.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold shadow-xs"
                 >
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  View my requests
+                  Open in Purchase Requests
                 </Button>
               )}
             </DialogFooter>
@@ -981,13 +861,206 @@ function EndUserPersonalDashboard({
 }
 
 // ============================================================================
-// PERSONAL KPI CARD COMPONENT
+// PLAIN-LANGUAGE 5-STEP PROCUREMENT PROGRESS STEPPER
+// ============================================================================
+function RequestProgressStepper({
+  status,
+  latestReturnReason,
+  latestRejectionReason,
+}: {
+  status: string;
+  latestReturnReason?: string | null;
+  latestRejectionReason?: string | null;
+}) {
+  const steps = [
+    {
+      id: "submitted",
+      name: "Request submitted",
+      description: "Request prepared and forwarded for review.",
+    },
+    {
+      id: "review",
+      name: "Under review",
+      description: "Procurement checks specs, preliminary canvass, and budget.",
+    },
+    {
+      id: "approved",
+      name: "Approved",
+      description: "Authorized sign-off from head of office / approver.",
+    },
+    {
+      id: "purchase",
+      name: "Purchase in progress",
+      description: "Supplier quote canvassing and Purchase Order preparation.",
+    },
+    {
+      id: "completed",
+      name: "Completed",
+      description: "Items delivered, inspected, and finalized.",
+    },
+  ];
+
+  type StepState = "completed" | "current" | "action_required" | "blocked" | "upcoming";
+
+  const getStepState = (index: number): { state: StepState; note?: string } => {
+    const isStopped = status === "rejected" || status === "cancelled";
+    const isReturned = status === "returned";
+    const isComplete = ["pmr_logged", "closed"].includes(status);
+    const isDelivered = status === "delivered";
+    const isPurchase = ["rfq", "po", "po_issued"].includes(status);
+    const isApproved = status === "approved";
+    const isUnderReview = [
+      "procurement_review",
+      "approval_review",
+      "budget_review",
+      "supply_review",
+      "bac_review",
+    ].includes(status);
+
+    if (index === 0) {
+      if (status === "draft") return { state: "current", note: "Draft request in preparation" };
+      return { state: "completed" };
+    }
+
+    if (index === 1) {
+      if (isReturned) return { state: "action_required", note: "Changes requested — waiting for your response" };
+      if (isStopped) return { state: "blocked", note: "Request not approved" };
+      if (isUnderReview) return { state: "current", note: "Being reviewed by the Procurement Office" };
+      if (isApproved || isPurchase || isDelivered || isComplete) return { state: "completed" };
+      return { state: "upcoming" };
+    }
+
+    if (index === 2) {
+      if (isStopped || isReturned) return { state: "upcoming" };
+      if (isApproved) return { state: "completed", note: "Approved" };
+      if (isPurchase || isDelivered || isComplete) return { state: "completed" };
+      return { state: "upcoming" };
+    }
+
+    if (index === 3) {
+      if (isPurchase) {
+        return {
+          state: "current",
+          note: status === "rfq" ? "Supplier quotes being canvassed" : "Purchase order issued",
+        };
+      }
+      if (isDelivered || isComplete) return { state: "completed" };
+      return { state: "upcoming" };
+    }
+
+    if (index === 4) {
+      if (isComplete) return { state: "completed", note: "All milestones completed" };
+      if (isDelivered) return { state: "current", note: "Delivered; recording inspection & PMR" };
+      return { state: "upcoming" };
+    }
+
+    return { state: "upcoming" };
+  };
+
+  return (
+    <div className="space-y-3" role="list" aria-label="Procurement workflow steps">
+      {steps.map((step, idx) => {
+        const { state, note } = getStepState(idx);
+        const isLast = idx === steps.length - 1;
+
+        return (
+          <div key={step.id} className="relative flex items-start gap-3" role="listitem">
+            {/* Step Icon */}
+            <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+              {state === "completed" && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              )}
+              {state === "current" && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 ring-2 ring-blue-500/30">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+              )}
+              {state === "action_required" && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 ring-2 ring-amber-500/40">
+                  <AlertCircle className="h-4 w-4" />
+                </div>
+              )}
+              {state === "blocked" && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300">
+                  <Ban className="h-3.5 w-3.5" />
+                </div>
+              )}
+              {state === "upcoming" && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-muted/40 text-muted-foreground/50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                </div>
+              )}
+            </div>
+
+            {/* Connecting line */}
+            {!isLast && (
+              <div
+                className={`absolute left-3 top-6 -bottom-3 w-0.5 ${
+                  state === "completed" ? "bg-emerald-500/40" : "bg-border"
+                }`}
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Step Info */}
+            <div className="min-w-0 flex-1 pb-1">
+              <div className="flex items-center gap-2">
+                <p
+                  className={`text-xs font-semibold ${
+                    state === "completed"
+                      ? "text-foreground"
+                      : state === "current"
+                      ? "text-blue-900 dark:text-blue-200"
+                      : state === "action_required"
+                      ? "text-amber-900 dark:text-amber-200"
+                      : state === "blocked"
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {step.name}
+                </p>
+                {state === "completed" && (
+                  <span className="rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.2 text-[9px] font-bold dark:bg-emerald-950/50 dark:text-emerald-300 uppercase tracking-wider">
+                    Finished
+                  </span>
+                )}
+                {state === "current" && (
+                  <span className="rounded bg-blue-50 text-blue-700 px-1.5 py-0.2 text-[9px] font-bold dark:bg-blue-950/50 dark:text-blue-300 uppercase tracking-wider">
+                    In progress
+                  </span>
+                )}
+                {state === "action_required" && (
+                  <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[9px] font-bold dark:bg-amber-950/60 dark:text-amber-300 uppercase tracking-wider">
+                    Action required
+                  </span>
+                )}
+                {state === "blocked" && (
+                  <span className="rounded bg-destructive/10 text-destructive px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                    Stopped
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {note || step.description}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// SIMPLIFIED, ACCESSIBLE STATUS SUMMARY PANEL (KPI CARD)
 // ============================================================================
 function PersonalKpiCard({
   label,
   count,
-  subtitle,
-  detail,
+  description,
   tone,
   icon: Icon,
   highlightBadge,
@@ -996,8 +1069,7 @@ function PersonalKpiCard({
 }: {
   label: string;
   count: number;
-  subtitle: string;
-  detail: string;
+  description: string;
   tone: "blue" | "amber" | "emerald" | "rose";
   icon: any;
   highlightBadge?: string;
@@ -1006,32 +1078,32 @@ function PersonalKpiCard({
 }) {
   const styles = {
     blue: {
-      bg: "hover:border-[#adcceb] dark:hover:border-[#2f5580]",
-      badge: "bg-[#eaf3fc] text-[#245b91] dark:bg-[#172c42] dark:text-[#93c5fd]",
-      icon: "text-[#245b91] dark:text-[#93c5fd]",
-      value: "text-[#1d4d7a] dark:text-[#bfdbfe]",
-      activeRing: "ring-2 ring-[#245b91]",
+      border: "border-blue-200 hover:border-blue-300 dark:border-blue-900/50 dark:hover:border-blue-800",
+      badge: "bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300",
+      icon: "text-blue-700 dark:text-blue-400",
+      value: "text-blue-900 dark:text-blue-200",
+      activeRing: "ring-2 ring-blue-600 border-blue-500 bg-blue-50/20 dark:bg-blue-950/20",
     },
     amber: {
-      bg: "hover:border-[#edd195] dark:hover:border-[#6b5220]",
-      badge: "bg-[#fdf5e2] text-[#936418] dark:bg-[#342410] dark:text-[#f8d486]",
-      icon: "text-[#936418] dark:text-[#f8d486]",
-      value: "text-[#855a15] dark:text-[#fcd34d]",
-      activeRing: "ring-2 ring-[#936418]",
+      border: "border-amber-200 hover:border-amber-300 dark:border-amber-900/50 dark:hover:border-amber-800",
+      badge: "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+      icon: "text-amber-700 dark:text-amber-400",
+      value: "text-amber-900 dark:text-amber-200",
+      activeRing: "ring-2 ring-amber-600 border-amber-500 bg-amber-50/20 dark:bg-amber-950/20",
     },
     emerald: {
-      bg: "hover:border-[#a3dfc0] dark:hover:border-[#225739]",
-      badge: "bg-[#eaf8f0] text-[#136a43] dark:bg-[#122e20] dark:text-[#86efac]",
-      icon: "text-[#136a43] dark:text-[#86efac]",
-      value: "text-[#0e5c38] dark:text-[#6ee7b7]",
-      activeRing: "ring-2 ring-[#136a43]",
+      border: "border-emerald-200 hover:border-emerald-300 dark:border-emerald-900/50 dark:hover:border-emerald-800",
+      badge: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
+      icon: "text-emerald-700 dark:text-emerald-400",
+      value: "text-emerald-900 dark:text-emerald-200",
+      activeRing: "ring-2 ring-emerald-600 border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20",
     },
     rose: {
-      bg: "hover:border-[#f3baba] dark:hover:border-[#632727]",
-      badge: "bg-[#fdf0f0] text-[#9c2525] dark:bg-[#341818] dark:text-[#fca5a5]",
-      icon: "text-[#9c2525] dark:text-[#fca5a5]",
-      value: "text-[#8a1c1c] dark:text-[#f87171]",
-      activeRing: "ring-2 ring-[#9c2525]",
+      border: "border-rose-200 hover:border-rose-300 dark:border-rose-900/50 dark:hover:border-rose-800",
+      badge: "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300",
+      icon: "text-rose-700 dark:text-rose-400",
+      value: "text-rose-900 dark:text-rose-200",
+      activeRing: "ring-2 ring-rose-600 border-rose-500 bg-rose-50/20 dark:bg-rose-950/20",
     },
   }[tone];
 
@@ -1040,36 +1112,36 @@ function PersonalKpiCard({
       type="button"
       onClick={onClick}
       aria-pressed={Boolean(isActive)}
-      className={`flat-panel min-w-0 cursor-pointer p-4.5 text-left transition-all select-none hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${styles.bg} ${
-        isActive ? styles.activeRing : ""
-      }`}
+      aria-label={`${label}: ${count} requests. ${description}. Click to filter.`}
+      className={`flat-panel min-w-0 cursor-pointer p-4.5 text-left transition-all select-none hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        styles.border
+      } ${isActive ? styles.activeRing : ""}`}
     >
-      <div className="flex items-center justify-between gap-1">
+      <div className="flex items-center justify-between gap-2">
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider truncate ${styles.badge}`}
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${styles.badge}`}
         >
-          <Icon className="h-3 w-3 shrink-0" />
-          <span className="truncate">{label}</span>
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <span>{label}</span>
         </span>
         {highlightBadge ? (
-          <span className="animate-pulse rounded bg-[#9a6d19] px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs">
+          <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
             {highlightBadge}
           </span>
-        ) : (
-          <Icon className={`h-4 w-4 shrink-0 ${styles.icon}`} />
-        )}
+        ) : isActive ? (
+          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Active</span>
+        ) : null}
       </div>
 
-      <p className={`mt-3 truncate font-display text-2xl font-bold tracking-tight sm:text-3xl ${styles.value}`}>
+      <p className={`mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl ${styles.value}`}>
         {count.toLocaleString()}
       </p>
 
-      <p className="mt-1 line-clamp-1 text-xs font-semibold text-[#485362] dark:text-[#f1f5f8]" title={subtitle}>
-        {subtitle}
-      </p>
+      {/* Full readable description without line-clamp truncation */}
+      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{description}</p>
 
-      <p className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-[#798593] dark:text-[#aeb9c4]" title={detail}>
-        {detail}
+      <p className="mt-2 text-[10px] font-medium text-muted-foreground/75">
+        {isActive ? "✓ Filtering by this status" : "Click to filter list"}
       </p>
     </button>
   );

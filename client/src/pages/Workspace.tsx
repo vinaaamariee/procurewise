@@ -255,27 +255,16 @@ export function PurchaseRequestsPage() {
         description="Every Purchase Request must originate from an approved Department PPMP. Establish or link your PPMP first, prepare itemized line items, and complete the preliminary 3-supplier pre-canvass."
       />
       {!isCreating && (
-        <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2">
+        <div className="flex items-center gap-2 shrink-0 pt-2">
           <Button
             onClick={() => {
               setCreationInitialMode("upload");
               setIsCreating(true);
             }}
-            variant="outline"
-            className="h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] text-xs font-semibold text-[#7b1e1e] dark:text-[#ff837a] hover:bg-[#fffaf0] dark:hover:bg-[#272118]"
-          >
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
-            Upload Department PPMP
-          </Button>
-          <Button
-            onClick={() => {
-              setCreationInitialMode("upload");
-              setIsCreating(true);
-            }}
-            className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:hover:bg-[#eb766a]"
+            className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:hover:bg-[#eb766a] shadow-xs"
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New Purchase Request
+            Create purchase request
           </Button>
         </div>
       )}
