@@ -418,17 +418,17 @@ function EndUserPersonalDashboard({
               >
                 {(
                   [
-                    { id: "all", label: "All", count: userPrs.length },
-                    { id: "active", label: "In progress", count: activePrs.length },
+                    { id: "all" as const, label: "All", count: userPrs.length, isAction: false },
+                    { id: "active" as const, label: "In progress", count: activePrs.length, isAction: false },
                     {
-                      id: "returned",
+                      id: "returned" as const,
                       label: "Needs your action",
                       count: returnedPrs.length,
                       isAction: returnedPrs.length > 0,
                     },
-                    { id: "successful", label: "Completed", count: successfulPrs.length },
-                    { id: "rejected", label: "Unable to proceed", count: rejectedPrs.length },
-                  ] as const
+                    { id: "successful" as const, label: "Completed", count: successfulPrs.length, isAction: false },
+                    { id: "rejected" as const, label: "Unable to proceed", count: rejectedPrs.length, isAction: false },
+                  ]
                 ).map((tab) => (
                   <button
                     key={tab.id}
