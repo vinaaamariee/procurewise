@@ -52,7 +52,7 @@ SUPABASE_DB_PASSWORD=[PASSWORD_REDACTED]
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://itltlayhjndhowyrimyh.supabase.co";  // ⚠️ HARDCODED
+  "https://eiqolhodmbzgmxdrwpag.supabase.co";  // ⚠️ HARDCODED
 
 const supabaseAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
