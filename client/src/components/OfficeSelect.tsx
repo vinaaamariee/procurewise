@@ -81,13 +81,33 @@ export function OfficeSelect({
     const seenCodes = new Set<string>();
     const seenNames = new Set<string>();
 
-    // 1. Add from customOffices if provided
+    const isOfficeMatch = (a: { code: string; name: string }, b: { code: string; name: string }) => {
+      if (a.code && b.code && a.code.toUpperCase() === b.code.toUpperCase()) return true;
+      if (a.name && b.name && a.name.toLowerCase() === b.name.toLowerCase()) return true;
+      const strippedA = (a.name || "").replace(/\s*\([^)]*\)\s*/g, "").trim().toLowerCase();
+      const strippedB = (b.name || "").replace(/\s*\([^)]*\)\s*/g, "").trim().toLowerCase();
+      if (strippedA && strippedB && strippedA === strippedB) return true;
+      return false;
+    };
+
+    const findInst = (code: string, name: string) =>
+      INSTITUTIONAL_OFFICES.find((inst) => isOfficeMatch(inst, { code, name }));
+
+    // 1. Add from customOffices if provided (e.g. from parent setup.offices)
     if (customOffices?.length) {
       for (const o of customOffices) {
-        if (!seenCodes.has(o.code.toUpperCase()) && !seenNames.has(o.name.toLowerCase())) {
-          list.push(o);
-          seenCodes.add(o.code.toUpperCase());
-          seenNames.add(o.name.toLowerCase());
+        const matchingInst = findInst(o.code, o.name);
+        const codeKey = o.code.toUpperCase();
+        const nameKey = o.name.toLowerCase();
+        if (!seenCodes.has(codeKey) && !seenNames.has(nameKey)) {
+          list.push({
+            id: o.id,
+            code: o.code,
+            name: o.name,
+            category: o.category || matchingInst?.category || "Other Units",
+          });
+          seenCodes.add(codeKey);
+          seenNames.add(nameKey);
         }
       }
     }
@@ -95,32 +115,40 @@ export function OfficeSelect({
     // 2. Add from server query
     if (setupOfficesQuery.data?.length) {
       for (const o of setupOfficesQuery.data) {
-        const matchingInst = INSTITUTIONAL_OFFICES.find(
-          (inst) => inst.code.toLowerCase() === o.code.toLowerCase() || inst.name.toLowerCase() === o.name.toLowerCase()
-        );
-        if (!seenCodes.has(o.code.toUpperCase()) && !seenNames.has(o.name.toLowerCase())) {
+        const matchingInst = findInst(o.code, o.name);
+        const codeKey = o.code.toUpperCase();
+        const nameKey = o.name.toLowerCase();
+        if (!seenCodes.has(codeKey) && !seenNames.has(nameKey)) {
           list.push({
             id: o.id,
             code: o.code,
             name: o.name,
             category: matchingInst?.category || "Other Units",
           });
-          seenCodes.add(o.code.toUpperCase());
-          seenNames.add(o.name.toLowerCase());
+          seenCodes.add(codeKey);
+          seenNames.add(nameKey);
         }
       }
     }
 
     // 3. Fallback / supplement with INSTITUTIONAL_OFFICES constants
     for (const inst of INSTITUTIONAL_OFFICES) {
-      if (!seenCodes.has(inst.code.toUpperCase()) && !seenNames.has(inst.name.toLowerCase())) {
+      const codeKey = inst.code.toUpperCase();
+      const nameKey = inst.name.toLowerCase();
+      if (!seenCodes.has(codeKey) && !seenNames.has(nameKey)) {
+        // Try to match with an office from customOffices or setupOfficesQuery.data to resolve id
+        const matchDb =
+          (customOffices ?? []).find((d) => isOfficeMatch(d, inst)) ||
+          (setupOfficesQuery.data ?? []).find((d) => isOfficeMatch(d, inst));
+
         list.push({
+          id: matchDb?.id,
           code: inst.code,
           name: inst.name,
           category: inst.category,
         });
-        seenCodes.add(inst.code.toUpperCase());
-        seenNames.add(inst.name.toLowerCase());
+        seenCodes.add(codeKey);
+        seenNames.add(nameKey);
       }
     }
 
@@ -144,20 +172,30 @@ export function OfficeSelect({
       return null;
     }
 
+    const isMatch = (o: OfficeOption, target: string) => {
+      const t = target.trim().toLowerCase();
+      if (!t) return false;
+      if (o.id !== undefined && String(o.id) === t) return true;
+      if (o.code.toLowerCase() === t) return true;
+      if (o.name.toLowerCase() === t) return true;
+      const strippedO = o.name.replace(/\s*\([^)]*\)\s*/g, "").trim().toLowerCase();
+      const strippedT = t.replace(/\s*\([^)]*\)\s*/g, "").trim().toLowerCase();
+      if (strippedO && strippedT && strippedO === strippedT) return true;
+      return false;
+    };
+
     if (valueMode === "id") {
       const numVal = Number(value);
-      return combinedOffices.find((o) => o.id === numVal) || null;
+      if (!isNaN(numVal) && numVal > 0) {
+        const found = combinedOffices.find((o) => o.id === numVal);
+        if (found) return found;
+      }
+      const strVal = String(value);
+      return combinedOffices.find((o) => isMatch(o, strVal)) || null;
     }
 
-    const strVal = String(value).trim().toLowerCase();
-    return (
-      combinedOffices.find(
-        (o) =>
-          o.name.toLowerCase() === strVal ||
-          o.code.toLowerCase() === strVal ||
-          (o.id !== undefined && String(o.id) === strVal)
-      ) || null
-    );
+    const strVal = String(value);
+    return combinedOffices.find((o) => isMatch(o, strVal)) || null;
   }, [value, valueMode, allowAll, allValue, combinedOffices]);
 
   const handleSelect = (office: OfficeOption | null) => {
@@ -165,7 +203,28 @@ export function OfficeSelect({
       onChange?.(allowAll ? allValue : "");
       onSelectOffice?.(null);
     } else {
-      const returnedValue = valueMode === "id" ? String(office.id ?? "") : office.name;
+      let resolvedId = office.id;
+      if (valueMode === "id" && (resolvedId === undefined || resolvedId === null)) {
+        // Fallback: look up matching office with ID from combinedOffices, customOffices, or setupOfficesQuery
+        const match =
+          combinedOffices.find(
+            (o) => o.id !== undefined && (o.code.toUpperCase() === office.code.toUpperCase() || o.name.toLowerCase() === office.name.toLowerCase())
+          ) ||
+          (customOffices ?? []).find(
+            (o) => o.id !== undefined && (o.code.toUpperCase() === office.code.toUpperCase() || o.name.toLowerCase() === office.name.toLowerCase())
+          ) ||
+          (setupOfficesQuery.data ?? []).find(
+            (o) => o.id !== undefined && (o.code.toUpperCase() === office.code.toUpperCase() || o.name.toLowerCase() === office.name.toLowerCase())
+          );
+        if (match?.id !== undefined) {
+          resolvedId = match.id;
+        }
+      }
+
+      const returnedValue =
+        valueMode === "id"
+          ? String(resolvedId ?? office.code ?? office.name ?? "")
+          : office.name;
       onChange?.(returnedValue);
       onSelectOffice?.(office);
     }
@@ -249,6 +308,14 @@ export function OfficeSelect({
                     <CommandItem
                       value={`${allLabel} all`}
                       onSelect={() => handleSelect(null)}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        handleSelect(null);
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelect(null);
+                      }}
                       className="cursor-pointer text-xs font-medium py-1.5"
                     >
                       <Check
@@ -267,13 +334,26 @@ export function OfficeSelect({
               {Object.entries(groupedOffices).map(([category, offices]) => (
                 <CommandGroup key={category} heading={category}>
                   {offices.map((office) => {
-                    const isSelected = selectedOffice?.name.toLowerCase() === office.name.toLowerCase() ||
-                      (valueMode === "id" && office.id && Number(value) === office.id);
+                    const isSelected =
+                      Boolean(selectedOffice && (
+                        (selectedOffice.id !== undefined && office.id !== undefined && selectedOffice.id === office.id) ||
+                        selectedOffice.code.toUpperCase() === office.code.toUpperCase() ||
+                        selectedOffice.name.toLowerCase() === office.name.toLowerCase()
+                      )) ||
+                      (valueMode === "id" && office.id !== undefined && (String(office.id) === String(value) || Number(value) === office.id));
                     return (
                       <CommandItem
                         key={`${office.code}-${office.name}`}
                         value={`${office.code} ${office.name}`}
                         onSelect={() => handleSelect(office)}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          handleSelect(office);
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSelect(office);
+                        }}
                         className="cursor-pointer text-xs py-1.5"
                       >
                         <Check

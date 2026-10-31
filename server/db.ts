@@ -437,15 +437,21 @@ export async function writeAuditEvent(input: { entityType: string; entityId: num
 
 export async function ensureInstitutionalOfficesSeeded() {
   const db = await requireDb();
-  for (const item of INSTITUTIONAL_OFFICES) {
-    const existing = await db.select().from(offices).where(eq(offices.code, item.code)).limit(1);
-    if (!existing.length) {
-      await db.insert(offices).values({
-        code: item.code,
-        name: item.name,
-        isActive: 1,
-      }).onConflictDoNothing();
+  try {
+    const existing = await db.select({ code: offices.code }).from(offices);
+    const existingCodes = new Set(existing.map((r) => r.code.toUpperCase()));
+    for (const item of INSTITUTIONAL_OFFICES) {
+      if (!existingCodes.has(item.code.toUpperCase())) {
+        await db.insert(offices).values({
+          code: item.code,
+          name: item.name,
+          isActive: 1,
+        }).onConflictDoNothing();
+        existingCodes.add(item.code.toUpperCase());
+      }
     }
+  } catch (err) {
+    console.error("Failed to seed institutional offices:", err);
   }
 }
 
@@ -453,10 +459,7 @@ export async function getWorkspaceSetup() {
   const db = await requireDb();
   // Ensure default institutional offices exist
   try {
-    const existingCount = await db.select({ count: sql<number>`count(*)` }).from(offices);
-    if (Number(existingCount[0]?.count ?? 0) < INSTITUTIONAL_OFFICES.length) {
-      await ensureInstitutionalOfficesSeeded();
-    }
+    await ensureInstitutionalOfficesSeeded();
   } catch (err) {
     console.error("Failed to verify/seed institutional offices:", err);
   }

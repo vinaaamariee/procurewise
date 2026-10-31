@@ -537,7 +537,24 @@ function PurchaseRequestForm({
   const [selectedPpmpId, setSelectedPpmpId] = useState<string>("");
   const [customPpmpTitle, setCustomPpmpTitle] = useState("");
   const [customPpmpYear, setCustomPpmpYear] = useState<number>(new Date().getFullYear());
+  const { user } = useAuth();
   const [ppmpOfficeId, setPpmpOfficeId] = useState("");
+
+  // Pre-select user's assigned office if available and unselected
+  useEffect(() => {
+    if (!ppmpOfficeId && user?.officeName && setup?.offices?.length) {
+      const match = setup.offices.find(
+        (o) =>
+          o.name.toLowerCase() === user.officeName!.toLowerCase() ||
+          o.code.toLowerCase() === user.officeName!.toLowerCase() ||
+          o.name.toLowerCase().includes(user.officeName!.toLowerCase()) ||
+          user.officeName!.toLowerCase().includes(o.name.toLowerCase())
+      );
+      if (match) {
+        setPpmpOfficeId(String(match.id));
+      }
+    }
+  }, [user?.officeName, setup?.offices, ppmpOfficeId]);
   const [ppmpObjectId, setPpmpObjectId] = useState("");
   const [customPpmpBudget, setCustomPpmpBudget] = useState("");
   const [customPpmpMode, setCustomPpmpMode] = useState("Small Value Procurement");
@@ -652,7 +669,11 @@ function PurchaseRequestForm({
         return toast.error("Please enter a valid planned budget amount greater than ₱0.00.");
       }
 
-      const officeObj = setup?.offices.find((o) => String(o.id) === ppmpOfficeId);
+      const officeObj =
+        setup?.offices.find((o) => String(o.id) === ppmpOfficeId) ||
+        setup?.offices.find((o) => o.code.toLowerCase() === ppmpOfficeId.toLowerCase()) ||
+        setup?.offices.find((o) => o.name.toLowerCase() === ppmpOfficeId.toLowerCase());
+      const resolvedOfficeId = officeObj ? officeObj.id : Number(ppmpOfficeId);
       const objectObj = setup?.objectsOfExpenditure.find((o) => String(o.id) === ppmpObjectId);
       const title = customPpmpTitle.trim() || (uploadedFile ? uploadedFile.name.replace(/\.[^/.]+$/, "") : "Annual Department PPMP");
 
@@ -660,7 +681,7 @@ function PurchaseRequestForm({
         id: undefined,
         title,
         fiscalYear: customPpmpYear || new Date().getFullYear(),
-        officeId: Number(ppmpOfficeId),
+        officeId: resolvedOfficeId,
         officeCode: officeObj?.code || "",
         officeName: officeObj?.name || "",
         objectOfExpenditureId: Number(ppmpObjectId),
@@ -670,7 +691,7 @@ function PurchaseRequestForm({
       });
 
       // Synchronize PR fields from confirmed PPMP
-      setOfficeId(ppmpOfficeId);
+      setOfficeId(String(resolvedOfficeId));
       setObjectId(ppmpObjectId);
       setPurpose((prev) => prev.trim() || title);
       setFundSource(customFundSource.trim() || "General Appropriations Act");
@@ -771,7 +792,12 @@ function PurchaseRequestForm({
     if (purpose.trim().length < 10) {
       return toast.error("Purchase Request Purpose must be at least 10 characters.");
     }
-    if (!officeId) {
+    const resolvedOffice =
+      setup?.offices.find((o) => String(o.id) === officeId) ||
+      setup?.offices.find((o) => o.code.toLowerCase() === officeId.toLowerCase()) ||
+      setup?.offices.find((o) => o.name.toLowerCase() === officeId.toLowerCase());
+    const finalOfficeId = resolvedOffice ? resolvedOffice.id : Number(officeId);
+    if (!finalOfficeId || isNaN(finalOfficeId) || finalOfficeId <= 0) {
       return toast.error("Please select a Requesting Department / Office.");
     }
     if (!objectId) {
@@ -827,7 +853,7 @@ function PurchaseRequestForm({
         requestedSignatoryId: selectedRequestedSignatory?.id,
         approvedSignatoryId: selectedApprovedSignatory?.id,
         ppmpEntryId: verifiedPpmp.id,
-        officeId: Number(officeId),
+        officeId: finalOfficeId,
         objectOfExpenditureId: Number(objectId),
         items: items.map((item) => ({
           catalogItemId: item.catalogItemId ? Number(item.catalogItemId) : undefined,
@@ -1037,6 +1063,7 @@ function PurchaseRequestForm({
                       value={ppmpOfficeId}
                       valueMode="id"
                       onChange={setPpmpOfficeId}
+                      customOffices={setup?.offices}
                       disabled={!configurationReady}
                       placeholder="Select department"
                       triggerClassName="h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"
@@ -1337,6 +1364,7 @@ function PurchaseRequestForm({
                       value={officeId}
                       valueMode="id"
                       onChange={setOfficeId}
+                      customOffices={setup?.offices}
                       disabled={!configurationReady}
                       placeholder="Search and select requesting office"
                       triggerClassName="h-9 rounded-[4px] border-[#dedad2] dark:border-[#46515c] dark:bg-[#232c35] dark:text-[#f1f5f8] text-xs"

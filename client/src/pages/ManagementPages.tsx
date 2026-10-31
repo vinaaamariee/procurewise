@@ -137,6 +137,7 @@ function PlanForm({ setup, isSaving, onCancel, onCreate }: { setup?: { offices: 
           value={officeId}
           valueMode="id"
           onChange={setOfficeId}
+          customOffices={setup?.offices}
           placeholder={setup?.offices.length ? "Select requesting office" : "No managed offices available"}
           triggerClassName="h-9 border-[#ded8cc] bg-white text-xs"
         />
