@@ -592,16 +592,16 @@ export function OfficerPrVerificationPage() {
                       </td>
                       <td className="px-4 py-3">
                         {isReturned ? (
-                          <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 text-[10px]">
+                          <Badge variant="outline" className="border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 text-[10px]">
                             <Undo2 className="mr-1 h-3 w-3" /> Returned for Revision
                           </Badge>
                         ) : isVerified ? (
-                          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px]">
+                          <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px]">
                             <CheckCircle2 className="mr-1 h-3 w-3" /> Officer Verified (Compliant)
                           </Badge>
                         ) : isMixed ? (
                           <div>
-                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-[10px]">
+                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-[10px]">
                               <AlertTriangle className="mr-1 h-3 w-3" /> Section 5.1.1 Non-Compliant (Mixed)
                             </Badge>
                             <div className="mt-0.5 text-[10px] text-amber-700 dark:text-amber-400">
@@ -713,7 +713,7 @@ export function OfficerPrVerificationPage() {
                     <Badge variant="outline" className="text-[10px] border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {(selectedVerificationItem.allDocuments?.length ?? 0)} attached file(s)
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${(selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3 ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"}`}>
+                    <Badge variant="outline" className={`text-[10px] ${(selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3 ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"}`}>
                       {(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3 quotes recorded
                     </Badge>
                   </div>
@@ -1071,7 +1071,7 @@ export function OfficerPrVerificationPage() {
                                 {q.deliveryDays} day(s)
                               </td>
                               <td className="px-3 py-2">
-                                <Badge variant="outline" className={`text-[10px] ${q.isCompliant ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-rose-300 bg-rose-50 text-rose-700"}`}>
+                                <Badge variant="outline" className={`text-[10px] ${q.isCompliant ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" : "border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"}`}>
                                   {q.isCompliant ? "Compliant" : "Non-Compliant"}
                                 </Badge>
                               </td>
@@ -1189,12 +1189,12 @@ export function OfficerPrVerificationPage() {
                             </td>
                             <td className="px-3 py-2">
                               <Badge variant="outline" className={`text-[10px] ${
-                                catId === "office_supplies" ? "border-blue-300 bg-blue-50 text-blue-700" :
-                                catId === "hardware_supplies" ? "border-orange-300 bg-orange-50 text-orange-700" :
-                                catId === "ict_supplies" ? "border-purple-300 bg-purple-50 text-purple-700" :
-                                catId === "printing_service" ? "border-emerald-300 bg-emerald-50 text-emerald-700" :
-                                catId === "food_ingredients" ? "border-amber-300 bg-amber-50 text-amber-700" :
-                                "border-slate-300 bg-slate-50 text-slate-600"
+                                catId === "office_supplies" ? "border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300" :
+                                catId === "hardware_supplies" ? "border-orange-300 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300" :
+                                catId === "ict_supplies" ? "border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300" :
+                                catId === "printing_service" ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" :
+                                catId === "food_ingredients" ? "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" :
+                                "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300"
                               }`}>
                                 {catLabel}
                               </Badge>

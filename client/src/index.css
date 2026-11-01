@@ -1363,3 +1363,287 @@ html.dark .text-slate-600:not(.document-canvas *):not(.official-purchase-request
   color: var(--app-text-muted) !important;
 }
 
+
+
+/* ==============================================================
+   UNIVERSAL DARK MODE OVERRIDES (All User Roles & Components)
+   ============================================================== */
+
+/* Colored Status Badges & Alert Backgrounds in Dark Mode */
+html[data-appearance-theme="dark"] .bg-emerald-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-emerald-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-emerald-50\/80:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-emerald-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-emerald-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-emerald-50\/80:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-blue-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-blue-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-blue-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-blue-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(30, 58, 138, 0.4) !important;
+  color: #93c5fd !important;
+}
+
+html[data-appearance-theme="dark"] .bg-amber-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-amber-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-amber-50\/80:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-amber-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-amber-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-amber-50\/80:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(120, 53, 15, 0.4) !important;
+  color: #fcd34d !important;
+}
+
+html[data-appearance-theme="dark"] .bg-purple-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-purple-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-purple-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-purple-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(88, 28, 135, 0.4) !important;
+  color: #d8b4fe !important;
+}
+
+html[data-appearance-theme="dark"] .bg-rose-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-rose-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-red-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-rose-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-rose-50\/50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-red-50:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(136, 19, 55, 0.4) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-orange-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-orange-50:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(124, 45, 18, 0.4) !important;
+  color: #fdba74 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-indigo-50:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-indigo-50:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+  color: #a5b4fc !important;
+}
+
+/* Custom Light Backgrounds in Dark Mode */
+html[data-appearance-theme="dark"] .bg-\[\#eff9f2\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#eff9f2\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-appearance-theme="dark"] .bg-\[\#fbf6ea\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f8f6f1\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#fbf9f5\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#feebc8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f7f5f1\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f9efd7\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#fbf6ea\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f8f6f1\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#fbf9f5\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#feebc8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f7f5f1\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f9efd7\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  background-color: var(--app-surface-muted, #1a232c) !important;
+}
+
+/* Badge & Notice Borders in Dark Mode */
+html[data-appearance-theme="dark"] .border-emerald-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-emerald-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-emerald-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-emerald-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-blue-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-blue-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-blue-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-blue-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-amber-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-amber-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-amber-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-amber-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-purple-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-purple-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-purple-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-purple-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-rose-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-rose-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-rose-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-rose-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-orange-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-orange-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-orange-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-orange-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-indigo-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-indigo-300:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-indigo-200:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-indigo-300:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+html[data-appearance-theme="dark"] .border-\[\#b7d8c4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#ecdcb8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#e7e1d6\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#dcd7ce\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#feebc8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#fed7aa\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#d6cfc4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#d5cfc4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#e5dfd5\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#ead8b3\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .border-\[\#e8d8b5\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#b7d8c4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#ecdcb8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#e7e1d6\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#dcd7ce\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#feebc8\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#fed7aa\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#d6cfc4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#d5cfc4\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#e5dfd5\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#ead8b3\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .border-\[\#e8d8b5\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  border-color: var(--app-border, #384554) !important;
+}
+
+/* Badge & Notice Text Contrast in Dark Mode */
+html[data-appearance-theme="dark"] .text-emerald-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-emerald-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-emerald-900:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-emerald-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-emerald-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-emerald-900:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #6ee7b7 !important;
+}
+
+html[data-appearance-theme="dark"] .text-blue-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-blue-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-blue-900:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-blue-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-blue-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-blue-900:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #93c5fd !important;
+}
+
+html[data-appearance-theme="dark"] .text-amber-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-amber-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-amber-900:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-amber-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-amber-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-amber-900:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #fcd34d !important;
+}
+
+html[data-appearance-theme="dark"] .text-purple-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-purple-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-purple-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-purple-800:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #d8b4fe !important;
+}
+
+html[data-appearance-theme="dark"] .text-rose-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-rose-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-rose-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-rose-800:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #fca5a5 !important;
+}
+
+html[data-appearance-theme="dark"] .text-orange-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-orange-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-orange-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-orange-800:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #fdba74 !important;
+}
+
+html[data-appearance-theme="dark"] .text-indigo-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-indigo-800:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-indigo-700:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-indigo-800:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #a5b4fc !important;
+}
+
+html[data-appearance-theme="dark"] .text-\[\#27633b\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#27633b\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #6ee7b7 !important;
+}
+
+html[data-appearance-theme="dark"] .text-\[\#c05621\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#dd6b20\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#c05621\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#dd6b20\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: #fdba74 !important;
+}
+
+html[data-appearance-theme="dark"] .text-\[\#6d7580\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#7c7368\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#485361\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#6b7280\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#4b5663\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#4b5664\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#6d7580\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#7c7368\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#485361\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#6b7280\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#4b5663\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#4b5664\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: var(--app-text-muted, #94a3b8) !important;
+}
+
+html[data-appearance-theme="dark"] .text-\[\#1f2933\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#1f2937\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#303946\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#1f2933\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#1f2937\]:not(.document-canvas *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#303946\]:not(.document-canvas *):not(.evaluation-document-sheet *) {
+  color: var(--app-text, #f1f5f9) !important;
+}
+
+/* Universal Hover States in Dark Mode */
+html[data-appearance-theme="dark"] .hover\:bg-\[\#fffaf0\]:hover,
+html[data-appearance-theme="dark"] .hover\:bg-\[\#f3ede3\]:hover,
+html[data-appearance-theme="dark"] .hover\:bg-\[\#f6f2e9\]:hover,
+html[data-appearance-theme="dark"] .hover\:bg-\[\#f9efd7\]:hover,
+html[data-appearance-theme="dark"] .hover\:bg-emerald-50:hover,
+html[data-appearance-theme="dark"] .hover\:bg-slate-50:hover,
+html[data-appearance-theme="dark"] .hover\:bg-slate-50\/80:hover,
+html[data-appearance-theme="dark"] .hover\:bg-slate-50\/50:hover,
+html[data-appearance-theme="dark"] .hover\:bg-slate-100:hover,
+html[data-appearance-theme="dark"] .hover\:bg-stone-50:hover,
+html[data-appearance-theme="dark"] .hover\:bg-stone-100:hover,
+html[data-appearance-theme="dark"] .hover\:bg-neutral-50:hover,
+html[data-appearance-theme="dark"] .hover\:bg-neutral-100:hover,
+html.dark .hover\:bg-\[\#fffaf0\]:hover,
+html.dark .hover\:bg-\[\#f3ede3\]:hover,
+html.dark .hover\:bg-\[\#f6f2e9\]:hover,
+html.dark .hover\:bg-\[\#f9efd7\]:hover,
+html.dark .hover\:bg-emerald-50:hover,
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-50\/80:hover,
+html.dark .hover\:bg-slate-50\/50:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-stone-50:hover,
+html.dark .hover\:bg-stone-100:hover,
+html.dark .hover\:bg-neutral-50:hover,
+html.dark .hover\:bg-neutral-100:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+

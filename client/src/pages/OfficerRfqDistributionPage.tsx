@@ -410,7 +410,7 @@ export function OfficerRfqDistributionPage({
                           {requiresPhilgeps && (
                             <div className="mt-1">
                               {isPhilgepsPosted ? (
-                                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[9px] py-0 px-1.5 font-normal">
+                                <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 text-[9px] py-0 px-1.5 font-normal">
                                   <ShieldCheck className="mr-0.5 h-2.5 w-2.5 inline" /> PhilGEPS #{matchingPhilgeps?.philgepsReferenceNumber}
                                 </Badge>
                               ) : (
@@ -423,19 +423,19 @@ export function OfficerRfqDistributionPage({
                         </td>
                         <td className="px-4 py-3">
                           {status === "transmitted_to_bac" ? (
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                               <CheckCircle2 className="mr-1 h-3 w-3" /> Transmitted to BAC
                             </Badge>
                           ) : status === "retrieved" ? (
-                            <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-700 text-[10px]">
+                            <Badge variant="outline" className="border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-[10px]">
                               <FileCheck2 className="mr-1 h-3 w-3" /> Retrieved from Suppliers
                             </Badge>
                           ) : status === "distributed" ? (
-                            <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 text-[10px]">
+                            <Badge variant="outline" className="border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[10px]">
                               <Send className="mr-1 h-3 w-3" /> Outward Distributed
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
+                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                               <Clock className="mr-1 h-3 w-3" /> Pending Distribution
                             </Badge>
                           )}
@@ -518,7 +518,7 @@ export function OfficerRfqDistributionPage({
                               </>
                             )}
                             {status === "transmitted_to_bac" && (
-                              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px]">
+                              <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                                 Ready for BAC AOQ
                               </Badge>
                             )}
@@ -575,11 +575,11 @@ export function OfficerRfqDistributionPage({
                       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{formatMoney(pkg.totalEstimate)}</td>
                       <td className="px-4 py-3">
                         {pkg.isPosted ? (
-                          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                          <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                             <CheckCircle2 className="mr-1 h-3 w-3" /> PhilGEPS Verified
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
+                          <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                             <Clock className="mr-1 h-3 w-3" /> Posting Required
                           </Badge>
                         )}

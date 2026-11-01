@@ -356,7 +356,7 @@ export function OfficerDeliveryMonitoringPage() {
                       <td className="px-4 py-3">
                         {isDelivered ? (
                           <div>
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                               <CheckCircle2 className="mr-1 h-3 w-3" /> Goods Receipt Logged
                             </Badge>
                             {item.deliveryReceipt?.receiptNumber && (
@@ -366,7 +366,7 @@ export function OfficerDeliveryMonitoringPage() {
                             )}
                           </div>
                         ) : (
-                          <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 text-[10px]">
+                          <Badge variant="outline" className="border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[10px]">
                             <Truck className="mr-1 h-3 w-3" /> In Transit
                           </Badge>
                         )}
@@ -374,7 +374,7 @@ export function OfficerDeliveryMonitoringPage() {
                       <td className="px-4 py-3">
                         {item.iar ? (
                           <div>
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                               <CheckCircle2 className="mr-1 h-3 w-3" /> {item.iar.acceptanceStatus === "accepted" ? "IAR Accepted" : item.iar.acceptanceStatus}
                             </Badge>
                             <div className="font-mono text-[10px] text-slate-500 mt-0.5">
@@ -408,7 +408,7 @@ export function OfficerDeliveryMonitoringPage() {
                             </Button>
                           )}
                           {isInspected && (
-                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px]">
+                            <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                               Milestones Complete
                             </Badge>
                           )}

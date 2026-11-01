@@ -342,11 +342,11 @@ export function OfficerReleasingPage({
                         </td>
                         <td className="px-4 py-3">
                           {isServed ? (
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                               <CheckCircle2 className="mr-1 h-3 w-3" /> Served to Supplier
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
+                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                               <Clock className="mr-1 h-3 w-3" /> Awaiting Service
                             </Badge>
                           )}
@@ -450,7 +450,7 @@ export function OfficerReleasingPage({
                         <td className="px-4 py-3">
                           {isReleased ? (
                             <div>
-                              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                              <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                                 <CheckCircle2 className="mr-1 h-3 w-3" /> Released to Supplier
                               </Badge>
                               {item.releaseDetails?.releasedAt && (
@@ -460,7 +460,7 @@ export function OfficerReleasingPage({
                               )}
                             </div>
                           ) : (
-                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
+                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                               <Clock className="mr-1 h-3 w-3" />
                               {isReadyForRelease ? "Ready for Releasing" : "Awaiting Contract Signatures"}
                             </Badge>

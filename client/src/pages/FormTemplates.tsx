@@ -362,19 +362,19 @@ export default function FormTemplatesPage() {
 
         {/* Feature Highlights Pills */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[#485361]">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] bg-[#fbf9f5] px-3 py-1 font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] px-3 py-1 font-medium text-[#485361] dark:text-stone-200">
             <FileSpreadsheet className="h-3.5 w-3.5 text-[#047857]" />
             ExcelJS v4.4 Master Engine
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] bg-[#fbf9f5] px-3 py-1 font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] px-3 py-1 font-medium text-[#485361] dark:text-stone-200">
             <Layers className="h-3.5 w-3.5 text-[#1d4ed8]" />
             5 Core Institutional Forms
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] bg-[#fbf9f5] px-3 py-1 font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] px-3 py-1 font-medium text-[#485361] dark:text-stone-200">
             <Sparkles className="h-3.5 w-3.5 text-[#b45309]" />
             Dynamic Placeholder Injection
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] bg-[#fbf9f5] px-3 py-1 font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d6cfc4] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] px-3 py-1 font-medium text-[#485361] dark:text-stone-200">
             <Printer className="h-3.5 w-3.5 text-[#7b1e1e]" />
             Edge-to-Edge A4 Canvas &amp; PDF Consistency
           </span>
@@ -1097,7 +1097,7 @@ export default function FormTemplatesPage() {
               <Label className="text-xs font-semibold text-[#1f2933]">
                 Excel File (.xlsx)
               </Label>
-              <div className="mt-1 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dcd7ce] bg-[#fbf9f5] p-6 hover:bg-[#f6f2e9] transition-all">
+              <div className="mt-1 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dcd7ce] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] p-6 hover:bg-[#f6f2e9] dark:hover:bg-[#1c2633] transition-all">
                 <FileSpreadsheet className="h-8 w-8 text-[#047857]" />
                 <label className="mt-2 cursor-pointer rounded bg-[#7b1e1e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#641818]">
                   Browse Excel File

@@ -287,15 +287,15 @@ export function RfqPage() {
     {mode === "quotation" && <QuotationForm rfqs={dashboard.data?.rfqs ?? []} suppliers={setup.data?.suppliers ?? []} isSaving={addQuotation.isPending} onCancel={() => setMode(null)} onCreate={(input) => addQuotation.mutate(input)} />}
 
     {/* Procedure 5.7 Workflow Guidance Banner */}
-    <div className="mt-6 rounded-lg border border-[#d5cfc4] bg-[#fbf9f5] p-4 text-xs text-[#4b5563]">
+    <div className="mt-6 rounded-lg border border-[#d5cfc4] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] p-4 text-xs text-[#4b5563] dark:text-[#a0aec0]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="rounded-md bg-[#7b1e1e]/10 p-2 text-[#7b1e1e] mt-0.5 shrink-0">
             <FileSpreadsheet className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-[#1f2937]">Procedure 5.7: Forward to BAC for Preparation of Abstract of Quotations</p>
-            <p className="mt-0.5 text-[11px] text-[#6b7280]">
+            <p className="font-semibold text-[#1f2937] dark:text-stone-100">Procedure 5.7: Forward to BAC for Preparation of Abstract of Quotations</p>
+            <p className="mt-0.5 text-[11px] text-[#6b7280] dark:text-[#94a3b8]">
               Mandatory canvass requires at least three (3) supplier quotations per RFQ. Once completed, click <strong>"Forward to BAC for AOQ"</strong> to transmit the quotation package to the BAC Secretariat for official validation, Abstract generation, and BAC Resolution recommendation.
             </p>
           </div>
