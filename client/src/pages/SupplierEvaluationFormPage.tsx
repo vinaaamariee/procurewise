@@ -304,21 +304,21 @@ export function SupplierEvaluationFormPage() {
               </div>
 
               {audience === "end_user" && selectedSupplier && !selectedPhilgepsNumber && (
-                <div className="mt-4 border border-[#d9c28f] bg-[#fffaf0] p-3 text-[11px] leading-5 text-[#72561d] dark:border-[#635028] dark:bg-[#272118] dark:text-[#f0c36a]">
+                <div className="mt-4 border border-[#d9c28f] bg-[#fffaf0] p-3 text-[11px] leading-5 text-[#72561d]">
                   PhilGEPS registration information is not recorded for this supplier. Procurement Staff should update the supplier registry before relying on this evaluation record.
                 </div>
               )}
 
               {isUrgentPrReference && (
-                <div className="mt-4 border border-[#d9c28f] bg-[#fffaf0] dark:border-[#635028] dark:bg-[#272118] p-3">
-                  <Label htmlFor="urgent-pr-reason" className="text-[11px] font-semibold text-[#634b1d] dark:text-[#f0c36a]">
+                <div className="mt-4 border border-[#d9c28f] bg-[#fffaf0] p-3">
+                  <Label htmlFor="urgent-pr-reason" className="text-[11px] font-semibold text-[#634b1d]">
                     Urgent Purchase Request reference reason (system audit control)
                   </Label>
                   <Textarea
                     id="urgent-pr-reason"
                     value={urgentPurchaseRequestReason}
                     onChange={(event) => setUrgentPurchaseRequestReason(event.target.value)}
-                    className="mt-2 min-h-16 text-xs dark:bg-[#1b2229] dark:text-[#f1f5f8] dark:border-[#46515c]"
+                    className="mt-2 min-h-16 text-xs text-[#1f2933] bg-white border-[#d9c28f]"
                     maxLength={1000}
                     placeholder="State why the displayed PR reference differs from the linked Purchase Request."
                   />
@@ -327,7 +327,7 @@ export function SupplierEvaluationFormPage() {
 
               <OfficialInstructions />
 
-              <div className="mt-4 flex items-center gap-2 border border-[#222] dark:border-[#64717d] bg-[#fffaf0] dark:bg-[#272118] px-3 py-2 text-[10px] text-[#72561d] dark:text-[#f0c36a] sm:hidden print:hidden no-print">
+              <div className="mt-4 flex items-center gap-2 border border-[#222] bg-[#fffaf0] px-3 py-2 text-[10px] text-[#72561d] sm:hidden print:hidden no-print">
                 <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                 Swipe the matrix horizontally to view and rate all response columns.
               </div>
@@ -336,14 +336,14 @@ export function SupplierEvaluationFormPage() {
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-[800px] w-full border-collapse text-left">
                   <thead>
-                    <tr className="bg-white dark:bg-[#2b3540] text-[10px] font-bold text-black dark:text-[#ffffff]">
-                      <th className="w-[48%] border border-[#222] dark:border-[#64717d] px-3 py-2 text-center text-[#1f2933] dark:text-[#ffffff]">
+                    <tr className="bg-white text-[10px] font-bold text-black">
+                      <th className="w-[48%] border border-[#222] px-3 py-2 text-center text-[#1f2933]">
                         CRITERIA
                       </th>
                       {SUPPLIER_EVALUATION_RATINGS.map((rating) => (
                         <th
                           key={rating.score}
-                          className="w-[13%] border border-[#222] dark:border-[#64717d] px-2 py-2 text-center leading-3 text-[#1f2933] dark:text-[#ffffff]"
+                          className="w-[13%] border border-[#222] px-2 py-2 text-center leading-3 text-[#1f2933]"
                         >
                           {rating.label.toUpperCase()}<br />({rating.score})
                         </th>
@@ -361,15 +361,15 @@ export function SupplierEvaluationFormPage() {
                       />
                     ))}
                     <tr>
-                      <td colSpan={5} className="border border-[#222] dark:border-[#64717d] px-3 py-2">
-                        <Label htmlFor="evaluation-remarks" className="text-[11px] italic text-[#52606d] dark:text-[#d1dae2]">
+                      <td colSpan={5} className="border border-[#222] px-3 py-2">
+                        <Label htmlFor="evaluation-remarks" className="text-[11px] italic text-[#52606d]">
                           Additional comments, suggestions, recommendations, and/or feedback.
                         </Label>
                         <Textarea
                           id="evaluation-remarks"
                           value={remarks}
                           onChange={(event) => setRemarks(event.target.value)}
-                          className="mt-2 min-h-20 border-0 p-0 text-xs shadow-none focus-visible:ring-0 text-[#1f2933] dark:text-[#f1f5f8] dark:bg-transparent"
+                          className="mt-2 min-h-20 border-0 p-0 text-xs shadow-none focus-visible:ring-0 text-[#1f2933] bg-transparent"
                           maxLength={3000}
                         />
                       </td>
@@ -381,20 +381,20 @@ export function SupplierEvaluationFormPage() {
               {/* Signatures & Form Submission Controls */}
               <div className="flex flex-wrap items-end justify-between gap-5 pb-2 pt-6">
                 <div className="w-full max-w-md">
-                  <Label htmlFor="respondent-name" className="text-[11px] text-[#1f2933] dark:text-[#f1f5f8]">
+                  <Label htmlFor="respondent-name" className="text-[11px] text-[#1f2933]">
                     Name and Signature of Respondent:
                   </Label>
                   <Input
                     id="respondent-name"
                     value={respondentName}
                     onChange={(event) => setRespondentName(event.target.value)}
-                    className="mt-1 h-8 rounded-none border-x-0 border-t-0 border-b border-[#222] dark:border-[#64717d] dark:bg-[#1b2229] dark:text-[#f1f5f8] px-0 text-xs shadow-none"
+                    className="mt-1 h-8 rounded-none border-x-0 border-t-0 border-b border-[#222] bg-transparent text-[#1f2933] px-0 text-xs shadow-none"
                     maxLength={180}
                   />
                 </div>
                 <div className="w-40">
-                  <Label className="text-[11px] text-[#1f2933] dark:text-[#f1f5f8]">Date:</Label>
-                  <div className="mt-1 h-8 border-b border-[#222] dark:border-[#64717d] pt-1 text-xs text-[#1f2933] dark:text-[#f1f5f8]">
+                  <Label className="text-[11px] text-[#1f2933]">Date:</Label>
+                  <div className="mt-1 h-8 border-b border-[#222] pt-1 text-xs text-[#1f2933]">
                     {new Date().toLocaleDateString("en-PH")}
                   </div>
                 </div>
@@ -491,8 +491,8 @@ export function SupplierEvaluationFormPage() {
 
 function OfficialInstructions() {
   return (
-    <section className="mt-6 text-[11px] leading-5 text-[#222] dark:text-[#d1dae2]">
-      <p className="font-bold italic text-[#1f2933] dark:text-[#ffffff]">Instructions:</p>
+    <section className="mt-6 text-[11px] leading-5 text-[#222]">
+      <p className="font-bold italic text-[#1f2933]">Instructions:</p>
       <p className="mt-1">
         This is a survey on the performance of our suppliers. It aims to improve our procurement service/system. Your sincere and honest answers will be highly appreciated and treated with utmost confidentiality.
       </p>
@@ -519,9 +519,9 @@ function FormSelect({
 }) {
   return (
     <div>
-      <Label className="text-[11px] font-medium text-[#1f2933] dark:text-[#f1f5f8]">{label} :</Label>
+      <Label className="text-[11px] font-medium text-[#1f2933]">{label} :</Label>
       <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className="mt-1 h-8 rounded-none border-x-0 border-t-0 border-b border-[#222] dark:border-[#64717d] dark:bg-[#1b2229] dark:text-[#f1f5f8] px-0 text-xs shadow-none">
+        <SelectTrigger className="mt-1 h-8 rounded-none border-x-0 border-t-0 border-b border-[#222] bg-transparent text-[#1f2933] px-0 text-xs shadow-none">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className="dark:bg-[#1b2229] dark:border-[#46515c] dark:text-[#f1f5f8]">
@@ -547,7 +547,7 @@ function FormField({
 }) {
   return (
     <div>
-      <Label className="text-[11px] font-medium text-[#1f2933] dark:text-[#f1f5f8]">{label} :</Label>
+      <Label className="text-[11px] font-medium text-[#1f2933]">{label} :</Label>
       {editable ? (
         <Input
           type={type}
@@ -556,7 +556,7 @@ function FormField({
           className="mt-1 h-8 rounded-none border-x-0 border-t-0 border-b border-[#222] dark:border-[#64717d] dark:bg-[#1b2229] dark:text-[#f1f5f8] px-0 text-xs shadow-none"
         />
       ) : (
-        <div className="mt-1 h-8 border-b border-[#222] dark:border-[#64717d] pt-1 text-xs text-[#1f2933] dark:text-[#f1f5f8]">
+        <div className="mt-1 h-8 border-b border-[#222] pt-1 text-xs text-[#1f2933]">
           {value}
         </div>
       )}
@@ -580,20 +580,20 @@ function GroupRows({
       <tr>
         <th
           colSpan={5}
-          className="border border-[#222] dark:border-[#64717d] bg-[#f1f3f5] dark:bg-[#232c35] px-3 py-1.5 text-left text-[10px] font-bold uppercase text-[#1f2933] dark:text-[#ffffff]"
+          className="border border-[#222] bg-[#f1f3f5] px-3 py-1.5 text-left text-[10px] font-bold uppercase text-[#1f2933]"
         >
           {section}
         </th>
       </tr>
       {criteria.map((criterion) => (
-        <tr key={criterion.key} className="hover:bg-[#fcfaf7] dark:hover:bg-[#242d36]">
-          <td className="border border-[#222] dark:border-[#64717d] px-3 py-1.5 text-[11px] leading-4 text-[#1f2933] dark:text-[#f1f5f8]">
+        <tr key={criterion.key} className="hover:bg-[#fcfaf7]">
+          <td className="border border-[#222] px-3 py-1.5 text-[11px] leading-4 text-[#1f2933]">
             {criterion.label}
           </td>
           {SUPPLIER_EVALUATION_RATINGS.map((rating) => (
             <td
               key={rating.score}
-              className="border border-[#222] dark:border-[#64717d] px-2 py-1 text-center align-middle"
+              className="border border-[#222] px-2 py-1 text-center align-middle"
             >
               <input
                 aria-label={`${criterion.label}: ${rating.label}`}
@@ -607,7 +607,7 @@ function GroupRows({
                     [criterion.key]: rating.score,
                   }))
                 }
-                className="h-3.5 w-3.5 accent-[#8f2424] dark:accent-[#d65c50] cursor-pointer"
+                className="h-3.5 w-3.5 accent-[#8f2424] cursor-pointer"
               />
             </td>
           ))}
