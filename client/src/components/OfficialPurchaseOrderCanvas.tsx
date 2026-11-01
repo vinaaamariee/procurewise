@@ -152,21 +152,21 @@ export function OfficialPurchaseOrderCanvas({
   return (
     <div className="w-full flex flex-col gap-6">
       {/* Live Appendix 61 Document Paper */}
-      <div className="w-full max-w-[850px] mx-auto bg-white border border-stone-300 shadow-md p-4 sm:p-8 font-serif text-[11px] leading-tight text-neutral-900 select-text overflow-hidden box-border">
+      <div className="w-full max-w-[850px] mx-auto bg-white dark:bg-[#131a22] border border-stone-300 dark:border-stone-700 shadow-md p-4 sm:p-8 font-serif text-[11px] leading-tight text-neutral-900 dark:text-stone-200 select-text overflow-hidden box-border">
         {/* Top Header */}
-        <div className="relative text-center border-b border-stone-800 pb-3 mb-3 w-full min-w-0">
-          <div className="absolute right-0 top-0 text-[10px] font-sans font-medium text-neutral-600 italic">
+        <div className="relative text-center border-b border-stone-800 dark:border-stone-700 pb-3 mb-3 w-full min-w-0">
+          <div className="absolute right-0 top-0 text-[10px] font-sans font-medium text-neutral-600 dark:text-neutral-400 italic">
             Appendix 61
           </div>
           <h1 className="font-bold text-base tracking-wider uppercase font-sans">PURCHASE ORDER</h1>
           <h2 className="font-bold text-sm tracking-wide mt-0.5">{entityName}</h2>
-          <p className="text-[10px] text-neutral-600 italic">(Agency)</p>
+          <p className="text-[10px] text-neutral-600 dark:text-neutral-400 italic">(Agency)</p>
         </div>
 
         {/* PO Metadata Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 border border-stone-800 text-[10.5px] w-full min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 border border-stone-800 dark:border-stone-700 text-[10.5px] w-full min-w-0">
           {/* Left Metadata */}
-          <div className="p-2 border-b sm:border-b-0 sm:border-r border-stone-800 space-y-1 min-w-0">
+          <div className="p-2 border-b sm:border-b-0 sm:border-r border-stone-800 dark:border-stone-700 dark:border-stone-700 space-y-1 min-w-0">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="w-20 sm:w-24 font-bold font-sans shrink-0">Supplier:</span>
               <span className="flex-1 font-semibold min-w-0 break-words">{supplierName || "—"}</span>
@@ -185,7 +185,7 @@ export function OfficialPurchaseOrderCanvas({
           <div className="p-2 space-y-1 min-w-0">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="w-24 sm:w-32 font-bold font-sans shrink-0">PO No.:</span>
-              <span className="flex-1 font-bold font-mono text-[#7b1e1e] min-w-0 break-words">{poNumber}</span>
+              <span className="flex-1 font-bold font-mono text-[#7b1e1e] dark:text-[#f87171] dark:text-[#f87171] min-w-0 break-words">{poNumber}</span>
             </div>
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="w-24 sm:w-32 font-bold font-sans shrink-0">Date:</span>
@@ -199,13 +199,13 @@ export function OfficialPurchaseOrderCanvas({
         </div>
 
         {/* Instruction Subheader */}
-        <div className="border-x border-b border-stone-800 px-3 py-1.5 text-[10px] italic text-neutral-700 bg-neutral-50/50 w-full min-w-0">
+        <div className="border-x border-b border-stone-800 dark:border-stone-700 px-3 py-1.5 text-[10px] italic text-neutral-700 dark:text-stone-300 bg-neutral-50/50 dark:bg-[#1a232d]/80 w-full min-w-0">
           Please furnish this office the following articles subject to the terms and conditions contained herein:
         </div>
 
         {/* Delivery Terms Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 border-x border-b border-stone-800 text-[10.5px] w-full min-w-0">
-          <div className="p-2 border-b sm:border-b-0 sm:border-r border-stone-800 space-y-1 min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 border-x border-b border-stone-800 dark:border-stone-700 text-[10.5px] w-full min-w-0">
+          <div className="p-2 border-b sm:border-b-0 sm:border-r border-stone-800 dark:border-stone-700 space-y-1 min-w-0">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="w-28 sm:w-32 font-bold font-sans shrink-0">Place of Delivery:</span>
               <span className="flex-1 min-w-0 break-words">{placeOfDelivery}</span>
@@ -228,15 +228,15 @@ export function OfficialPurchaseOrderCanvas({
         </div>
 
         {/* Item Table */}
-        <div className="border-x border-b border-stone-800 overflow-x-auto">
+        <div className="border-x border-b border-stone-800 dark:border-stone-700 overflow-x-auto">
           <table className="w-full text-[10px] border-collapse">
             <thead>
-              <tr className="bg-stone-100/80 border-b border-stone-800 font-sans font-bold text-center">
-                <th className="py-1.5 px-2 border-r border-stone-800 w-12">No.</th>
-                <th className="py-1.5 px-2 border-r border-stone-800 w-16">Unit</th>
-                <th className="py-1.5 px-3 border-r border-stone-800 text-left">Description</th>
-                <th className="py-1.5 px-2 border-r border-stone-800 w-14">Qty</th>
-                <th className="py-1.5 px-2 border-r border-stone-800 w-24">Unit Cost</th>
+              <tr className="bg-stone-100/80 dark:bg-[#1a232d] border-b border-stone-800 dark:border-stone-700 font-sans font-bold text-center text-stone-900 dark:text-stone-200">
+                <th className="py-1.5 px-2 border-r border-stone-800 dark:border-stone-700 w-12">No.</th>
+                <th className="py-1.5 px-2 border-r border-stone-800 dark:border-stone-700 w-16">Unit</th>
+                <th className="py-1.5 px-3 border-r border-stone-800 dark:border-stone-700 text-left">Description</th>
+                <th className="py-1.5 px-2 border-r border-stone-800 dark:border-stone-700 w-14">Qty</th>
+                <th className="py-1.5 px-2 border-r border-stone-800 dark:border-stone-700 w-24">Unit Cost</th>
                 <th className="py-1.5 px-2 w-28">Amount</th>
               </tr>
             </thead>
@@ -244,19 +244,19 @@ export function OfficialPurchaseOrderCanvas({
               {rowsToRender.map((it, idx) => {
                 const isRealItem = Number(it.totalCost) > 0 || it.description !== "-";
                 return (
-                  <tr key={idx} className="border-b border-stone-300 last:border-b-0">
-                    <td className="py-1 px-2 text-center border-r border-stone-800 font-mono text-[9.5px]">
+                  <tr key={idx} className="border-b border-stone-300 dark:border-stone-800 last:border-b-0">
+                    <td className="py-1 px-2 text-center border-r border-stone-800 dark:border-stone-700 font-mono text-[9.5px]">
                       {it.no || String(idx + 1).padStart(3, "0")}
                     </td>
-                    <td className="py-1 px-2 text-center border-r border-stone-800">
+                    <td className="py-1 px-2 text-center border-r border-stone-800 dark:border-stone-700">
                       {isRealItem ? it.unit : "—"}
                     </td>
-                    <td className="py-1 px-3 border-r border-stone-800 text-left font-sans">
+                    <td className="py-1 px-3 border-r border-stone-800 dark:border-stone-700 text-left font-sans">
                       {isRealItem ? (
                         <>
-                          <span className="font-medium text-stone-900">{it.description}</span>
+                          <span className="font-medium text-stone-900 dark:text-stone-100">{it.description}</span>
                           {it.stockPropertyNo && (
-                            <span className="block text-[8.5px] text-stone-500 font-mono">
+                            <span className="block text-[8.5px] text-stone-500 dark:text-stone-400 font-mono">
                               Prop #{it.stockPropertyNo}
                             </span>
                           )}
@@ -265,10 +265,10 @@ export function OfficialPurchaseOrderCanvas({
                         "—"
                       )}
                     </td>
-                    <td className="py-1 px-2 text-center border-r border-stone-800 font-mono">
+                    <td className="py-1 px-2 text-center border-r border-stone-800 dark:border-stone-700 font-mono">
                       {isRealItem ? it.quantity : "—"}
                     </td>
-                    <td className="py-1 px-2 text-right border-r border-stone-800 font-mono">
+                    <td className="py-1 px-2 text-right border-r border-stone-800 dark:border-stone-700 font-mono">
                       {isRealItem ? `₱${Number(it.estimatedUnitCost).toLocaleString("en-PH", { minimumFractionDigits: 2 })}` : "—"}
                     </td>
                     <td className="py-1 px-2 text-right font-mono font-medium">
@@ -280,14 +280,14 @@ export function OfficialPurchaseOrderCanvas({
             </tbody>
             <tfoot>
               {/* Total Row */}
-              <tr className="border-t-2 border-stone-800 bg-stone-50 font-sans font-bold">
-                <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-800 text-xs">
+              <tr className="border-t-2 border-stone-800 dark:border-stone-700 bg-stone-50 dark:bg-[#1a232d] font-sans font-bold text-stone-900 dark:text-stone-100">
+                <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-800 dark:border-stone-700 text-xs">
                   TOTAL
                 </td>
-                <td colSpan={3} className="py-2 px-3 border-r border-stone-800 text-[10px] uppercase text-[#7b1e1e]">
+                <td colSpan={3} className="py-2 px-3 border-r border-stone-800 dark:border-stone-700 text-[10px] uppercase text-[#7b1e1e] dark:text-[#f87171]">
                   **{finalWords}**
                 </td>
-                <td className="py-2 px-3 text-right font-mono text-xs text-[#7b1e1e]">
+                <td className="py-2 px-3 text-right font-mono text-xs text-[#7b1e1e] dark:text-[#f87171]">
                   ₱{finalTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                 </td>
               </tr>
@@ -296,31 +296,31 @@ export function OfficialPurchaseOrderCanvas({
         </div>
 
         {/* Purpose Box */}
-        <div className="border-x border-b border-stone-800 p-2 text-[10px]">
+        <div className="border-x border-b border-stone-800 dark:border-stone-700 p-2 text-[10px]">
           <span className="font-bold font-sans">Purpose: </span>
-          <span className="italic text-stone-800">{purpose}</span>
+          <span className="italic text-stone-800 dark:text-stone-300">{purpose}</span>
         </div>
 
         {/* Penalty Clause */}
-        <div className="border-x border-b border-stone-800 p-2.5 text-[9.5px] text-justify leading-relaxed text-stone-700 bg-stone-50/30">
+        <div className="border-x border-b border-stone-800 dark:border-stone-700 p-2.5 text-[9.5px] text-justify leading-relaxed text-stone-700 dark:text-stone-300 bg-stone-50/30 dark:bg-[#161e27]">
           In case of failure to make the full delivery within the time specified above, a penalty of one-tenth (1/10) of one percent for everyday of delay shall be imposed.
         </div>
 
         {/* Signatures Conforme & Authorized Official */}
-        <div className="grid grid-cols-2 border-x border-b border-stone-800 text-[10.5px]">
+        <div className="grid grid-cols-2 border-x border-b border-stone-800 dark:border-stone-700 text-[10.5px]">
           {/* Conforme (Supplier) */}
-          <div className="p-3 border-r border-stone-800 flex flex-col justify-between min-h-[90px]">
+          <div className="p-3 border-r border-stone-800 dark:border-stone-700 flex flex-col justify-between min-h-[90px]">
             <div>
               <p className="font-bold font-sans text-[10px]">Conforme:</p>
             </div>
             <div className="pt-8 text-center">
-              <div className="border-b border-stone-700 mx-auto w-48 mb-1">
+              <div className="border-b border-stone-700 dark:border-stone-600 mx-auto w-48 mb-1">
                 <span className="font-semibold text-[10px]">{conformeSupplierName || ""}</span>
               </div>
-              <p className="text-[9px] text-stone-600">(Signature over printed name)</p>
+              <p className="text-[9px] text-stone-600 dark:text-stone-400">(Signature over printed name)</p>
               <div className="mt-2 text-left text-[9.5px]">
                 <span className="font-sans font-medium">Date: </span>
-                <span className="border-b border-stone-500 inline-block w-28 text-center">{conformeDate || "____________________"}</span>
+                <span className="border-b border-stone-500 dark:border-stone-600 inline-block w-28 text-center">{conformeDate || "____________________"}</span>
               </div>
             </div>
           </div>
@@ -331,18 +331,18 @@ export function OfficialPurchaseOrderCanvas({
               <p className="font-bold font-sans text-[10px] text-right">Very truly yours,</p>
             </div>
             <div className="pt-8 text-center">
-              <div className="border-b border-stone-700 mx-auto w-52 mb-1">
-                <span className="font-bold text-[11px] font-sans text-[#7b1e1e] uppercase">
+              <div className="border-b border-stone-700 dark:border-stone-600 mx-auto w-52 mb-1">
+                <span className="font-bold text-[11px] font-sans text-[#7b1e1e] dark:text-[#f87171] uppercase">
                   {authorizedOfficialName}
                 </span>
               </div>
-              <p className="font-semibold text-[10px] text-stone-700">{authorizedOfficialDesignation}</p>
+              <p className="font-semibold text-[10px] text-stone-700 dark:text-stone-300">{authorizedOfficialDesignation}</p>
             </div>
           </div>
         </div>
 
         {/* Accounting & ORS/BURS Certification Box */}
-        <div className="border-x border-b border-stone-800 p-3 text-[10px] space-y-2 bg-stone-50/20">
+        <div className="border-x border-b border-stone-800 dark:border-stone-700 p-3 text-[10px] space-y-2 bg-stone-50/20 dark:bg-[#141b22] text-stone-900 dark:text-stone-200">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <div className="flex">
@@ -360,7 +360,7 @@ export function OfficialPurchaseOrderCanvas({
             <div className="space-y-1">
               <div className="flex">
                 <span className="w-32 font-bold font-sans">ORS/BURS No.:</span>
-                <span className="flex-1 font-mono font-semibold text-amber-900">{orsBursNumber || "—"}</span>
+                <span className="flex-1 font-mono font-semibold text-amber-900 dark:text-amber-400">{orsBursNumber || "—"}</span>
               </div>
               <div className="flex">
                 <span className="w-32 font-bold font-sans">Date of the ORS/BURS:</span>
@@ -377,15 +377,15 @@ export function OfficialPurchaseOrderCanvas({
 
           <div className="pt-6 grid grid-cols-2 items-end">
             <div className="text-center w-60">
-              <div className="border-b border-stone-700 mb-1">
+              <div className="border-b border-stone-700 dark:border-stone-600 mb-1">
                 <span className="font-bold font-sans text-[10.5px] uppercase">{chiefAccountantName}</span>
               </div>
-              <p className="text-[9px] text-stone-700 font-sans">{chiefAccountantTitle}</p>
+              <p className="text-[9px] text-stone-700 dark:text-stone-300 font-sans">{chiefAccountantTitle}</p>
             </div>
 
-            <div className="text-right text-[9px] text-stone-600 font-sans space-y-0.5">
+            <div className="text-right text-[9px] text-stone-600 dark:text-stone-400 font-sans space-y-0.5">
               <p className="italic">Note: See PO instructions at the back</p>
-              <p className="font-semibold text-stone-800">
+              <p className="font-semibold text-stone-800 dark:text-stone-200">
                 Ref. No.: <span className="font-mono text-[#7b1e1e]">{refNumber}</span>
               </p>
             </div>

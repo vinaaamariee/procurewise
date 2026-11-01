@@ -112,7 +112,7 @@ export function OfficialBacResolutionCanvas({
     : Number(localApprovedBudget || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const editableClass = editable
-    ? "cursor-text hover:bg-amber-50/70 focus:bg-amber-50 focus:ring-1 focus:ring-[#7b1e1e] focus:outline-none rounded px-0.5 transition-colors print:bg-transparent print:ring-0 print:px-0"
+    ? "cursor-text hover:bg-amber-50/70 focus:bg-amber-50 dark:hover:bg-amber-950/40 dark:focus:bg-amber-950/60 focus:ring-1 focus:ring-[#7b1e1e] focus:outline-none rounded px-0.5 transition-colors print:bg-transparent print:ring-0 print:px-0"
     : "";
 
   const handleMemberChange = (index: number, field: keyof BacSignatory, val: string) => {
@@ -225,7 +225,7 @@ export function OfficialBacResolutionCanvas({
           involves the procurement of:
         </p>
         <p
-          className={`italic font-sans text-[11px] bg-neutral-50 p-2 rounded border border-neutral-200 text-neutral-800 ${editableClass}`}
+          className={`italic font-sans text-[11px] bg-neutral-50 dark:bg-[#141b22] p-2 rounded border border-neutral-200 dark:border-[#2b3744] text-neutral-800 dark:text-[#cbd5e1] ${editableClass}`}
           contentEditable={editable}
           suppressContentEditableWarning
           onBlur={(e) => {
@@ -561,7 +561,7 @@ export function OfficialBacResolutionCanvas({
 
           {/* Page Break for Print and Clean Visual Separator for Screen */}
           <div className="relative my-10 print:break-before-page border-t-2 border-dashed border-neutral-300 print:border-none pt-8">
-            <span className="no-print absolute left-1/2 -top-3 -translate-x-1/2 bg-white px-3 text-[11px] font-sans font-semibold uppercase tracking-wider text-neutral-400">
+            <span className="no-print absolute left-1/2 -top-3 -translate-x-1/2 bg-white dark:bg-[#131a22] px-3 text-[11px] font-sans font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-300">
               Page 2 · Letter of Approval of HoPE
             </span>
           </div>

@@ -1284,3 +1284,82 @@ html[data-appearance-theme="dark"] .evaluation-document-sheet input[type="radio"
 html.dark .evaluation-document-sheet input[type="radio"] {
   accent-color: #8f2424 !important;
 }
+
+
+/* Global comprehensive light-background overrides in dark mode */
+html[data-appearance-theme="dark"] .bg-stone-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-stone-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-neutral-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-neutral-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-slate-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-slate-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-zinc-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-zinc-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#faf8f5\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#fbf9f4\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#faf5ec\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#fdf9ee\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f0ebe1\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f6f2e9\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f3ede3\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#fffbf0\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .bg-\[\#f8f9fa\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-stone-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-stone-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-neutral-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-neutral-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-slate-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-slate-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-zinc-50:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-zinc-100:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#faf8f5\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#fbf9f4\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#faf5ec\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#fdf9ee\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f0ebe1\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f6f2e9\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f3ede3\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#fffbf0\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .bg-\[\#f8f9fa\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *) {
+  background-color: var(--app-surface) !important;
+}
+
+/* Global comprehensive text contrast overrides in dark mode */
+html[data-appearance-theme="dark"] .text-stone-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-stone-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-neutral-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-neutral-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-slate-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-slate-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#34404e\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#202833\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#3f4a57\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#3e4855\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-stone-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-stone-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-neutral-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-neutral-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-slate-900:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-slate-800:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#34404e\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#202833\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#3f4a57\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-\[\#3e4855\]:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *) {
+  color: var(--app-text) !important;
+}
+
+html[data-appearance-theme="dark"] .text-stone-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-stone-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-neutral-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-neutral-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-slate-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-slate-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-stone-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-stone-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-neutral-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-neutral-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-slate-700:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
+html.dark .text-slate-600:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *) {
+  color: var(--app-text-muted) !important;
+}
+

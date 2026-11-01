@@ -487,11 +487,11 @@ export function TransmittalsPage() {
                   </Field>
 
                   {/* Collapsible Signatories & Officials Customizer */}
-                  <div className="rounded-lg border border-stone-200 bg-[#faf8f5] overflow-hidden w-full min-w-0">
+                  <div className="rounded-lg border border-stone-200 dark:border-stone-700 bg-[#faf8f5] dark:bg-[#19232c] overflow-hidden w-full min-w-0">
                     <button
                       type="button"
                       onClick={() => setSignatoriesExpanded(!signatoriesExpanded)}
-                      className="w-full flex items-center justify-between p-3 text-[11px] font-semibold text-neutral-800 hover:bg-[#f3ede3] transition-colors"
+                      className="w-full flex items-center justify-between p-3 text-[11px] font-semibold text-neutral-800 dark:text-stone-200 hover:bg-[#f3ede3] dark:hover:bg-[#202c38] transition-colors"
                     >
                       <span className="flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
                         Edit Signatories & Designations ({bacMembers.length + 1} Officials)
@@ -502,7 +502,7 @@ export function TransmittalsPage() {
                     </button>
 
                     {signatoriesExpanded && (
-                      <div className="p-3 pt-1 border-t border-stone-200 space-y-3 bg-white w-full min-w-0">
+                      <div className="p-3 pt-1 border-t border-stone-200 dark:border-stone-700 space-y-3 bg-white dark:bg-[#151c24] w-full min-w-0">
                         <p className="text-[10px] text-neutral-500">
                           Edit the official names, ranks, and roles of the BAC Committee and Approving Authority:
                         </p>
@@ -529,7 +529,7 @@ export function TransmittalsPage() {
                           ))}
                         </div>
 
-                        <div className="pt-2 border-t border-neutral-200 space-y-2 w-full min-w-0">
+                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 space-y-2 w-full min-w-0">
                           <p className="text-[10px] font-bold text-[#7b1e1e] uppercase tracking-wide">
                             Head of the Procuring Entity (HoPE)
                           </p>
