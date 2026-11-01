@@ -563,6 +563,8 @@ function PurchaseRequestForm({
   const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingPpmpFile, setIsDraggingPpmpFile] = useState(false);
+  const marketScopingFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingMarketScopingFile, setIsDraggingMarketScopingFile] = useState(false);
 
   // Verified PPMP confirmed from Step 1
   const [verifiedPpmp, setVerifiedPpmp] = useState<{
@@ -629,12 +631,13 @@ function PurchaseRequestForm({
     }
   };
 
-  const handleMarketScopingFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleMarketScopingFile = (file?: File | null) => {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Market Scoping file exceeds the 10 MB limit.");
-      event.target.value = "";
+      if (marketScopingFileInputRef.current) {
+        marketScopingFileInputRef.current.value = "";
+      }
       setMarketScopingFile(null);
       return;
     }
@@ -648,8 +651,21 @@ function PurchaseRequestForm({
         size: file.size,
         base64: result.includes(",") ? result.split(",")[1] : result,
       });
+      toast.success(`Attached Market Scoping document: ${file.name}`);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleMarketScopingFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleMarketScopingFile(event.target.files?.[0]);
+    event.currentTarget.value = "";
+  };
+
+  const removeMarketScopingFile = () => {
+    setMarketScopingFile(null);
+    if (marketScopingFileInputRef.current) {
+      marketScopingFileInputRef.current.value = "";
+    }
   };
 
   // Step 1: Confirmation handler
@@ -1260,14 +1276,60 @@ function PurchaseRequestForm({
               <p className="mt-1 text-xs text-[#75643e] dark:text-[#d1dae2]">
                 Attach your market research or price comparison before saving this Purchase Request. PDF, Excel, Word, or image files up to 10 MB.
               </p>
-              <Input
+
+              <input
+                ref={marketScopingFileInputRef}
                 type="file"
-                required
                 accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.png,.jpg,.jpeg,application/pdf"
                 onChange={handleMarketScopingFileChange}
-                aria-describedby="market-scoping-file-status"
-                className="mt-3 h-auto min-h-9 cursor-pointer text-xs"
+                className="hidden"
+                id="market-scoping-file-upload-input"
               />
+
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => marketScopingFileInputRef.current?.click()}
+                  className="h-9 shrink-0 rounded-[4px] border-[#d8c88c] bg-white px-3 text-xs font-semibold text-[#79551a] hover:bg-[#fdf4dd] dark:border-[#8a6520] dark:bg-[#272118] dark:text-[#f0c36a]"
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  Choose File
+                </Button>
+                <div
+                  onClick={() => marketScopingFileInputRef.current?.click()}
+                  className="flex h-9 flex-1 cursor-pointer items-center justify-between rounded-md border border-[#ded8cc] bg-white px-3 text-xs text-[#34404e] dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8] shadow-xs"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    {marketScopingFile ? (
+                      <>
+                        <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="truncate font-medium text-emerald-950 dark:text-emerald-200">
+                          {marketScopingFile.name}
+                        </span>
+                        <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400">
+                          ({(marketScopingFile.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No file chosen</span>
+                    )}
+                  </div>
+                  {marketScopingFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeMarketScopingFile();
+                      }}
+                      className="ml-2 rounded p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
               <p id="market-scoping-file-status" className="mt-2 text-[11px] text-[#65717e] dark:text-[#c4cfd9]" aria-live="polite">
                 {marketScopingFile ? `Selected: ${marketScopingFile.name}` : "No Market Scoping document selected."}
               </p>
