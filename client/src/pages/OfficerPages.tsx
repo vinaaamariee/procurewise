@@ -35,7 +35,7 @@ export function NoticesPage() {
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false }); const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false }); const notices = trpc.procurement.officer.notices.list.useQuery(undefined, { retry: false }); const utils = trpc.useUtils(); const [, setLocation] = useLocation();
   const [purchaseRequestId, setPurchaseRequestId] = useState(""); const [supplierId, setSupplierId] = useState(""); const [demandDueDate, setDemandDueDate] = useState(""); const [noticeType, setNoticeType] = useState<"award" | "disqualification" | "clarification" | "demand" | "other">("award");
   const create = trpc.procurement.officer.notices.create.useMutation({ onSuccess: () => { toast.success("Letter of Notice saved."); void utils.procurement.officer.notices.list.invalidate(); }, onError: (error) => toast.error(error.message) });
-  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Officer documents" title="Letters of Notice" description="Prepare, issue, and print controlled Letters of Notice linked to a Purchase Request and supplier." /><section className="flat-panel mt-7 p-5"><form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); create.mutate({ noticeType, purchaseRequestId: purchaseRequestId ? Number(purchaseRequestId) : undefined, supplierId: supplierId ? Number(supplierId) : undefined, subject: String(form.get("subject") || ""), body: String(form.get("body") || ""), demandDueDate: demandDueDate ? new Date(demandDueDate) : undefined, issueNow: form.get("issueNow") === "on" }); }}><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><Field label="Notice type"><Select value={noticeType} onValueChange={(value) => setNoticeType(value as typeof noticeType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="award">Notice of Award</SelectItem><SelectItem value="disqualification">Notice of Disqualification</SelectItem><SelectItem value="clarification">Notice of Clarification</SelectItem><SelectItem value="demand">Demand letter / notice of demand</SelectItem><SelectItem value="other">Other official notice</SelectItem></SelectContent></Select></Field><Field label="Purchase Request"><Select value={purchaseRequestId} onValueChange={setPurchaseRequestId}><SelectTrigger><SelectValue placeholder="Optional linked PR" /></SelectTrigger><SelectContent>{(dashboard.data?.purchaseRequests ?? []).map((pr) => <SelectItem key={pr.id} value={String(pr.id)}>{pr.prNumber}</SelectItem>)}</SelectContent></Select></Field><Field label="Supplier"><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger><SelectValue placeholder="Optional recipient supplier" /></SelectTrigger><SelectContent>{(setup.data?.suppliers ?? []).map((supplier) => <SelectItem key={supplier.id} value={String(supplier.id)}>{supplier.companyName}</SelectItem>)}</SelectContent></Select></Field><Field label="Subject"><Input name="subject" placeholder="Official notice subject" /></Field>{noticeType === "demand" && <Field label="Delivery deadline"><Input type="date" value={demandDueDate} onChange={(event) => setDemandDueDate(event.target.value)} required /><p className="mt-1 text-[10px] leading-4 text-[#806b38]">The system records a reminder three days before this deadline.</p></Field>}<div className="md:col-span-2 xl:col-span-2"><Field label="Notice body"><Textarea name="body" required className="min-h-24 text-xs" placeholder="State the official notice, action, and any applicable instruction." /></Field></div></div><div className="mt-5 flex items-center justify-between"><label className="flex items-center gap-2 text-[11px] text-[#566171]"><input name="issueNow" type="checkbox" className="accent-[#7b1e1e]" />Issue immediately</label><SubmitButton pending={create.isPending} label="Save Letter of Notice" /></div></form></section><section className="flat-panel mt-6 overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold">Notice register</p></div>{notices.data?.length ? <div className="divide-y divide-[#ece8df]">{notices.data.map((notice) => <div key={notice.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-xs font-semibold text-[#7b1e1e]">{notice.noticeNumber}</p><p className="mt-1 text-sm font-medium text-[#3f4a57]">{notice.subject}</p><p className="mt-1 text-[11px] text-[#77818d]">{notice.noticeType.replaceAll("_", " ")} · {new Date(notice.createdAt).toLocaleDateString("en-PH")}</p></div><div className="flex items-center gap-2"><StatusBadge tone={statusTone(notice.status)}>{notice.status.toUpperCase()}</StatusBadge><Button type="button" size="sm" variant="outline" onClick={() => setLocation(`/print/notice?id=${notice.id}`)} className="h-8 rounded-[4px] text-[11px]"><Printer className="mr-1 h-3.5 w-3.5" />Print</Button></div></div>)}</div> : <p className="p-8 text-center text-[11px] text-[#77818d]">No Letters of Notice have been created.</p>}</section></div>;
+  return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Officer documents" title="Letters of Notice" description="Prepare, issue, and print controlled Letters of Notice linked to a Purchase Request and supplier." /><section className="flat-panel mt-7 p-5"><form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); create.mutate({ noticeType, purchaseRequestId: purchaseRequestId ? Number(purchaseRequestId) : undefined, supplierId: supplierId ? Number(supplierId) : undefined, subject: String(form.get("subject") || ""), body: String(form.get("body") || ""), demandDueDate: demandDueDate ? new Date(demandDueDate) : undefined, issueNow: form.get("issueNow") === "on" }); }}><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><Field label="Notice type"><Select value={noticeType} onValueChange={(value) => setNoticeType(value as typeof noticeType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="award">Notice of Award</SelectItem><SelectItem value="disqualification">Notice of Disqualification</SelectItem><SelectItem value="clarification">Notice of Clarification</SelectItem><SelectItem value="demand">Demand letter / notice of demand</SelectItem><SelectItem value="other">Other official notice</SelectItem></SelectContent></Select></Field><Field label="Purchase Request"><Select value={purchaseRequestId} onValueChange={setPurchaseRequestId}><SelectTrigger><SelectValue placeholder="Optional linked PR" /></SelectTrigger><SelectContent>{(dashboard.data?.purchaseRequests ?? []).map((pr) => <SelectItem key={pr.id} value={String(pr.id)}>{pr.prNumber}</SelectItem>)}</SelectContent></Select></Field><Field label="Supplier"><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger><SelectValue placeholder="Optional recipient supplier" /></SelectTrigger><SelectContent>{(setup.data?.suppliers ?? []).map((supplier) => <SelectItem key={supplier.id} value={String(supplier.id)}>{supplier.companyName}</SelectItem>)}</SelectContent></Select></Field><Field label="Subject"><Input name="subject" placeholder="Official notice subject" /></Field>{noticeType === "demand" && <Field label="Delivery deadline"><Input type="date" value={demandDueDate} onChange={(event) => setDemandDueDate(event.target.value)} required /><p className="mt-1 text-[10px] leading-4 text-[#806b38]">The system records a reminder three days before this deadline.</p></Field>}<div className="md:col-span-2 xl:col-span-2"><Field label="Notice body"><Textarea name="body" required className="min-h-24 text-xs" placeholder="State the official notice, action, and any applicable instruction." /></Field></div></div><div className="mt-5 flex items-center justify-between"><label className="flex items-center gap-2 text-[11px] text-[#566171]"><input name="issueNow" type="checkbox" className="accent-[#7b1e1e]" />Issue immediately</label><SubmitButton pending={create.isPending} label="Save Letter of Notice" /></div></form></section><section className="flat-panel mt-6 overflow-hidden"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold">Notice register</p></div>{notices.data?.length ? <div className="divide-y divide-[#ece8df] dark:divide-[#2b3746]">{notices.data.map((notice) => <div key={notice.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-xs font-semibold text-[#7b1e1e]">{notice.noticeNumber}</p><p className="mt-1 text-sm font-medium text-[#3f4a57] dark:text-[#d5dfea]">{notice.subject}</p><p className="mt-1 text-[11px] text-[#77818d]">{notice.noticeType.replaceAll("_", " ")} · {new Date(notice.createdAt).toLocaleDateString("en-PH")}</p></div><div className="flex items-center gap-2"><StatusBadge tone={statusTone(notice.status)}>{notice.status.toUpperCase()}</StatusBadge><Button type="button" size="sm" variant="outline" onClick={() => setLocation(`/print/notice?id=${notice.id}`)} className="h-8 rounded-[4px] text-[11px]"><Printer className="mr-1 h-3.5 w-3.5" />Print</Button></div></div>)}</div> : <p className="p-8 text-center text-[11px] text-[#77818d]">No Letters of Notice have been created.</p>}</section></div>;
 }
 
 export function TransmittalsPage() {
@@ -286,17 +286,17 @@ export function TransmittalsPage() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mt-6">
-        <TabsList className="bg-[#f0ebe1] p-1 border border-[#d8d1c4] rounded-lg">
+        <TabsList className="bg-[#f0ebe1] dark:bg-[#18202a] p-1 border border-[#d8d1c4] dark:border-[#2d3a4b] rounded-lg">
           <TabsTrigger
             value="resolution"
-            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white font-medium text-xs px-4 py-2"
+            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
           >
             <ScrollText className="h-4 w-4" />
             BAC Resolution (Mode of Procurement & ABC)
           </TabsTrigger>
           <TabsTrigger
             value="transmittals"
-            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white font-medium text-xs px-4 py-2"
+            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
           >
             <SendHorizontal className="h-4 w-4" />
             BAC Transmittals Register ({transmittals.data?.length ?? 0})
@@ -306,13 +306,13 @@ export function TransmittalsPage() {
         {/* TAB 1: BAC RESOLUTION */}
         <TabsContent value="resolution" className="mt-4 space-y-6">
           {/* Statutory Mandate Banner */}
-          <div className="rounded-lg border border-[#eed9a8] bg-[#fdf9ee] p-4 text-xs text-[#7b5316] flex items-start gap-3 shadow-sm">
-            <ScrollText className="h-5 w-5 text-[#9a6d19] shrink-0 mt-0.5" />
+          <div className="rounded-lg border border-[#eed9a8] dark:border-[#54431f] bg-[#fdf9ee] dark:bg-[#1f1a10] p-4 text-xs text-[#7b5316] dark:text-[#e4c284] flex items-start gap-3 shadow-sm">
+            <ScrollText className="h-5 w-5 text-[#9a6d19] dark:text-[#f3ba4b] shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-sm text-[#64420e]">
+              <p className="font-bold text-sm text-[#64420e] dark:text-[#f8d88e]">
                 BAC Secretariat Statutory Mandate (RA 9184 & BSC Procurement Guidelines)
               </p>
-              <p className="mt-1 leading-relaxed text-[#7c561a]">
+              <p className="mt-1 leading-relaxed text-[#7c561a] dark:text-[#e0cb9e]">
                 The BAC Secretariat or designated staff shall prepare the <strong>BAC Resolution</strong> containing the{" "}
                 <strong>Approved Budget for the Contract (ABC)</strong> and the recommended{" "}
                 <strong>Mode of Procurement</strong> of the request. The resolution is then endorsed to the End-User and BAC Members for signature, and to the Head of the Procuring Entity (HoPE / College President) for approval.
@@ -323,14 +323,14 @@ export function TransmittalsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full min-w-0">
             {/* Form Column (5 cols) */}
             <div className="lg:col-span-5 min-w-0 w-full space-y-5">
-              <section className="w-full overflow-hidden rounded-xl border border-stone-200 bg-white p-6 shadow-sm min-w-0">
-                <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+              <section className="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#171e27] p-6 shadow-sm min-w-0">
+                <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 mb-4">
                   <div>
-                    <h3 className="font-semibold text-sm text-[#202833] flex items-center gap-2">
+                    <h3 className="font-semibold text-sm text-[#202833] dark:text-stone-100 flex items-center gap-2">
                       <FileCheck className="h-4 w-4 text-[#7b1e1e]" />
                       Editable Resolution Form
                     </h3>
-                    <p className="text-[10px] text-neutral-500 mt-0.5">
+                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                       All fields, recitals, and signatories are editable
                     </p>
                   </div>
@@ -339,7 +339,7 @@ export function TransmittalsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={handleResetDefaults}
-                    className="h-7 text-[11px] text-neutral-600 hover:text-[#7b1e1e]"
+                    className="h-7 text-[11px] text-neutral-600 dark:text-neutral-300 hover:text-[#7b1e1e] dark:hover:text-[#ef9a9a]"
                   >
                     Reset Defaults
                   </Button>
@@ -348,7 +348,7 @@ export function TransmittalsPage() {
                 <form onSubmit={handleEndorse} className="space-y-4 w-full min-w-0">
                   <Field label="Document to Prepare & Preview">
                     <Select value={docType} onValueChange={(val: any) => setDocType(val)}>
-                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-[#fffaf0] border-[#ecdcc0] font-semibold text-[#7b1e1e]">
+                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-[#fffaf0] dark:bg-[#251d1a] border-[#ecdcc0] dark:border-[#4d2d25] font-semibold text-[#7b1e1e] dark:text-[#fca5a5]">
                         <SelectValue className="truncate" />
                       </SelectTrigger>
                       <SelectContent>
@@ -597,15 +597,15 @@ export function TransmittalsPage() {
 
             {/* Live Canvas Preview Column (7 cols) */}
             <div className="lg:col-span-7 min-w-0 w-full space-y-4">
-              <div className="flex items-center justify-between bg-neutral-100 p-2.5 rounded-lg border border-neutral-200">
+              <div className="flex items-center justify-between bg-neutral-100 dark:bg-[#1a212d] p-2.5 rounded-lg border border-neutral-200 dark:border-[#2f3b4c]">
                 <div className="flex items-center gap-2">
                   <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
-                  <span className="text-xs font-semibold text-neutral-700">
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
                     Live Official Document Canvas Preview
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 cursor-pointer select-none">
+                  <label className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={isDirectCanvasEdit}
@@ -618,7 +618,7 @@ export function TransmittalsPage() {
                     size="sm"
                     variant="outline"
                     onClick={handlePrintResolution}
-                    className="h-7 text-[11px] bg-white text-[#7b1e1e] hover:bg-neutral-50 ml-2"
+                    className="h-7 text-[11px] bg-white dark:bg-[#232c3a] text-[#7b1e1e] dark:text-[#ff9b9b] border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-[#2c3748] ml-2"
                   >
                     <Printer className="mr-1 h-3 w-3" />
                     Print / Save PDF
@@ -626,7 +626,7 @@ export function TransmittalsPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[850px] overflow-y-auto rounded-lg border border-neutral-300 shadow-inner bg-neutral-200/50 p-4">
+              <div className="overflow-x-auto max-h-[850px] overflow-y-auto rounded-lg border border-neutral-300 dark:border-neutral-700 shadow-inner bg-neutral-200/50 dark:bg-[#10151c] p-4">
                 <OfficialBacResolutionCanvas
                   documentType={docType}
                   onDocumentTypeChange={setDocType}
@@ -678,7 +678,7 @@ export function TransmittalsPage() {
                 {transmittals.data.map((item) => {
                   const isResolution = item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution");
                   return (
-                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-neutral-50/50 transition-colors">
+                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-bold font-mono text-[#7b1e1e]">{item.transmittalNumber}</p>
@@ -693,7 +693,7 @@ export function TransmittalsPage() {
                           {item.fromOffice} → <strong>{item.toOffice}</strong> · {new Date(item.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
                         </p>
                         {item.remarks && (
-                          <p className="text-[11px] italic text-neutral-600 bg-neutral-50 p-1.5 rounded border border-neutral-200 mt-1 max-w-xl">
+                          <p className="text-[11px] italic text-neutral-600 dark:text-[#cbd5e1] bg-neutral-50 dark:bg-[#141b22] p-1.5 rounded border border-neutral-200 dark:border-[#2b3744] mt-1 max-w-xl">
                             {item.remarks}
                           </p>
                         )}

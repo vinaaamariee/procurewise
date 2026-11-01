@@ -46,14 +46,14 @@ export function SupplierRegistryPage() {
   return <div className="mx-auto max-w-[1240px]"><PageHeader eyebrow="Vendor registry" title="Accredited suppliers" description="Maintain supplier contact information, accreditation status, and declared product or service offerings." action={{ label: "Register supplier", onClick: () => setCreating(!creating) }} />
     {creating && <SupplierForm isSaving={createSupplier.isPending} onCancel={() => setCreating(false)} onCreate={(input) => createSupplier.mutate(input)} />}
     {setup.data?.suppliers.length ? <SupplierTagManager suppliers={setup.data.suppliers} /> : null}
-    <div className="mt-7">{setup.isLoading ? <LoadingPanel label="Loading supplier registry" /> : setup.data?.suppliers.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Supplier</th><th className="px-4 py-3 font-semibold">Contact</th><th className="px-4 py-3 font-semibold">Offerings</th><th className="px-4 py-3 font-semibold">Accreditation</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{setup.data.suppliers.map((supplier) => <tr key={supplier.id}><td className="px-4 py-3"><p className="font-semibold text-[#3e4855]">{supplier.companyName}</p><p className="mt-0.5 text-[11px] text-[#7a8490]">{supplier.supplierCode}</p></td><td className="px-4 py-3 text-[#65717e]"><p>{supplier.contactPerson || "—"}</p><p className="mt-0.5 text-[11px]">{supplier.email || supplier.phone || "No contact details"}</p></td><td className="max-w-xs px-4 py-3 text-[#65717e]">{supplier.offerings || "—"}</td><td className="px-4 py-3"><StatusBadge tone={supplier.accreditationStatus === "accredited" ? "approved" : supplier.accreditationStatus === "suspended" ? "returned" : "pending"}>{supplier.accreditationStatus.toUpperCase()}</StatusBadge></td></tr>)}</tbody></RecordTable> : <EmptyWorkspace eyebrow="Vendor registry" title="No supplier records have been registered." description="Register an accredited supplier before selecting them for canvassing or quotation comparison." />}</div>
+    <div className="mt-7">{setup.isLoading ? <LoadingPanel label="Loading supplier registry" /> : setup.data?.suppliers.length ? <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Supplier</th><th className="px-4 py-3 font-semibold">Contact</th><th className="px-4 py-3 font-semibold">Offerings</th><th className="px-4 py-3 font-semibold">Accreditation</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4] dark:divide-[#2b3746]">{setup.data.suppliers.map((supplier) => <tr key={supplier.id}><td className="px-4 py-3"><p className="font-semibold text-[#3e4855]">{supplier.companyName}</p><p className="mt-0.5 text-[11px] text-[#7a8490]">{supplier.supplierCode}</p></td><td className="px-4 py-3 text-[#65717e]"><p>{supplier.contactPerson || "—"}</p><p className="mt-0.5 text-[11px]">{supplier.email || supplier.phone || "No contact details"}</p></td><td className="max-w-xs px-4 py-3 text-[#65717e]">{supplier.offerings || "—"}</td><td className="px-4 py-3"><StatusBadge tone={supplier.accreditationStatus === "accredited" ? "approved" : supplier.accreditationStatus === "suspended" ? "returned" : "pending"}>{supplier.accreditationStatus.toUpperCase()}</StatusBadge></td></tr>)}</tbody></RecordTable> : <EmptyWorkspace eyebrow="Vendor registry" title="No supplier records have been registered." description="Register an accredited supplier before selecting them for canvassing or quotation comparison." />}</div>
   </div>;
 }
 
 function SupplierForm({ isSaving, onCancel, onCreate }: { isSaving: boolean; onCancel: () => void; onCreate: (input: { supplierCode: string; companyName: string; tin?: string; contactPerson?: string; email?: string; phone?: string; address?: string; offerings?: string; philgepsRegistrationNumber?: string; philgepsRegistrationDate?: Date; philgepsExpirationDate?: Date; accreditationStatus: "pending" | "accredited" | "suspended" }) => void }) {
   const [values, setValues] = useState({ supplierCode: "", companyName: "", tin: "", philgepsRegistrationNumber: "", philgepsRegistrationDate: "", philgepsExpirationDate: "", contactPerson: "", email: "", phone: "", address: "", offerings: "", accreditationStatus: "pending" as const });
   const update = (field: keyof typeof values, value: string) => setValues((current) => ({ ...current, [field]: value }));
-  return <form className="flat-panel mt-7 p-5 sm:p-6" onSubmit={(event) => { event.preventDefault(); if (!values.supplierCode.trim() || !values.companyName.trim()) return toast.error("Supplier code and company name are required."); onCreate({ ...values, supplierCode: values.supplierCode.trim(), companyName: values.companyName.trim(), tin: values.tin.trim() || undefined, contactPerson: values.contactPerson.trim() || undefined, email: values.email.trim() || undefined, phone: values.phone.trim() || undefined, address: values.address.trim() || undefined, offerings: values.offerings.trim() || undefined, philgepsRegistrationNumber: values.philgepsRegistrationNumber.trim() || undefined, philgepsRegistrationDate: values.philgepsRegistrationDate ? new Date(values.philgepsRegistrationDate) : undefined, philgepsExpirationDate: values.philgepsExpirationDate ? new Date(values.philgepsExpirationDate) : undefined }); }}><div className="flex items-center justify-between border-b border-[#ece8df] pb-4"><div><p className="text-sm font-semibold text-[#34404e]">Supplier registration</p><p className="mt-1 text-[11px] text-[#77818d]">Appendix 61 supplier metadata is retained for Purchase Order preparation.</p></div><UsersRound className="h-4 w-4 text-[#7b1e1e]" /></div><div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><Field label="Supplier code"><Input value={values.supplierCode} onChange={(event) => update("supplierCode", event.target.value)} placeholder="SUP-001" /></Field><Field label="Company name"><Input value={values.companyName} onChange={(event) => update("companyName", event.target.value)} placeholder="Registered legal name" /></Field><Field label="TIN"><Input value={values.tin} onChange={(event) => update("tin", event.target.value)} placeholder="Tax identification number" /></Field><Field label="PhilGEPS registration number"><Input value={values.philgepsRegistrationNumber} onChange={(event) => update("philgepsRegistrationNumber", event.target.value)} placeholder="Registration number" /></Field><Field label="Date of registration"><Input type="date" value={values.philgepsRegistrationDate} onChange={(event) => update("philgepsRegistrationDate", event.target.value)} /></Field><Field label="Expiration date"><Input type="date" value={values.philgepsExpirationDate} onChange={(event) => update("philgepsExpirationDate", event.target.value)} /></Field><Field label="Accreditation"><Select value={values.accreditationStatus} onValueChange={(value) => update("accreditationStatus", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="accredited">Accredited</SelectItem><SelectItem value="suspended">Suspended</SelectItem></SelectContent></Select></Field><Field label="Contact person"><Input value={values.contactPerson} onChange={(event) => update("contactPerson", event.target.value)} placeholder="Name" /></Field><Field label="Email"><Input value={values.email} onChange={(event) => update("email", event.target.value)} placeholder="email@example.com" /></Field><Field label="Phone"><Input value={values.phone} onChange={(event) => update("phone", event.target.value)} placeholder="Contact number" /></Field><div className="sm:col-span-2"><Field label="Product or service offerings"><Input value={values.offerings} onChange={(event) => update("offerings", event.target.value)} placeholder="Declared goods or services" /></Field></div><Field label="Address"><Input value={values.address} onChange={(event) => update("address", event.target.value)} placeholder="Business address" /></Field></div><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="outline" onClick={onCancel} className="h-9 rounded-[4px] text-xs">Cancel</Button><Button disabled={isSaving} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{isSaving && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Save supplier</Button></div></form>;
+  return <form className="flat-panel mt-7 p-5 sm:p-6" onSubmit={(event) => { event.preventDefault(); if (!values.supplierCode.trim() || !values.companyName.trim()) return toast.error("Supplier code and company name are required."); onCreate({ ...values, supplierCode: values.supplierCode.trim(), companyName: values.companyName.trim(), tin: values.tin.trim() || undefined, contactPerson: values.contactPerson.trim() || undefined, email: values.email.trim() || undefined, phone: values.phone.trim() || undefined, address: values.address.trim() || undefined, offerings: values.offerings.trim() || undefined, philgepsRegistrationNumber: values.philgepsRegistrationNumber.trim() || undefined, philgepsRegistrationDate: values.philgepsRegistrationDate ? new Date(values.philgepsRegistrationDate) : undefined, philgepsExpirationDate: values.philgepsExpirationDate ? new Date(values.philgepsExpirationDate) : undefined }); }}><div className="flex items-center justify-between border-b border-[#ece8df] pb-4"><div><p className="text-sm font-semibold text-[#34404e] dark:text-stone-100">Supplier registration</p><p className="mt-1 text-[11px] text-[#77818d] dark:text-stone-400">Appendix 61 supplier metadata is retained for Purchase Order preparation.</p></div><UsersRound className="h-4 w-4 text-[#7b1e1e]" /></div><div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><Field label="Supplier code"><Input value={values.supplierCode} onChange={(event) => update("supplierCode", event.target.value)} placeholder="SUP-001" /></Field><Field label="Company name"><Input value={values.companyName} onChange={(event) => update("companyName", event.target.value)} placeholder="Registered legal name" /></Field><Field label="TIN"><Input value={values.tin} onChange={(event) => update("tin", event.target.value)} placeholder="Tax identification number" /></Field><Field label="PhilGEPS registration number"><Input value={values.philgepsRegistrationNumber} onChange={(event) => update("philgepsRegistrationNumber", event.target.value)} placeholder="Registration number" /></Field><Field label="Date of registration"><Input type="date" value={values.philgepsRegistrationDate} onChange={(event) => update("philgepsRegistrationDate", event.target.value)} /></Field><Field label="Expiration date"><Input type="date" value={values.philgepsExpirationDate} onChange={(event) => update("philgepsExpirationDate", event.target.value)} /></Field><Field label="Accreditation"><Select value={values.accreditationStatus} onValueChange={(value) => update("accreditationStatus", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="accredited">Accredited</SelectItem><SelectItem value="suspended">Suspended</SelectItem></SelectContent></Select></Field><Field label="Contact person"><Input value={values.contactPerson} onChange={(event) => update("contactPerson", event.target.value)} placeholder="Name" /></Field><Field label="Email"><Input value={values.email} onChange={(event) => update("email", event.target.value)} placeholder="email@example.com" /></Field><Field label="Phone"><Input value={values.phone} onChange={(event) => update("phone", event.target.value)} placeholder="Contact number" /></Field><div className="sm:col-span-2"><Field label="Product or service offerings"><Input value={values.offerings} onChange={(event) => update("offerings", event.target.value)} placeholder="Declared goods or services" /></Field></div><Field label="Address"><Input value={values.address} onChange={(event) => update("address", event.target.value)} placeholder="Business address" /></Field></div><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="outline" onClick={onCancel} className="h-9 rounded-[4px] text-xs">Cancel</Button><Button disabled={isSaving} className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{isSaving && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Save supplier</Button></div></form>;
 }
 
 export function PlansPage() {
@@ -855,53 +855,53 @@ export function PurchaseOrderPage() {
       />
 
       {/* Statutory Sequence Workflow Tracker */}
-      <div className="mt-6 rounded-lg border border-[#e2d8c3] bg-[#fbf9f4] p-4 text-xs shadow-xs">
-        <div className="flex items-center gap-2 font-semibold text-[#7b1e1e] mb-2.5">
+      <div className="mt-6 rounded-lg border border-[#e2d8c3] dark:border-[#384554] bg-[#fbf9f4] dark:bg-[#151c24] p-4 text-xs shadow-xs">
+        <div className="flex items-center gap-2 font-semibold text-[#7b1e1e] dark:text-[#f87171] mb-2.5">
           <ScrollText className="h-4 w-4" />
           <span>Official Procurement Sequence (Serving → Staff PO → Contract Signing → Releasing → Delivery)</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-[11px] w-full min-w-0">
-          <div className="p-2.5 rounded-md border border-emerald-200 bg-white min-w-0 overflow-hidden">
+          <div className="p-2.5 rounded-md border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-[#19232c] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-emerald-800">1. Notice Serving</span>
+              <span className="font-bold text-emerald-800 dark:text-emerald-300">1. Notice Serving</span>
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
             </div>
-            <p className="text-[#65717e] mt-1 text-[10px]"><strong>Procurement Officer (PO)</strong> serves Letter of Approval</p>
-            <Link href="/officer/notices-serving" className="mt-1.5 text-[10px] text-emerald-700 font-semibold block hover:underline">
+            <p className="text-[#65717e] dark:text-[#94a3b8] mt-1 text-[10px]"><strong>Procurement Officer (PO)</strong> serves Letter of Approval</p>
+            <Link href="/officer/notices-serving" className="mt-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold block hover:underline">
               Notice Serving Desk →
             </Link>
           </div>
-          <div className="p-2.5 rounded-md border border-[#7b1e1e]/20 bg-white min-w-0 overflow-hidden">
+          <div className="p-2.5 rounded-md border border-[#7b1e1e]/20 dark:border-red-900/50 bg-white dark:bg-[#19232c] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-[#7b1e1e]">2. Prepare Purchase Order</span>
+              <span className="font-bold text-[#7b1e1e] dark:text-red-400">2. Prepare Purchase Order</span>
               <FileCheck2 className="h-3.5 w-3.5 text-[#7b1e1e]" />
             </div>
             <p className="text-[#65717e] mt-1 text-[10px]"><strong>Procurement Staff</strong> · Purchase Order (App. 61)</p>
           </div>
-          <div className="p-2.5 rounded-md border border-amber-200 bg-white min-w-0 overflow-hidden">
+          <div className="p-2.5 rounded-md border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-[#19232c] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-800">3. Contract Signing</span>
+              <span className="font-bold text-amber-800 dark:text-amber-300">3. Contract Signing</span>
               <Clock className="h-3.5 w-3.5 text-amber-600" />
             </div>
             <p className="text-[#65717e] mt-1 text-[10px]"><strong>Budget Officer / HoPE</strong> · Purchase Order</p>
           </div>
-          <div className="p-2.5 rounded-md border border-blue-200 bg-white min-w-0 overflow-hidden">
+          <div className="p-2.5 rounded-md border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-[#19232c] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-blue-800">4. Purchase Order/Contract releasing</span>
+              <span className="font-bold text-blue-800 dark:text-blue-300">4. Purchase Order/Contract releasing</span>
               <Send className="h-3.5 w-3.5 text-blue-600" />
             </div>
             <p className="text-[#65717e] mt-1 text-[10px]"><strong>Procurement Officer I</strong> · Purchase Order</p>
-            <Link href="/officer/releasing" className="mt-1.5 text-[10px] text-blue-700 font-semibold block hover:underline">
+            <Link href="/officer/releasing" className="mt-1.5 text-[10px] text-blue-700 dark:text-blue-400 font-semibold block hover:underline">
               PO Releasing Desk →
             </Link>
           </div>
-          <div className="p-2.5 rounded-md border border-purple-200 bg-white min-w-0 overflow-hidden">
+          <div className="p-2.5 rounded-md border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-[#19232c] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-purple-800">5. Delivery of Goods</span>
+              <span className="font-bold text-purple-800 dark:text-purple-300">5. Delivery of Goods</span>
               <Truck className="h-3.5 w-3.5 text-purple-600" />
             </div>
             <p className="text-[#65717e] mt-1 text-[10px]"><strong>Supplier / Contractor</strong> delivers goods; IAR inspection</p>
-            <Link href="/officer/delivery-monitoring" className="mt-1.5 text-[10px] text-purple-700 font-semibold block hover:underline">
+            <Link href="/officer/delivery-monitoring" className="mt-1.5 text-[10px] text-purple-700 dark:text-purple-400 font-semibold block hover:underline">
               Delivery Tracker →
             </Link>
           </div>
@@ -941,7 +941,7 @@ export function PurchaseOrderPage() {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full min-w-0">
             {/* Left Column: Form Controls (5 cols on xl) */}
             <div className="xl:col-span-5 min-w-0 w-full space-y-5">
-              <section className="flat-panel p-5 sm:p-6 w-full min-w-0 rounded-xl border border-stone-200 bg-white">
+              <section className="flat-panel p-5 sm:p-6 w-full min-w-0 rounded-xl">
                 <div className="flex items-center justify-between border-b border-[#ece8df] pb-3 mb-4">
                   <div>
                     <h3 className="text-sm font-bold text-[#34404e] flex items-center gap-1.5">
@@ -1086,9 +1086,9 @@ export function PurchaseOrderPage() {
                   </Field>
 
                   {/* Dynamic Line Item Editor */}
-                  <div className="border border-stone-200 rounded-lg p-3 bg-stone-50/50 space-y-2.5">
+                  <div className="border border-stone-200 dark:border-stone-700 rounded-lg p-3 bg-stone-50/50 dark:bg-stone-900/50 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-stone-800 uppercase tracking-wide">
+                      <span className="text-[11px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-wide">
                         Line Items ({prepItems.length})
                       </span>
                       <span className="text-xs font-mono font-bold text-[#7b1e1e]">
@@ -1096,16 +1096,16 @@ export function PurchaseOrderPage() {
                       </span>
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto divide-y divide-stone-200 border border-stone-200 rounded bg-white">
+                    <div className="max-h-48 overflow-y-auto divide-y divide-stone-200 dark:divide-stone-700 border border-stone-200 dark:border-stone-700 rounded bg-white dark:bg-[#141b22]">
                       {prepItems.map((it, idx) => (
                         <div key={idx} className="p-2 flex items-center justify-between text-[11px] gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold truncate text-stone-800">{it.description}</p>
-                            <p className="text-[10px] text-stone-500">
+                            <p className="font-semibold truncate text-stone-800 dark:text-stone-200">{it.description}</p>
+                            <p className="text-[10px] text-stone-500 dark:text-stone-400">
                               {it.quantity} {it.unit} @ ₱{Number(it.estimatedUnitCost).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                             </p>
                           </div>
-                          <span className="font-mono font-semibold text-stone-900">
+                          <span className="font-mono font-semibold text-stone-900 dark:text-stone-100">
                             ₱{Number(it.totalCost).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                           </span>
                           <button
@@ -1200,7 +1200,7 @@ export function PurchaseOrderPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="pt-4 border-t border-stone-200 flex flex-wrap items-center justify-end gap-2.5">
+                  <div className="pt-4 border-t border-stone-200 dark:border-stone-700 flex flex-wrap items-center justify-end gap-2.5">
                     <Button
                       type="button"
                       variant="outline"
@@ -1229,19 +1229,19 @@ export function PurchaseOrderPage() {
 
             {/* Right Column: Live Official Document Canvas Preview (7 cols on xl) */}
             <div className="xl:col-span-7 min-w-0 w-full space-y-4">
-              <div className="flex items-center justify-between bg-stone-100 p-2.5 rounded-lg border border-stone-200 w-full min-w-0">
+              <div className="flex items-center justify-between bg-stone-100 dark:bg-[#1a232c] p-2.5 rounded-lg border border-stone-200 dark:border-[#2f3b4c] w-full min-w-0">
                 <div className="flex items-center gap-2">
                   <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
-                  <span className="text-xs font-semibold text-stone-800">
+                  <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
                     Live Official Appendix 61 Document Preview
                   </span>
                 </div>
-                <div className="text-[11px] font-mono text-stone-600">
+                <div className="text-[11px] font-mono text-stone-600 dark:text-stone-400">
                   Total: <strong>₱{calculatedStudioTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</strong>
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[900px] overflow-y-auto rounded-xl border border-stone-300 shadow-inner bg-stone-200/50 p-2 sm:p-4 w-full min-w-0">
+              <div className="overflow-x-auto max-h-[900px] overflow-y-auto rounded-xl border border-stone-300 dark:border-stone-700 shadow-inner bg-stone-200/50 dark:bg-[#10151c] p-2 sm:p-4 w-full min-w-0">
                 <OfficialPurchaseOrderCanvas
                   entityName="BATANES STATE COLLEGE"
                   poNumber={poNumber}
@@ -1298,7 +1298,7 @@ export function PurchaseOrderPage() {
                               PR #{po.purchaseRequestId}
                             </Badge>
                           </div>
-                          <p className="mt-1 text-sm font-semibold text-[#3f4a57]">
+                          <p className="mt-1 text-sm font-semibold text-[#3f4a57] dark:text-[#d5dfea]">
                             {formatMoney(po.totalAmount)} · Supplier #{po.supplierId}
                           </p>
                         </div>
@@ -1320,29 +1320,29 @@ export function PurchaseOrderPage() {
                       </div>
 
                       {/* Meta Info */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#65717e] bg-stone-50 p-2.5 rounded border border-stone-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#65717e] dark:text-[#94a3b8] bg-stone-50 dark:bg-[#151c24] p-2.5 rounded border border-stone-200 dark:border-[#2b3744]">
                         <div>
-                          <span className="font-semibold text-[#34404e]">Place of Delivery: </span>
+                          <span className="font-semibold text-[#34404e] dark:text-[#d3dbe3]">Place of Delivery: </span>
                           <span>{po.placeOfDelivery || "Batanes State College"}</span>
                         </div>
                         <div>
-                          <span className="font-semibold text-[#34404e]">Delivery Term: </span>
+                          <span className="font-semibold text-[#34404e] dark:text-[#d3dbe3]">Delivery Term: </span>
                           <span>{po.deliveryTerm || "7 calendar days"}</span>
                         </div>
                         <div>
-                          <span className="font-semibold text-[#34404e]">Mode: </span>
+                          <span className="font-semibold text-[#34404e] dark:text-[#d3dbe3]">Mode: </span>
                           <span>{po.modeOfProcurement || "Small Value Procurement"}</span>
                         </div>
                         <div>
-                          <span className="font-semibold text-[#34404e]">Fund Cluster: </span>
+                          <span className="font-semibold text-[#34404e] dark:text-[#d3dbe3]">Fund Cluster: </span>
                           <span>{po.fundCluster || "01 - Regular Agency Fund"}</span>
                         </div>
                       </div>
 
                       {/* Step 3: Contract Signing Box */}
-                      <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3 space-y-2.5">
+                      <div className="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/50 dark:bg-[#201c13] p-3 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wide">
+                          <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wide">
                             Step 3: Contract Signing (Budget Officer & HoPE)
                           </span>
                           {isContractFullySigned ? (
@@ -1358,15 +1358,15 @@ export function PurchaseOrderPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                           {/* Budget Officer Signature */}
-                          <div className="rounded bg-white p-2.5 border border-stone-200 text-[11px] space-y-1.5">
-                            <span className="font-semibold text-[#34404e] block">
+                          <div className="rounded bg-white dark:bg-[#171f28] p-2.5 border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
+                            <span className="font-semibold text-[#34404e] dark:text-stone-200 block">
                               Budget Officer Certification
                             </span>
                             {isBudgetCertified ? (
                               <div className="text-emerald-700 text-[11px]">
                                 <p className="font-semibold">✓ Funds Certified</p>
-                                <p className="text-[10px] text-stone-500">ORS/BURS No.: {po.orsBursNumber}</p>
-                                <p className="text-[10px] text-stone-500">By: {po.chiefAccountantName || "Budget Officer"}</p>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400">ORS/BURS No.: {po.orsBursNumber}</p>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400">By: {po.chiefAccountantName || "Budget Officer"}</p>
                               </div>
                             ) : (
                               <div className="space-y-1.5">
@@ -1391,7 +1391,7 @@ export function PurchaseOrderPage() {
                                     Certify Funds Available
                                   </Button>
                                 ) : (
-                                  <p className="text-[10px] text-stone-500 italic">
+                                  <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
                                     Awaiting Budget Officer certification
                                   </p>
                                 )}
@@ -1400,19 +1400,19 @@ export function PurchaseOrderPage() {
                           </div>
 
                           {/* HoPE Signature */}
-                          <div className="rounded bg-white p-2.5 border border-stone-200 text-[11px] space-y-1.5">
-                            <span className="font-semibold text-[#34404e] block">
+                          <div className="rounded bg-white dark:bg-[#171f28] p-2.5 border border-stone-200 dark:border-stone-700 text-[11px] space-y-1.5">
+                            <span className="font-semibold text-[#34404e] dark:text-stone-200 block">
                               HoPE / Authorized Official
                             </span>
                             {isHopeSigned ? (
                               <div className="text-emerald-700 text-[11px]">
                                 <p className="font-semibold">✓ Contract Approved & Signed</p>
-                                <p className="text-[10px] text-stone-500">{po.authorizedOfficialName}</p>
-                                <p className="text-[10px] text-stone-500">{po.authorizedOfficialDesignation || "SUC President I"}</p>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400">{po.authorizedOfficialName}</p>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400">{po.authorizedOfficialDesignation || "SUC President I"}</p>
                               </div>
                             ) : (
                               <div className="space-y-1.5">
-                                <p className="text-[10px] text-stone-600">
+                                <p className="text-[10px] text-stone-600 dark:text-stone-300">
                                   Signatory: <strong>DJOVI REGALA DURANTE, DPA</strong> (SUC President I)
                                 </p>
                                 {canHope ? (
@@ -1428,7 +1428,7 @@ export function PurchaseOrderPage() {
                                     Sign & Approve Contract
                                   </Button>
                                 ) : (
-                                  <p className="text-[10px] text-stone-500 italic">
+                                  <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
                                     Awaiting HoPE approval & signature
                                   </p>
                                 )}
@@ -1445,7 +1445,7 @@ export function PurchaseOrderPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDownloadPo(po)}
-                            className="h-7 rounded-[4px] text-[10px] text-[#34404e]"
+                            className="h-7 rounded-[4px] text-[10px] text-[#34404e] dark:text-stone-200 dark:border-stone-700"
                           >
                             <Download className="mr-1 h-3 w-3 text-[#7b1e1e]" />
                             Official Appendix 61 PDF
@@ -1485,7 +1485,7 @@ export function PurchaseOrderPage() {
                                 </Button>
                               </Link>
                             ) : (
-                              <span className="text-[10px] text-stone-500 italic">
+                              <span className="text-[10px] text-stone-500 dark:text-stone-400 italic">
                                 Awaiting Procurement Officer I release
                               </span>
                             )

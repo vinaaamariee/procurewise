@@ -481,7 +481,7 @@ export function OfficialBacResolutionCanvas({
       {/* Visual edit mode and document switcher banner (Hidden during print) */}
       <div className="no-print mb-6 space-y-2 select-none print:hidden">
         {/* Document Selection Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f6f2e9] p-1.5 border border-[#e8ded0]">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f6f2e9] dark:bg-[#19222c] p-1.5 border border-[#e8ded0] dark:border-[#2b3746]">
           <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
@@ -489,8 +489,8 @@ export function OfficialBacResolutionCanvas({
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
                 activeDocType === "resolution"
-                  ? "bg-white text-[#7b1e1e] shadow-sm font-bold"
-                  : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  ? "bg-white dark:bg-[#7b1e1e] text-[#7b1e1e] dark:text-white shadow-sm font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/10"
               )}
             >
               <ScrollText className="h-3.5 w-3.5 shrink-0" />
@@ -503,8 +503,8 @@ export function OfficialBacResolutionCanvas({
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
                 activeDocType === "hope_approval"
-                  ? "bg-white text-[#7b1e1e] shadow-sm font-bold"
-                  : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  ? "bg-white dark:bg-[#7b1e1e] text-[#7b1e1e] dark:text-white shadow-sm font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/10"
               )}
             >
               <FileSignature className="h-3.5 w-3.5 shrink-0" />
@@ -517,8 +517,8 @@ export function OfficialBacResolutionCanvas({
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
                 activeDocType === "both"
-                  ? "bg-white text-[#7b1e1e] shadow-sm font-bold"
-                  : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  ? "bg-white dark:bg-[#7b1e1e] text-[#7b1e1e] dark:text-white shadow-sm font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/10"
               )}
             >
               <Layers className="h-3.5 w-3.5 shrink-0" />
@@ -526,9 +526,9 @@ export function OfficialBacResolutionCanvas({
             </button>
           </div>
 
-          <span className="text-[10px] text-neutral-500 font-sans px-2">
+          <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-sans px-2">
             Active:{" "}
-            <span className="font-bold text-[#7b1e1e]">
+            <span className="font-bold text-[#7b1e1e] dark:text-[#fca5a5]">
               {activeDocType === "resolution"
                 ? "BAC Resolution"
                 : activeDocType === "hope_approval"
@@ -540,12 +540,12 @@ export function OfficialBacResolutionCanvas({
 
         {/* Live editing indicator */}
         {editable && (
-          <div className="flex items-center justify-between rounded bg-[#faf5ec] border border-[#ecdcc0] px-3 py-1.5 text-[11px] text-[#805719]">
+          <div className="flex items-center justify-between rounded bg-[#faf5ec] dark:bg-[#241f17] border border-[#ecdcc0] dark:border-[#4d3e23] px-3 py-1.5 text-[11px] text-[#805719] dark:text-[#e4c284]">
             <span className="flex items-center gap-1.5 font-sans font-medium">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               Editable Document Canvas: Click on any text, clause, ABC amount, or signatory to edit directly.
             </span>
-            <span className="text-[10px] text-neutral-500 font-sans">Edits reflect on print</span>
+            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-sans">Edits reflect on print</span>
           </div>
         )}
       </div>

@@ -395,8 +395,8 @@ export function OfficialPurchaseOrderCanvas({
 
       {/* Official Instructions Section (Appendix 61 Accomplishment Guidelines) */}
       {showInstructions && (
-        <div className="w-full max-w-[850px] mx-auto bg-stone-50 border border-stone-200 rounded-lg p-5 text-neutral-700 text-xs shadow-xs space-y-3">
-          <div className="flex items-center gap-2 font-bold text-stone-800 border-b border-stone-200 pb-2">
+        <div className="w-full max-w-[850px] mx-auto bg-stone-50 dark:bg-[#141b22] border border-stone-200 dark:border-[#2b3744] rounded-lg p-5 text-neutral-700 dark:text-[#a5b4c4] text-xs shadow-xs space-y-3">
+          <div className="flex items-center gap-2 font-bold text-stone-800 dark:text-stone-200 border-b border-stone-200 dark:border-stone-700 pb-2">
             <Info className="h-4 w-4 text-[#7b1e1e]" />
             <span>Official Government Accounting Manual (GAM) Appendix 61 Instructions</span>
           </div>
@@ -405,13 +405,13 @@ export function OfficialPurchaseOrderCanvas({
             <p>
               <strong>A. Purpose of Form:</strong> The Purchase Order (PO) is a form/document used by the agency/entity, addressed to supplier, to deliver specific quantities of supplies/goods/property subject to the terms and conditions contained in the PO.
             </p>
-            <p className="font-semibold text-stone-800">B. This form shall be accomplished as follows:</p>
-            <ol className="list-decimal list-inside space-y-1.5 pl-2 text-neutral-600">
+            <p className="font-semibold text-stone-800 dark:text-stone-200">B. This form shall be accomplished as follows:</p>
+            <ol className="list-decimal list-inside space-y-1.5 pl-2 text-neutral-600 dark:text-neutral-400">
               <li>
                 <strong>Entity Name:</strong> Name of the agency/entity (<span className="font-mono">Batanes State College</span>).
               </li>
               <li>
-                <strong>P.O. No.:</strong> The number assigned to the PO formatted as <span className="font-mono bg-stone-200 px-1 py-0.5 rounded">0000-00-0000</span> (Year-Month-Serial number for each fiscal year).
+                <strong>P.O. No.:</strong> The number assigned to the PO formatted as <span className="font-mono bg-stone-200 dark:bg-stone-800 px-1 py-0.5 rounded">0000-00-0000</span> (Year-Month-Serial number for each fiscal year).
               </li>
               <li>
                 <strong>Date:</strong> Date of preparation of the PO by the <strong>Procurement Staff</strong>.
