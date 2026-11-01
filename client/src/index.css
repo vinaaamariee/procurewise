@@ -799,141 +799,7 @@ button.bg-\[\#9c2525\] svg,
 
 
 
-/* Evaluation document sheet isolation: always white paper with dark text in both themes */
-.evaluation-document-sheet,
-html[data-appearance-theme="dark"] .evaluation-document-sheet,
-html.dark .evaluation-document-sheet {
-  background-color: #ffffff !important;
-  color: #202833 !important;
-  color-scheme: light !important;
-  border-color: #dfd9ce !important;
-}
 
-.evaluation-document-sheet *,
-html[data-appearance-theme="dark"] .evaluation-document-sheet *,
-html.dark .evaluation-document-sheet * {
-  color-scheme: light !important;
-}
-
-/* Force dark text on white paper inside evaluation document sheet in dark mode */
-html[data-appearance-theme="dark"] .evaluation-document-sheet p,
-html.dark .evaluation-document-sheet p,
-html[data-appearance-theme="dark"] .evaluation-document-sheet span,
-html.dark .evaluation-document-sheet span,
-html[data-appearance-theme="dark"] .evaluation-document-sheet label,
-html.dark .evaluation-document-sheet label,
-html[data-appearance-theme="dark"] .evaluation-document-sheet h1,
-html.dark .evaluation-document-sheet h1,
-html[data-appearance-theme="dark"] .evaluation-document-sheet h2,
-html.dark .evaluation-document-sheet h2,
-html[data-appearance-theme="dark"] .evaluation-document-sheet h3,
-html.dark .evaluation-document-sheet h3,
-html[data-appearance-theme="dark"] .evaluation-document-sheet h4,
-html.dark .evaluation-document-sheet h4 {
-  color: #1f2933;
-}
-
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#7b1e1e\],
-html.dark .evaluation-document-sheet .text-\[\#7b1e1e\] {
-  color: #7b1e1e !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#52606d\],
-html.dark .evaluation-document-sheet .text-\[\#52606d\] {
-  color: #52606d !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#3e4855\],
-html.dark .evaluation-document-sheet .text-\[\#3e4855\] {
-  color: #3e4855 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#72561d\],
-html.dark .evaluation-document-sheet .text-\[\#72561d\] {
-  color: #72561d !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#634b1d\],
-html.dark .evaluation-document-sheet .text-\[\#634b1d\] {
-  color: #634b1d !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#222\],
-html.dark .evaluation-document-sheet .text-\[\#222\] {
-  color: #222222 !important;
-}
-
-/* Borders inside evaluation document sheet */
-html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#222\],
-html.dark .evaluation-document-sheet .border-\[\#222\] {
-  border-color: #222222 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#9a6d19\],
-html.dark .evaluation-document-sheet .border-\[\#9a6d19\] {
-  border-color: #9a6d19 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#d8b04d\],
-html.dark .evaluation-document-sheet .border-\[\#d8b04d\] {
-  border-color: #d8b04d !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#d9c28f\],
-html.dark .evaluation-document-sheet .border-\[\#d9c28f\] {
-  border-color: #d9c28f !important;
-}
-
-/* Backgrounds inside evaluation document sheet */
-html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-white,
-html.dark .evaluation-document-sheet .bg-white {
-  background-color: #ffffff !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-\[\#f1f3f5\],
-html.dark .evaluation-document-sheet .bg-\[\#f1f3f5\] {
-  background-color: #f1f3f5 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-\[\#fffaf0\],
-html.dark .evaluation-document-sheet .bg-\[\#fffaf0\] {
-  background-color: #fffaf0 !important;
-}
-
-/* Table rules inside evaluation sheet */
-html[data-appearance-theme="dark"] .evaluation-document-sheet thead,
-html.dark .evaluation-document-sheet thead,
-html[data-appearance-theme="dark"] .evaluation-document-sheet thead tr,
-html.dark .evaluation-document-sheet thead tr {
-  background-color: #ffffff !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet th,
-html.dark .evaluation-document-sheet th {
-  color: #1f2933 !important;
-  border-color: #222222 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet th[colspan],
-html.dark .evaluation-document-sheet th[colspan] {
-  background-color: #f1f3f5 !important;
-  color: #1f2933 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet td,
-html.dark .evaluation-document-sheet td {
-  border-color: #222222 !important;
-  color: #1f2933 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet tr:hover,
-html.dark .evaluation-document-sheet tr:hover {
-  background-color: #fcfaf7 !important;
-}
-
-/* Input and form controls inside evaluation sheet */
-html[data-appearance-theme="dark"] .evaluation-document-sheet input:not([type="button"]):not([type="submit"]),
-html.dark .evaluation-document-sheet input:not([type="button"]):not([type="submit"]),
-html[data-appearance-theme="dark"] .evaluation-document-sheet textarea,
-html.dark .evaluation-document-sheet textarea,
-html[data-appearance-theme="dark"] .evaluation-document-sheet [role="combobox"],
-html.dark .evaluation-document-sheet [role="combobox"],
-html[data-appearance-theme="dark"] .evaluation-document-sheet select,
-html.dark .evaluation-document-sheet select {
-  background-color: transparent !important;
-  color: #1f2933 !important;
-  border-color: #222222 !important;
-}
-html[data-appearance-theme="dark"] .evaluation-document-sheet input[type="radio"],
-html.dark .evaluation-document-sheet input[type="radio"] {
-  accent-color: #8f2424 !important;
-}
 
 /* Dark mode comprehensive coverage for authenticated workspace */
 html[data-appearance-theme="dark"],
@@ -1066,37 +932,37 @@ html.dark .border-\[\#d6c6a2\] {
 }
 
 /* Headings and primary texts in dark mode */
-html[data-appearance-theme="dark"] .text-\[\#17202a\],
-html[data-appearance-theme="dark"] .text-\[\#1f2933\],
-html[data-appearance-theme="dark"] .text-\[\#202833\],
-html[data-appearance-theme="dark"] .text-\[\#303946\],
-html[data-appearance-theme="dark"] .text-\[\#34404e\],
-html[data-appearance-theme="dark"] .text-\[\#3b4654\],
-html[data-appearance-theme="dark"] .text-\[\#3e4855\],
-html[data-appearance-theme="dark"] .text-\[\#3f4a57\],
-html[data-appearance-theme="dark"] .text-\[\#4b5563\],
-html[data-appearance-theme="dark"] .text-\[\#4c5664\],
-html[data-appearance-theme="dark"] .text-\[\#566171\],
-html.dark .text-\[\#17202a\],
-html.dark .text-\[\#1f2933\],
-html.dark .text-\[\#202833\],
-html.dark .text-\[\#303946\],
-html.dark .text-\[\#34404e\],
-html.dark .text-\[\#3b4654\],
-html.dark .text-\[\#3e4855\],
-html.dark .text-\[\#3f4a57\],
-html.dark .text-\[\#4b5563\],
-html.dark .text-\[\#4c5664\],
-html.dark .text-\[\#566171\] {
+html[data-appearance-theme="dark"] .text-\[\#17202a\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#1f2933\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#202833\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#303946\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#34404e\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#3b4654\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#3e4855\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#3f4a57\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#4b5563\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#4c5664\]:not(.evaluation-document-sheet *),
+html[data-appearance-theme="dark"] .text-\[\#566171\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#17202a\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#1f2933\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#202833\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#303946\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#34404e\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#3b4654\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#3e4855\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#3f4a57\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#4b5563\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#4c5664\]:not(.evaluation-document-sheet *),
+html.dark .text-\[\#566171\]:not(.evaluation-document-sheet *) {
   color: var(--app-text) !important;
 }
 
-html[data-appearance-theme="dark"] .text-black:not(.document-canvas *):not(.official-purchase-request *),
+html[data-appearance-theme="dark"] .text-black:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
 html[data-appearance-theme="dark"] .text-\[\#000\]:not(.document-canvas *):not(.official-purchase-request *),
 html[data-appearance-theme="dark"] .text-\[\#000000\]:not(.document-canvas *):not(.official-purchase-request *),
 html[data-appearance-theme="dark"] .text-\[\#222\]:not(.document-canvas *):not(.official-purchase-request *),
 html[data-appearance-theme="dark"] .text-\[\#222222\]:not(.document-canvas *):not(.official-purchase-request *),
-html.dark .text-black:not(.document-canvas *):not(.official-purchase-request *),
+html.dark .text-black:not(.document-canvas *):not(.official-purchase-request *):not(.evaluation-document-sheet *),
 html.dark .text-\[\#000\]:not(.document-canvas *):not(.official-purchase-request *),
 html.dark .text-\[\#000000\]:not(.document-canvas *):not(.official-purchase-request *),
 html.dark .text-\[\#222\]:not(.document-canvas *):not(.official-purchase-request *),
@@ -1248,4 +1114,173 @@ html.dark input:-webkit-autofill:focus {
   caret-color: var(--app-text);
   -webkit-box-shadow: 0 0 0 1000px var(--app-surface) inset !important;
   box-shadow: 0 0 0 1000px var(--app-surface) inset !important;
+}
+
+/* =========================================================================
+   EVALUATION DOCUMENT SHEET: COMPLETE WHITE PAPER & DARK FONT PROTECTION
+   Placed at the end of the stylesheet to win specificity and cascade priority.
+   Guarantees that the paper stays white and letters stay dark & clearly visible in dark mode.
+   ========================================================================= */
+
+.evaluation-document-sheet,
+html[data-appearance-theme="dark"] .evaluation-document-sheet,
+html.dark .evaluation-document-sheet {
+  background-color: #ffffff !important;
+  color: #1f2933 !important;
+  color-scheme: light !important;
+  border-color: #dfd9ce !important;
+}
+
+.evaluation-document-sheet *,
+html[data-appearance-theme="dark"] .evaluation-document-sheet *,
+html.dark .evaluation-document-sheet * {
+  color-scheme: light !important;
+}
+
+/* Force all text inside evaluation-document-sheet to be dark and readable */
+html[data-appearance-theme="dark"] .evaluation-document-sheet p,
+html.dark .evaluation-document-sheet p,
+html[data-appearance-theme="dark"] .evaluation-document-sheet span,
+html.dark .evaluation-document-sheet span,
+html[data-appearance-theme="dark"] .evaluation-document-sheet label,
+html.dark .evaluation-document-sheet label,
+html[data-appearance-theme="dark"] .evaluation-document-sheet h1,
+html.dark .evaluation-document-sheet h1,
+html[data-appearance-theme="dark"] .evaluation-document-sheet h2,
+html.dark .evaluation-document-sheet h2,
+html[data-appearance-theme="dark"] .evaluation-document-sheet h3,
+html.dark .evaluation-document-sheet h3,
+html[data-appearance-theme="dark"] .evaluation-document-sheet h4,
+html.dark .evaluation-document-sheet h4,
+html[data-appearance-theme="dark"] .evaluation-document-sheet div,
+html.dark .evaluation-document-sheet div {
+  color: #1f2933;
+}
+
+/* Specific text color classes on the paper */
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#202833\],
+html.dark .evaluation-document-sheet .text-\[\#202833\],
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#1f2933\],
+html.dark .evaluation-document-sheet .text-\[\#1f2933\],
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-black,
+html.dark .evaluation-document-sheet .text-black,
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#000\],
+html.dark .evaluation-document-sheet .text-\[\#000\],
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#000000\],
+html.dark .evaluation-document-sheet .text-\[\#000000\],
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#222\],
+html.dark .evaluation-document-sheet .text-\[\#222\],
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#222222\],
+html.dark .evaluation-document-sheet .text-\[\#222222\] {
+  color: #1f2933 !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#7b1e1e\],
+html.dark .evaluation-document-sheet .text-\[\#7b1e1e\] {
+  color: #7b1e1e !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#52606d\],
+html.dark .evaluation-document-sheet .text-\[\#52606d\] {
+  color: #52606d !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#3e4855\],
+html.dark .evaluation-document-sheet .text-\[\#3e4855\] {
+  color: #3e4855 !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#72561d\],
+html.dark .evaluation-document-sheet .text-\[\#72561d\] {
+  color: #72561d !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet .text-\[\#634b1d\],
+html.dark .evaluation-document-sheet .text-\[\#634b1d\] {
+  color: #634b1d !important;
+}
+
+/* Borders inside evaluation document sheet */
+html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#222\],
+html.dark .evaluation-document-sheet .border-\[\#222\] {
+  border-color: #222222 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#9a6d19\],
+html.dark .evaluation-document-sheet .border-\[\#9a6d19\] {
+  border-color: #9a6d19 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#d8b04d\],
+html.dark .evaluation-document-sheet .border-\[\#d8b04d\] {
+  border-color: #d8b04d !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet .border-\[\#d9c28f\],
+html.dark .evaluation-document-sheet .border-\[\#d9c28f\] {
+  border-color: #d9c28f !important;
+}
+
+/* Backgrounds inside evaluation document sheet */
+html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-white,
+html.dark .evaluation-document-sheet .bg-white {
+  background-color: #ffffff !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-\[\#f1f3f5\],
+html.dark .evaluation-document-sheet .bg-\[\#f1f3f5\] {
+  background-color: #f1f3f5 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet .bg-\[\#fffaf0\],
+html.dark .evaluation-document-sheet .bg-\[\#fffaf0\] {
+  background-color: #fffaf0 !important;
+}
+
+/* Table rules inside evaluation sheet */
+html[data-appearance-theme="dark"] .evaluation-document-sheet table,
+html.dark .evaluation-document-sheet table,
+html[data-appearance-theme="dark"] .evaluation-document-sheet thead,
+html.dark .evaluation-document-sheet thead,
+html[data-appearance-theme="dark"] .evaluation-document-sheet thead tr,
+html.dark .evaluation-document-sheet thead tr {
+  background-color: #ffffff !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet th,
+html.dark .evaluation-document-sheet th {
+  color: #1f2933 !important;
+  border-color: #222222 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet th[colspan],
+html.dark .evaluation-document-sheet th[colspan] {
+  background-color: #f1f3f5 !important;
+  color: #1f2933 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet td,
+html.dark .evaluation-document-sheet td {
+  border-color: #222222 !important;
+  color: #1f2933 !important;
+}
+html[data-appearance-theme="dark"] .evaluation-document-sheet tr:hover,
+html.dark .evaluation-document-sheet tr:hover {
+  background-color: #fcfaf7 !important;
+}
+
+/* Input and form controls inside evaluation sheet */
+html[data-appearance-theme="dark"] .evaluation-document-sheet input:not([type="button"]):not([type="submit"]),
+html.dark .evaluation-document-sheet input:not([type="button"]):not([type="submit"]),
+html[data-appearance-theme="dark"] .evaluation-document-sheet textarea,
+html.dark .evaluation-document-sheet textarea,
+html[data-appearance-theme="dark"] .evaluation-document-sheet [role="combobox"],
+html.dark .evaluation-document-sheet [role="combobox"],
+html[data-appearance-theme="dark"] .evaluation-document-sheet select,
+html.dark .evaluation-document-sheet select {
+  background-color: transparent !important;
+  color: #1f2933 !important;
+  border-color: #222222 !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet [role="combobox"] span,
+html.dark .evaluation-document-sheet [role="combobox"] span {
+  color: #1f2933 !important;
+}
+
+html[data-appearance-theme="dark"] .evaluation-document-sheet input[type="radio"],
+html.dark .evaluation-document-sheet input[type="radio"] {
+  accent-color: #8f2424 !important;
 }
