@@ -105,7 +105,7 @@ export function OfficerReleasingPage({
 
     for (const n of notices) {
       if (n.status === "served") servedNotices++;
-      else pendingNotices++;
+      else if (n.noticeType !== "award" || n.status === "issued" || n.status === "approved") pendingNotices++;
     }
 
     for (const p of poItems) {
@@ -306,11 +306,11 @@ export function OfficerReleasingPage({
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Notice Number</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Notice Number</th>
                   <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Type & Subject</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Date Issued</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Service Status</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Date Issued</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Service Status</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -323,13 +323,22 @@ export function OfficerReleasingPage({
                 ) : (
                   notices.map((n) => {
                     const isServed = n.status === "served";
+                    const isAwaitingHope =
+                      !isServed &&
+                      n.noticeType === "award" &&
+                      n.status !== "issued" &&
+                      n.status !== "approved";
+                    const hasLinkedPo = Boolean(
+                      n.purchaseRequestId &&
+                        poItems.some((p) => p.order.purchaseRequestId === n.purchaseRequestId)
+                    );
 
                     return (
                       <tr key={n.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
                           {n.noticeNumber}
                         </td>
-                        <td className="px-4 py-3 max-w-[260px]">
+                        <td className="px-4 py-3 min-w-[160px] max-w-[240px]">
                           <Badge variant="outline" className="text-[10px] uppercase font-semibold mb-1 border-slate-300">
                             {n.noticeType}
                           </Badge>
@@ -337,44 +346,85 @@ export function OfficerReleasingPage({
                             {n.subject}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-400">
                           {n.issuedAt ? new Date(n.issuedAt).toLocaleDateString("en-PH") : new Date(n.createdAt).toLocaleDateString("en-PH")}
                         </td>
                         <td className="px-4 py-3">
                           {isServed ? (
-                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Served to Supplier
+                            <div>
+                              <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
+                                <CheckCircle2 className="mr-1 h-3 w-3" /> Served to Supplier
+                              </Badge>
+                              {(n.recipientName || n.servedAt) && (
+                                <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={n.recipientName ? `Received by ${n.recipientName}` : undefined}>
+                                  {n.recipientName ? `Rcvd: ${n.recipientName}` : ""}
+                                  {n.recipientName && n.servedAt ? " · " : ""}
+                                  {n.servedAt ? new Date(n.servedAt).toLocaleDateString("en-PH") : ""}
+                                </div>
+                              )}
+                            </div>
+                          ) : isAwaitingHope ? (
+                            <Badge variant="outline" className="whitespace-nowrap border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-[10px]">
+                              <Clock className="mr-1 h-3 w-3" /> Awaiting HoPE Approval
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
+                            <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                               <Clock className="mr-1 h-3 w-3" /> Awaiting Service
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="whitespace-nowrap px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <Link href={`/print/notice?noticeNumber=${n.noticeNumber}`}>
-                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                              <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs gap-1">
                                 <Printer className="h-3 w-3" />
                                 Print
                               </Button>
                             </Link>
                             {isServed ? (
-                              <Link href="/purchase-orders">
+                              hasLinkedPo ? (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
-                                  title="Letter served by PO. Procurement Staff can now prepare the Purchase Order"
+                                  onClick={() => setActiveTab("pos")}
+                                  className="h-7 px-2.5 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                                  title="View or release the Purchase Order for this award"
                                 >
-                                  Prepare PO (Staff) →
+                                  PO Queue →
                                 </Button>
-                              </Link>
+                              ) : role === "admin" ? (
+                                <Link href="/purchase-orders">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                                    title="Open Purchase Order preparation"
+                                  >
+                                    Prepare PO →
+                                  </Button>
+                                </Link>
+                              ) : (
+                                <span
+                                  className="inline-flex h-7 items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"
+                                  title="Notice served. Procurement Staff will now draft the Purchase Order."
+                                >
+                                  Awaiting Staff PO
+                                </span>
+                              )
+                            ) : isAwaitingHope ? (
+                              <Button
+                                size="sm"
+                                disabled
+                                className="h-7 px-2.5 text-xs bg-slate-100 text-slate-400 dark:bg-slate-800"
+                                title="HoPE must approve the Notice of Award before it can be served"
+                              >
+                                Pending HoPE
+                              </Button>
                             ) : (
                               <Button
                                 size="sm"
                                 onClick={() => handleOpenServeNotice(n)}
-                                className="h-7 text-xs bg-[#881337] hover:bg-[#70102e] text-white"
+                                className="h-7 px-2.5 text-xs bg-[#881337] hover:bg-[#70102e] text-white"
                               >
                                 <Send className="mr-1 h-3 w-3" />
                                 Serve Notice
@@ -404,12 +454,12 @@ export function OfficerReleasingPage({
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & Date</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & Date</th>
                   <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Awarded Supplier</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PR Reference</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Release Status</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PR Reference</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Release Status</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -427,58 +477,58 @@ export function OfficerReleasingPage({
 
                     return (
                       <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
                           {po.poNumber}
                           <div className="text-[11px] text-slate-500 font-normal">
                             {new Date(po.createdAt).toLocaleDateString("en-PH")}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-800 dark:text-slate-200">
+                        <td className="px-4 py-3 min-w-[160px] max-w-[240px]">
+                          <div className="truncate font-medium text-slate-800 dark:text-slate-200" title={item.supplier?.companyName || "Supplier #" + po.supplierId}>
                             {item.supplier?.companyName || "Supplier #" + po.supplierId}
                           </div>
                           {item.supplier?.contactPerson && (
-                            <div className="text-[11px] text-slate-500">{item.supplier.contactPerson}</div>
+                            <div className="truncate text-[11px] text-slate-500">{item.supplier.contactPerson}</div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
                           {item.purchaseRequest?.prNumber || "PR #" + po.purchaseRequestId}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
                           {formatMoney(po.totalAmount)}
                         </td>
                         <td className="px-4 py-3">
                           {isReleased ? (
                             <div>
-                              <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
+                              <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
                                 <CheckCircle2 className="mr-1 h-3 w-3" /> Released to Supplier
                               </Badge>
                               {item.releaseDetails?.releasedAt && (
-                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                <div className="text-[10px] text-slate-500 mt-0.5 whitespace-nowrap">
                                   {new Date(item.releaseDetails.releasedAt).toLocaleDateString("en-PH")} via {item.releaseDetails.releaseMode?.replace("_", " ")}
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
+                            <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
                               <Clock className="mr-1 h-3 w-3" />
-                              {isReadyForRelease ? "Ready for Releasing" : "Awaiting Contract Signatures"}
+                              {isReadyForRelease ? "Ready for Releasing" : "Awaiting Signatures"}
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="whitespace-nowrap px-4 py-3 text-right">
                           <Button
                             size="sm"
                             disabled={isReleased || !isReadyForRelease}
                             onClick={() => handleOpenReleasePo(item)}
-                            className={`h-7 text-xs ${
+                            className={`h-7 px-2.5 text-xs ${
                               isReleased
                                 ? "bg-slate-100 text-slate-400 dark:bg-slate-800"
                                 : "bg-[#881337] hover:bg-[#70102e] text-white"
                             }`}
                           >
                             <FileCheck2 className="mr-1 h-3 w-3" />
-                            {isReleased ? "Released" : isReadyForRelease ? "Release to Supplier" : "Awaiting Signatures"}
+                            {isReleased ? "Released" : isReadyForRelease ? "Release PO" : "Awaiting Signatures"}
                           </Button>
                         </td>
                       </tr>
