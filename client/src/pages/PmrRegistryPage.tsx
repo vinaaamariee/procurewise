@@ -29,8 +29,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DataTableToolbar } from "@/components/common/DataTableToolbar";
+import { TablePagination } from "@/components/common/TablePagination";
 
 export function PmrRegistryPage() {
   const { user } = useAuth();
@@ -40,6 +42,9 @@ export function PmrRegistryPage() {
 
   const [activeTab, setActiveTab] = useState<"pending" | "register">("pending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<number>(new Date().getFullYear());
 
   // Dialog states
@@ -119,15 +124,57 @@ export function PmrRegistryPage() {
   const prList = prsQuery.data ?? [];
 
   // Filter PRs for Pending PMR Recording tab
-  const filteredPrs = prList.filter((pr) => {
+  const allUnrecordedPrs = prList.filter((pr) => !recordedPrIds.has(pr.id) && pr.status !== "pmr_logged" && pr.status !== "closed");
+  const alreadyRecorded = prList.filter((pr) => recordedPrIds.has(pr.id) || pr.status === "pmr_logged" || pr.status === "closed");
+
+  const pendingRecording = allUnrecordedPrs.filter((pr) => {
+    const isVerified = Boolean(pr.procurementReviewedById) || !["draft", "submitted", "procurement_review"].includes(pr.status);
+    if (statusFilter === "verified" && !isVerified) return false;
+    if (statusFilter === "officer_pending" && isVerified) return false;
+
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     const officeName = officeMap.get(pr.officeId)?.name.toLowerCase() || "";
-    return pr.prNumber.toLowerCase().includes(q) || pr.purpose.toLowerCase().includes(q) || officeName.includes(q);
+    const officeCode = officeMap.get(pr.officeId)?.code.toLowerCase() || "";
+    const trackingToken = pr.trackingToken?.toLowerCase() || "";
+    return (
+      pr.prNumber.toLowerCase().includes(q) ||
+      pr.purpose.toLowerCase().includes(q) ||
+      officeName.includes(q) ||
+      officeCode.includes(q) ||
+      trackingToken.includes(q)
+    );
   });
 
-  const pendingRecording = filteredPrs.filter((pr) => !recordedPrIds.has(pr.id) && pr.status !== "pmr_logged" && pr.status !== "closed");
-  const alreadyRecorded = filteredPrs.filter((pr) => recordedPrIds.has(pr.id) || pr.status === "pmr_logged" || pr.status === "closed");
+  const allHistoricalPmr = pmrListQuery.data ?? [];
+  const filteredHistoricalPmr = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return allHistoricalPmr.filter((rec) => {
+      if (statusFilter !== "ALL" && (rec.status || "Recorded") !== statusFilter) return false;
+      if (!q) return true;
+      const code = (rec.recordKey || `PMR-${rec.id}`).toLowerCase();
+      const title = (rec.item || rec.purpose || rec.prNumber || "").toLowerCase();
+      const prRef = (rec.prNumber || "").toLowerCase();
+      const office = (rec.office || rec.endUser || "").toLowerCase();
+      return code.includes(q) || title.includes(q) || prRef.includes(q) || office.includes(q);
+    });
+  }, [allHistoricalPmr, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, activeTab, selectedFiscalYear]);
+
+  const totalPendingPages = Math.max(1, Math.ceil(pendingRecording.length / itemsPerPage));
+  const paginatedPendingRecording = pendingRecording.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalRegisterPages = Math.max(1, Math.ceil(filteredHistoricalPmr.length / itemsPerPage));
+  const paginatedHistoricalPmr = filteredHistoricalPmr.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
   const recordedPmrEntries = (pmrAuditsQuery.data?.items ?? []).flatMap((audit) => {
     const details = audit.details && typeof audit.details === "object"
       ? audit.details as Record<string, unknown>
@@ -266,149 +313,166 @@ export function PmrRegistryPage() {
             </button>
           </div>
 
-          {/* Search bar */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by PR number, purpose, or office..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-          </div>
+          {/* Reusable Excel-Style Search, Filter & Pagination Toolbar */}
+          <DataTableToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search by PR number, tracking token, purpose, or requesting office..."
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={[
+              { label: `All Unrecorded PRs (${allUnrecordedPrs.length})`, value: "ALL" },
+              { label: "Verified by Officer (Ready to Record)", value: "verified" },
+              { label: "Awaiting Officer Verification", value: "officer_pending" },
+            ]}
+            totalCount={allUnrecordedPrs.length}
+            filteredCount={pendingRecording.length}
+          />
 
           {/* PR Queue Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3.5 font-semibold">PR Number &amp; Purpose</th>
-                    <th className="px-4 py-3.5 font-semibold">Requesting Office</th>
-                    <th className="px-4 py-3.5 font-semibold">Approved Budget (ABC)</th>
-                    <th className="px-4 py-3.5 font-semibold">Officer Verification</th>
-                    <th className="px-4 py-3.5 font-semibold">PMR Status</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {prsQuery.isLoading ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                        <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
-                        <span className="mt-2 block text-xs">Loading purchase requests...</span>
-                      </td>
-                    </tr>
-                  ) : pendingRecording.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                        <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                        <p className="mt-2 text-sm font-medium">No purchase requests pending PMR recording</p>
-                        <p className="text-xs text-muted-foreground">All active PRs have either been logged or none match your search criteria.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    pendingRecording.map((pr) => {
-                      const isVerified = Boolean(pr.procurementReviewedById) || !["draft", "submitted", "procurement_review"].includes(pr.status);
-                      const office = officeMap.get(pr.officeId);
+          <div className="rounded-xl border border-border bg-card p-4 overflow-hidden shadow-sm">
+            {prsQuery.isLoading ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
+                <span className="mt-2 block text-sm">Loading purchase requests...</span>
+              </div>
+            ) : pendingRecording.length === 0 ? (
+              <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                  No matching records found
+                </p>
+                <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+                  We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("ALL");
+                  }}
+                  className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+                >
+                  Clear Filters & Show All Records
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-base">
+                    <thead className="border-b-2 border-border bg-muted/40 text-sm uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3.5 font-semibold">PR Number &amp; Purpose</th>
+                        <th className="px-4 py-3.5 font-semibold">Requesting Office</th>
+                        <th className="px-4 py-3.5 font-semibold">Approved Budget (ABC)</th>
+                        <th className="px-4 py-3.5 font-semibold">Officer Verification</th>
+                        <th className="px-4 py-3.5 font-semibold">PMR Status</th>
+                        <th className="px-4 py-3.5 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {paginatedPendingRecording.map((pr) => {
+                        const isVerified = Boolean(pr.procurementReviewedById) || !["draft", "submitted", "procurement_review"].includes(pr.status);
+                        const office = officeMap.get(pr.officeId);
 
-                      return (
-                        <tr key={pr.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3.5">
-                            <div className="font-semibold text-rose-700 dark:text-rose-400 font-mono">
-                              {pr.prNumber}
-                            </div>
-                            <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                              {pr.purpose}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                            {office ? `${office.code} - ${office.name}` : `Office #${pr.officeId}`}
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-foreground">
-                            {formatCurrency(pr.totalEstimate)}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            {isVerified ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Verified by Officer
+                        return (
+                          <tr key={pr.id} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-3.5">
+                              <div className="font-semibold text-rose-700 dark:text-rose-400 font-mono">
+                                {pr.prNumber}
+                              </div>
+                              <div className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                                {pr.purpose}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5 text-sm text-muted-foreground">
+                              {office ? `${office.code} - ${office.name}` : `Office #${pr.officeId}`}
+                            </td>
+                            <td className="px-4 py-3.5 font-medium text-foreground">
+                              {formatCurrency(pr.totalEstimate)}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {isVerified ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Verified by Officer
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-sm font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                  <Clock className="h-4 w-4" />
+                                  Officer Pending
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-sm font-medium text-muted-foreground">
+                                Unrecorded
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                                <Clock className="h-3.5 w-3.5" />
-                                Officer Pending
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                              Unrecorded
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={() => setSelectedPrId(pr.id)}
-                              >
-                                View PR &amp; PPMP
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs gap-1"
-                                onClick={() =>
-                                  setTrackingSlipPr({
-                                    id: pr.id,
-                                    prNumber: pr.prNumber,
-                                    trackingToken: pr.trackingToken,
-                                    purpose: pr.purpose,
-                                    totalEstimate: pr.totalEstimate,
-                                    createdAt: pr.createdAt,
-                                  })
-                                }
-                              >
-                                <QrCode className="h-3 w-3" />
-                                Tracking Slip
-                              </Button>
-
-                              {isStaffOrOfficer && (
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Button
-                                  size="sm"
-                                  disabled={!isVerified}
+                                  variant="outline"
+                                  className="min-h-12 px-4 text-base font-bold"
+                                  onClick={() => setSelectedPrId(pr.id)}
+                                >
+                                  View PR &amp; PPMP
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  className="min-h-12 px-4 text-base font-bold gap-1.5"
                                   onClick={() =>
-                                    setRecordPmrPr({
+                                    setTrackingSlipPr({
                                       id: pr.id,
                                       prNumber: pr.prNumber,
+                                      trackingToken: pr.trackingToken,
                                       purpose: pr.purpose,
-                                      isVerified,
+                                      totalEstimate: pr.totalEstimate,
+                                      createdAt: pr.createdAt,
                                     })
                                   }
-                                  className={`h-7 text-xs ${
-                                    isVerified
-                                      ? "bg-rose-700 hover:bg-rose-800 text-white"
-                                      : "bg-muted text-muted-foreground cursor-not-allowed"
-                                  }`}
-                                  title={!isVerified ? "Officer verification required before recording to PMR" : "Record PR to PMR"}
                                 >
-                                  Record to PMR
+                                  <QrCode className="h-4 w-4" />
+                                  Tracking Slip
                                 </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+                                {isStaffOrOfficer && (
+                                  <Button
+                                    disabled={!isVerified}
+                                    onClick={() =>
+                                      setRecordPmrPr({
+                                        id: pr.id,
+                                        prNumber: pr.prNumber,
+                                        purpose: pr.purpose,
+                                        isVerified,
+                                      })
+                                    }
+                                    className={`min-h-12 px-4 text-base font-bold ${
+                                      isVerified
+                                        ? "bg-[#881337] hover:bg-[#6b0f2b] text-white"
+                                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                                    }`}
+                                    title={!isVerified ? "Officer verification required before recording to PMR" : "Record PR to PMR"}
+                                  >
+                                    Record to PMR
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPendingPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
+            )}
           </div>
         </div>
       )}
@@ -496,20 +560,20 @@ export function PmrRegistryPage() {
           )}
 
           {/* Historical Register Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-xl border border-border bg-card p-4 overflow-hidden shadow-sm">
+            <div className="pb-4 border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-semibold text-foreground">Official PMR Transactions</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-base font-bold text-foreground">Official PMR Transactions</h3>
+                <p className="text-sm text-muted-foreground">
                   Official Procurement Monitoring Report registry entries compliant with GPPB Form standards.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium text-muted-foreground">Fiscal Year:</Label>
+                <Label className="text-sm font-semibold text-muted-foreground">Fiscal Year:</Label>
                 <select
                   value={selectedFiscalYear}
                   onChange={(e) => setSelectedFiscalYear(Number(e.target.value))}
-                  className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="min-h-12 rounded-xl border-2 border-slate-300 bg-background px-4 text-base font-medium text-foreground focus:border-[#881337] focus:outline-none dark:border-slate-700"
                 >
                   {[2026, 2025, 2024, 2023].map((yr) => (
                     <option key={yr} value={yr}>
@@ -520,72 +584,104 @@ export function PmrRegistryPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3.5 font-semibold">PMR Code</th>
-                    <th className="px-4 py-3.5 font-semibold">Project Title / PR Reference</th>
-                    <th className="px-4 py-3.5 font-semibold">End-User / Office</th>
-                    <th className="px-4 py-3.5 font-semibold">Mode of Procurement</th>
-                    <th className="px-4 py-3.5 font-semibold">Total ABC</th>
-                    <th className="px-4 py-3.5 font-semibold">Contract Cost</th>
-                    <th className="px-4 py-3.5 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {pmrListQuery.isLoading ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                        <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
-                        <span className="mt-2 block text-xs">Loading PMR records...</span>
-                      </td>
-                    </tr>
-                  ) : !pmrListQuery.data || pmrListQuery.data.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                        <FileSpreadsheet className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                        <p className="mt-2 text-sm font-medium">No PMR records found for FY {selectedFiscalYear}</p>
-                        <p className="text-xs text-muted-foreground">Record verified PRs from the queue above to populate this register.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    pmrListQuery.data.map((rec) => (
-                      <tr key={rec.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3.5 font-mono text-xs font-semibold text-rose-700 dark:text-rose-400">
-                          {rec.recordKey || `PMR-${rec.id}`}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="font-medium text-foreground text-xs">{rec.item || rec.purpose || rec.prNumber}</div>
-                          {rec.prNumber && (
-                            <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                              Ref: {rec.prNumber}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                          {rec.office || rec.endUser || "—"}
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                          {rec.modality || "Small Value Procurement (Sec. 53.9)"}
-                        </td>
-                        <td className="px-4 py-3.5 font-medium text-xs text-foreground">
-                          {formatCurrency(rec.estimatedTotal)}
-                        </td>
-                        <td className="px-4 py-3.5 font-medium text-xs text-emerald-700 dark:text-emerald-400">
-                          {formatCurrency(rec.total)}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                            {rec.status || "Recorded"}
-                          </span>
-                        </td>
+            <DataTableToolbar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search by PMR code, project title, PR reference, or office..."
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              statusOptions={[
+                { label: `All PMR Entries (${allHistoricalPmr.length})`, value: "ALL" },
+                { label: "Recorded", value: "Recorded" },
+                { label: "Completed", value: "Completed" },
+              ]}
+              totalCount={allHistoricalPmr.length}
+              filteredCount={filteredHistoricalPmr.length}
+            />
+
+            {pmrListQuery.isLoading ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
+                <span className="mt-2 block text-sm">Loading PMR records...</span>
+              </div>
+            ) : filteredHistoricalPmr.length === 0 ? (
+              <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                  No matching records found
+                </p>
+                <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+                  We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("ALL");
+                  }}
+                  className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+                >
+                  Clear Filters & Show All Records
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-base">
+                    <thead className="border-b-2 border-border bg-muted/40 text-sm uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3.5 font-semibold">PMR Code</th>
+                        <th className="px-4 py-3.5 font-semibold">Project Title / PR Reference</th>
+                        <th className="px-4 py-3.5 font-semibold">End-User / Office</th>
+                        <th className="px-4 py-3.5 font-semibold">Mode of Procurement</th>
+                        <th className="px-4 py-3.5 font-semibold">Total ABC</th>
+                        <th className="px-4 py-3.5 font-semibold">Contract Cost</th>
+                        <th className="px-4 py-3.5 font-semibold">Status</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {paginatedHistoricalPmr.map((rec) => (
+                        <tr key={rec.id} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-3.5 font-mono text-base font-semibold text-rose-700 dark:text-rose-400">
+                            {rec.recordKey || `PMR-${rec.id}`}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="font-medium text-foreground text-base">{rec.item || rec.purpose || rec.prNumber}</div>
+                            {rec.prNumber && (
+                              <div className="text-sm font-mono text-muted-foreground mt-0.5">
+                                Ref: {rec.prNumber}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-muted-foreground">
+                            {rec.office || rec.endUser || "—"}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-muted-foreground">
+                            {rec.modality || "Small Value Procurement (Sec. 53.9)"}
+                          </td>
+                          <td className="px-4 py-3.5 font-medium text-base text-foreground">
+                            {formatCurrency(rec.estimatedTotal)}
+                          </td>
+                          <td className="px-4 py-3.5 font-medium text-base text-emerald-700 dark:text-emerald-400">
+                            {formatCurrency(rec.total)}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                              {rec.status || "Recorded"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalRegisterPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
+            )}
           </div>
         </div>
       )}
