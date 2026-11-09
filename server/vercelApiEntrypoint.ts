@@ -12,8 +12,12 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 registerStorageProxy(app);
 
-// Preserve incoming path if rewritten by Vercel
-app.use((req, _res, next) => {
+export function resolveRewrittenUrl(req: {
+  url?: string;
+  originalUrl?: string;
+  query?: Record<string, unknown>;
+  headers: Record<string, string | string[] | undefined>;
+}): string {
   const queryPath = typeof req.query?.x_path === "string" ? req.query.x_path : null;
   const forwardedUri = typeof req.headers["x-forwarded-uri"] === "string" ? req.headers["x-forwarded-uri"] : null;
   const originalUrl = typeof req.headers["x-original-url"] === "string" ? req.headers["x-original-url"] : null;
@@ -22,15 +26,37 @@ app.use((req, _res, next) => {
 
   const candidate = queryPath
     ? (queryPath.startsWith("/") ? queryPath : `/${queryPath}`)
-    : (forwardedUri || originalUrl || matchedPath || vercelMatched || req.url);
+    : (forwardedUri || originalUrl || matchedPath || vercelMatched || req.url || "");
 
-  if (candidate) {
-    if (candidate.includes("/trpc")) {
-      const idx = candidate.indexOf("/trpc");
-      req.url = candidate.slice(idx);
-    } else if (candidate.includes("/health")) {
-      req.url = "/health";
-    }
+  // Preserve query parameters (such as ?batch=1&input=...) from the incoming request
+  const rawUrl = (req.url && req.url.includes("?"))
+    ? req.url
+    : (req.originalUrl && req.originalUrl.includes("?") ? req.originalUrl : "");
+  let queryString = "";
+  const qIdx = rawUrl.indexOf("?");
+  if (qIdx !== -1) {
+    const sp = new URLSearchParams(rawUrl.slice(qIdx + 1));
+    sp.delete("x_path");
+    const qs = sp.toString();
+    if (qs) queryString = `?${qs}`;
+  }
+
+  const pathPart = candidate.split("?")[0];
+  if (pathPart.includes("/trpc")) {
+    const idx = pathPart.indexOf("/trpc");
+    return `${pathPart.slice(idx)}${queryString}`;
+  }
+  if (pathPart.includes("/health")) {
+    return `/health${queryString}`;
+  }
+  return req.url || "";
+}
+
+// Preserve incoming path and query parameters if rewritten by Vercel
+app.use((req, _res, next) => {
+  const resolved = resolveRewrittenUrl(req);
+  if (resolved) {
+    req.url = resolved;
   }
   next();
 });
