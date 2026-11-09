@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { AuditHistoryDrawer, QuietCompliancePill } from "@/components/compliance";
 import { trpc } from "@/lib/trpc";
 import { normalizeProcurementRole } from "../../../shared/procurementRules";
 import {
@@ -178,6 +179,14 @@ export function OfficerReleasingPage({
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div className="mb-3">
+          <QuietCompliancePill
+            stepNumber={activeTab === "notices" ? "Step 10 of 15" : "Step 13 of 15"}
+            procedureRef={activeTab === "notices" ? "BSC-PRO-QP-95-1 §5.10" : "BSC-PRO-QP-95-1 §5.13"}
+            annexForm={activeTab === "notices" ? "Letter of Notice (Annex G)" : "Purchase Order (Annex H)"}
+            role="Procurement Officer I"
+          />
+        </div>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2.5">
@@ -541,48 +550,91 @@ export function OfficerReleasingPage({
         </div>
       )}
 
+      {/* Compliance & Audit History Drawer (Closed by Default) */}
+      <AuditHistoryDrawer
+        procedureCode="BSC – PRO -QP- 95 – 1 (Rev. 00)"
+        mandatedStep={
+          activeTab === "notices"
+            ? "Step 5.10 · Procurement Officer I"
+            : "Step 5.13 · Procurement Officer I"
+        }
+        standardAttachment={
+          activeTab === "notices"
+            ? "Annex G (Letter of Notice)"
+            : "Annex H / GAM Appendix 61 (Purchase Order)"
+        }
+        historyEvents={
+          activeTab === "notices"
+            ? notices
+                .filter((n) => n.status === "served")
+                .slice(0, 5)
+                .map((n) => ({
+                  timestamp: n.servedAt
+                    ? new Date(n.servedAt).toLocaleDateString("en-PH")
+                    : new Date(n.updatedAt).toLocaleDateString("en-PH"),
+                  actor: n.recipientName || "Supplier Representative",
+                  action: `Served Notice ${n.noticeNumber} (${n.subject}) via ${(n.deliveryMode || "hand_delivery").replace("_", " ")}`,
+                }))
+            : poItems
+                .filter((p) => p.isReleased)
+                .slice(0, 5)
+                .map((p) => ({
+                  timestamp: p.releaseDetails?.releasedAt
+                    ? new Date(p.releaseDetails.releasedAt).toLocaleDateString("en-PH")
+                    : new Date(p.order.createdAt).toLocaleDateString("en-PH"),
+                  actor: p.supplier?.companyName || `Supplier #${p.order.supplierId}`,
+                  action: `Released ${p.order.poNumber} via ${(p.releaseDetails?.releaseMode || "in_person_pickup").replace("_", " ")}`,
+                }))
+        }
+      />
+
       {/* Serve Notice Modal */}
       {selectedNoticeForServe && (
         <Dialog open={Boolean(selectedNoticeForServe)} onOpenChange={(open) => !open && setSelectedNoticeForServe(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
+              <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
                 Serve Letter of Notice to Supplier
               </DialogTitle>
-              <DialogDescription className="text-xs">
+              <DialogDescription className="text-sm">
                 Notice: {selectedNoticeForServe.noticeNumber} · {selectedNoticeForServe.subject}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 pt-2 text-xs">
+            <div className="space-y-4 pt-2 text-base">
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Recipient Name / Supplier Representative: <span className="text-rose-500">*</span>
+                <Label
+                  required
+                  sublabel="Write the full name of the supplier representative who signed your receiving copy."
+                >
+                  Full Name of Recipient / Supplier Representative
                 </Label>
                 <Input
                   value={noticeRecipient}
                   onChange={(e) => setNoticeRecipient(e.target.value)}
-                  placeholder="Full name of recipient"
-                  className="mt-1 h-8 text-xs"
+                  placeholder="e.g., Roberto V. Santos (Store Manager)"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Date Served:</Label>
+                <Label sublabel="Select the date the Letter of Notice was delivered.">
+                  Date Served
+                </Label>
                 <Input
                   type="date"
                   value={noticeServeDate}
                   onChange={(e) => setNoticeServeDate(e.target.value)}
-                  className="mt-1 h-8 text-xs"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Delivery Mode:</Label>
+                <Label sublabel="Choose how the document was delivered to the supplier.">
+                  Delivery Mode
+                </Label>
                 <select
                   value={noticeDeliveryMode}
                   onChange={(e) => setNoticeDeliveryMode(e.target.value as any)}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs shadow-xs dark:border-slate-700 dark:bg-slate-800"
+                  className="min-h-12 w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 >
                   <option value="hand_delivery">Hand Delivery / Personal Service</option>
                   <option value="courier">Courier Service</option>
@@ -592,27 +644,26 @@ export function OfficerReleasingPage({
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Remarks / Proof Details:</Label>
+                <Label sublabel="Optional: Enter receiving copy details, tracking number, or transmittal notes.">
+                  Remarks / Proof Details
+                </Label>
                 <Textarea
                   value={noticeRemarks}
                   onChange={(e) => setNoticeRemarks(e.target.value)}
-                  placeholder="Receiving copy details, tracking number, or transmittal notes..."
-                  className="mt-1 text-xs min-h-[70px]"
+                  placeholder="e.g., Signed receiving copy on file, or courier tracking number..."
                 />
               </div>
             </div>
 
-            <DialogFooter className="mt-3">
-              <Button variant="outline" size="sm" onClick={() => setSelectedNoticeForServe(null)} className="text-xs">
+            <DialogFooter className="mt-4 gap-3">
+              <Button variant="outline" onClick={() => setSelectedNoticeForServe(null)}>
                 Cancel
               </Button>
               <Button
-                size="sm"
                 disabled={serveNoticeMutation.isPending || !noticeRecipient.trim()}
                 onClick={handleConfirmServeNotice}
-                className="text-xs bg-[#881337] hover:bg-[#70102e] text-white"
               >
-                {serveNoticeMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {serveNoticeMutation.isPending && <LoaderCircle className="mr-1.5 h-5 w-5 animate-spin" />}
                 Confirm Service
               </Button>
             </DialogFooter>
@@ -623,45 +674,50 @@ export function OfficerReleasingPage({
       {/* Release PO Modal */}
       {selectedPoForRelease && (
         <Dialog open={Boolean(selectedPoForRelease)} onOpenChange={(open) => !open && setSelectedPoForRelease(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
+              <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
                 Release Purchase Order to Supplier
               </DialogTitle>
-              <DialogDescription className="text-xs">
+              <DialogDescription className="text-sm">
                 PO: {selectedPoForRelease.order.poNumber} · Supplier: {selectedPoForRelease.supplier?.companyName}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3 pt-2 text-xs">
+            <div className="space-y-4 pt-2 text-base">
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Recipient Name / Representative: <span className="text-rose-500">*</span>
+                <Label
+                  required
+                  sublabel="Write the full name of the person who accepted the Purchase Order."
+                >
+                  Full Name of Recipient / Representative
                 </Label>
                 <Input
                   value={poRecipient}
                   onChange={(e) => setPoRecipient(e.target.value)}
-                  placeholder="Full name of receiving person"
-                  className="mt-1 h-8 text-xs"
+                  placeholder="e.g., Roberto V. Santos"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Formal Release Date:</Label>
+                <Label sublabel="Per Step 5.13.1, release within the day or next working day after HoPE approval.">
+                  Formal Release Date
+                </Label>
                 <Input
                   type="date"
                   value={poReleaseDate}
                   onChange={(e) => setPoReleaseDate(e.target.value)}
-                  className="mt-1 h-8 text-xs"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Release Mode:</Label>
+                <Label sublabel="Choose how the Purchase Order was released to the supplier.">
+                  Release Mode
+                </Label>
                 <select
                   value={poReleaseMode}
                   onChange={(e) => setPoReleaseMode(e.target.value as any)}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs shadow-xs dark:border-slate-700 dark:bg-slate-800"
+                  className="min-h-12 w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 >
                   <option value="in_person_pickup">In-Person Pickup / Counter Release</option>
                   <option value="courier">Courier Transmittal</option>
@@ -670,39 +726,37 @@ export function OfficerReleasingPage({
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Acknowledgement Receipt Reference (Optional):
+                <Label sublabel="Optional: Reference number from the signed receiving copy.">
+                  Acknowledgement Receipt Reference (Optional)
                 </Label>
                 <Input
                   value={poAckReference}
                   onChange={(e) => setPoAckReference(e.target.value)}
-                  placeholder="e.g. Signed receiving copy # AR-2026-081"
-                  className="mt-1 h-8 text-xs"
+                  placeholder="e.g., Signed receiving copy # AR-2026-081"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Remarks:</Label>
+                <Label sublabel="Per Clause 4.7 & 5.13.1, furnish copies of the signed PO to COA and the Supply Office.">
+                  Remarks
+                </Label>
                 <Textarea
                   value={poRemarks}
                   onChange={(e) => setPoRemarks(e.target.value)}
-                  placeholder="Additional releasing instructions or notes..."
-                  className="mt-1 text-xs min-h-[60px]"
+                  placeholder="e.g., Copies furnished to COA and Supply Office..."
                 />
               </div>
             </div>
 
-            <DialogFooter className="mt-3">
-              <Button variant="outline" size="sm" onClick={() => setSelectedPoForRelease(null)} className="text-xs">
+            <DialogFooter className="mt-4 gap-3">
+              <Button variant="outline" onClick={() => setSelectedPoForRelease(null)}>
                 Cancel
               </Button>
               <Button
-                size="sm"
                 disabled={releasePoMutation.isPending || !poRecipient.trim()}
                 onClick={handleConfirmReleasePo}
-                className="text-xs bg-[#881337] hover:bg-[#70102e] text-white"
               >
-                {releasePoMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {releasePoMutation.isPending && <LoaderCircle className="mr-1.5 h-5 w-5 animate-spin" />}
                 Confirm PO Release
               </Button>
             </DialogFooter>
