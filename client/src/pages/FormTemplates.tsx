@@ -766,17 +766,17 @@ export default function FormTemplatesPage() {
       {activeViewTab === "placeholders" && (
         <div className="mt-5 space-y-4 no-print">
           {/* Guide Header Banner */}
-          <div className="rounded-lg border border-[#cfe2ff] bg-[#f0f7ff] p-4 text-xs text-[#1e429f]">
+          <div className="rounded-lg border border-[#cfe2ff] dark:border-blue-900/60 bg-[#f0f7ff] dark:bg-blue-950/40 p-4 text-xs text-[#1e429f] dark:text-blue-300">
             <div className="flex items-start gap-3">
-              <FileCode2 className="h-5 w-5 shrink-0 text-[#1d4ed8]" />
+              <FileCode2 className="h-5 w-5 shrink-0 text-[#1d4ed8] dark:text-blue-400" />
               <div>
-                <h4 className="font-bold text-sm text-[#1e3a8a]">
+                <h4 className="font-bold text-sm text-[#1e3a8a] dark:text-blue-200">
                   How Dynamic Excel Injection Works
                 </h4>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#1e429f]">
+                <p className="mt-1 text-[11px] leading-relaxed text-[#1e429f] dark:text-blue-300">
                   Simply type dynamic tokens like <code>&#123;&#123;pr_no&#125;&#125;</code> or <code>&#123;&#123;office&#125;&#125;</code> anywhere in your Excel workbook. When ProcureWise processes the transaction, it automatically replaces tokens with live database values while preserving your font styles, cell borders, text alignments, and number formats.
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] font-semibold text-[#1d4ed8]">
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] font-semibold text-[#1d4ed8] dark:text-blue-400">
                   <span>✨ <strong>Repeating Item Rows:</strong> Put <code>&#123;&#123;item_no&#125;&#125;</code> and <code>&#123;&#123;item_desc&#125;&#125;</code> in a table row. ProcureWise will dynamically clone that exact row formatting for all items in the purchase request.</span>
                 </div>
               </div>
@@ -784,9 +784,9 @@ export default function FormTemplatesPage() {
           </div>
 
           {/* Search & Category Filter Controls */}
-          <div className="flex flex-col gap-3 rounded-lg border border-[#e5dfd5] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-[#e5dfd5] dark:border-[#384554] bg-white dark:bg-[#1b2229] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#77818d]" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#77818d] dark:text-slate-400" />
               <Input
                 placeholder="Search placeholder token, field label, or description…"
                 value={placeholderSearch}
@@ -796,8 +796,8 @@ export default function FormTemplatesPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <Filter className="h-3.5 w-3.5 text-[#52606d]" />
-              <span className="text-[11px] font-semibold text-[#52606d]">Category:</span>
+              <Filter className="h-3.5 w-3.5 text-[#52606d] dark:text-slate-400" />
+              <span className="text-[11px] font-semibold text-[#52606d] dark:text-slate-400">Category:</span>
               {placeholderCategories.map((cat) => (
                 <button
                   key={cat}
@@ -805,8 +805,8 @@ export default function FormTemplatesPage() {
                   onClick={() => setSelectedCategory(cat)}
                   className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
                     selectedCategory === cat
-                      ? "bg-[#7b1e1e] text-white"
-                      : "bg-[#f5f2eb] text-[#52606d] hover:bg-[#e8e2d5]"
+                      ? "bg-[#7b1e1e] dark:bg-rose-700 text-white"
+                      : "bg-[#f5f2eb] dark:bg-[#151c24] text-[#52606d] dark:text-slate-300 hover:bg-[#e8e2d5] dark:hover:bg-[#25303c]"
                   }`}
                 >
                   {cat === "all" ? "All Categories" : cat.toUpperCase()}
@@ -816,11 +816,11 @@ export default function FormTemplatesPage() {
           </div>
 
           {/* Placeholders Table */}
-          <div className="overflow-hidden rounded-lg border border-[#e5dfd5] bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-[#e5dfd5] dark:border-[#384554] bg-white dark:bg-[#1b2229] shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
-                  <tr className="border-b border-[#e5dfd5] bg-[#fbf9f5] text-[11px] font-bold uppercase text-[#52606d]">
+                  <tr className="border-b border-[#e5dfd5] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] text-[11px] font-bold uppercase text-[#52606d] dark:text-slate-400">
                     <th className="py-3 px-4">Placeholder Token</th>
                     <th className="py-3 px-4">Field Name</th>
                     <th className="py-3 px-4">Category</th>
@@ -829,10 +829,10 @@ export default function FormTemplatesPage() {
                     <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f0ece5]">
+                <tbody className="divide-y divide-[#f0ece5] dark:divide-[#2b3540]">
                   {filteredPlaceholders.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-[#77818d]">
+                      <td colSpan={6} className="py-8 text-center text-xs text-[#77818d] dark:text-slate-400">
                         No placeholder tokens matching "{placeholderSearch}".
                       </td>
                     </tr>
@@ -840,25 +840,25 @@ export default function FormTemplatesPage() {
                     filteredPlaceholders.map((p) => {
                       const isCopied = copiedToken === p.token;
                       return (
-                        <tr key={p.token} className="hover:bg-[#fcfbf9] transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-[#7b1e1e]">
+                        <tr key={p.token} className="hover:bg-[#fcfbf9] dark:hover:bg-[#202934] transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-[#7b1e1e] dark:text-rose-400">
                             <code>{p.token}</code>
                           </td>
-                          <td className="py-3 px-4 font-semibold text-[#1f2933]">
+                          <td className="py-3 px-4 font-semibold text-[#1f2933] dark:text-slate-100">
                             {p.label}
                           </td>
                           <td className="py-3 px-4">
                             <Badge
                               variant="outline"
-                              className="text-[10px] font-semibold uppercase tracking-wider text-[#52606d]"
+                              className="text-[10px] font-semibold uppercase tracking-wider text-[#52606d] dark:text-slate-300 dark:border-slate-600"
                             >
                               {getPlaceholderCategory(p.token)}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 font-medium text-[#202833]">
+                          <td className="py-3 px-4 font-medium text-[#202833] dark:text-slate-200">
                             {p.example}
                           </td>
-                          <td className="py-3 px-4 text-[11px] text-[#52606d]">
+                          <td className="py-3 px-4 text-[11px] text-[#52606d] dark:text-slate-400">
                             {p.description}
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -866,11 +866,11 @@ export default function FormTemplatesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCopyToken(p.token)}
-                              className="h-7 px-2 text-[11px] text-[#7b1e1e] hover:bg-[#fbf2f2]"
+                              className="h-7 px-2 text-[11px] text-[#7b1e1e] dark:text-rose-400 hover:bg-[#fbf2f2] dark:hover:bg-rose-950/40"
                               title="Copy token to clipboard"
                             >
                               {isCopied ? (
-                                <span className="flex items-center gap-1 font-bold text-[#047857]">
+                                <span className="flex items-center gap-1 font-bold text-[#047857] dark:text-emerald-400">
                                   <Check className="h-3.5 w-3.5" /> Copied
                                 </span>
                               ) : (
@@ -916,17 +916,17 @@ export default function FormTemplatesPage() {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[#e5dfd5] bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-[#e5dfd5] dark:border-[#384554] bg-white dark:bg-[#1b2229] shadow-sm">
             {templatesListQuery.isLoading ? (
               <div className="p-8 text-center">
-                <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-[#7b1e1e]" />
+                <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-[#7b1e1e] dark:text-rose-400" />
               </div>
             ) : versionsForForm.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#52606d]">
+              <div className="p-8 text-center text-xs text-[#52606d] dark:text-slate-400">
                 No custom versions uploaded for this form yet. The default COA / Appendix master template is currently active.
               </div>
             ) : (
-              <div className="divide-y divide-[#f0ece5]">
+              <div className="divide-y divide-[#f0ece5] dark:divide-[#2b3540]">
                 {versionsForForm.map((tpl) => {
                   const cfg = tpl.configurationJson as any;
                   const isActive = tpl.status === "active";
@@ -935,11 +935,11 @@ export default function FormTemplatesPage() {
                   return (
                     <div
                       key={tpl.id}
-                      className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-[#fcfbf9]"
+                      className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-[#fcfbf9] dark:hover:bg-[#202934]"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-[#1f2933]">
+                          <span className="font-bold text-xs text-[#1f2933] dark:text-slate-100">
                             Version {tpl.version}: {tpl.displayName}
                           </span>
                           <Badge
@@ -955,9 +955,9 @@ export default function FormTemplatesPage() {
                           </Badge>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#52606d]">
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#52606d] dark:text-slate-400">
                           {cfg?.fileName && (
-                            <span className="flex items-center gap-1 font-mono text-[10px] text-[#1d4ed8]">
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-[#1d4ed8] dark:text-blue-400">
                               <FileSpreadsheet className="h-3 w-3" />
                               {cfg.fileName}
                             </span>
@@ -998,7 +998,7 @@ export default function FormTemplatesPage() {
                               size="sm"
                               onClick={() => restoreMutation.mutate({ templateId: tpl.id })}
                               disabled={restoreMutation.isPending}
-                              className="h-8 gap-1 border-[#dcd7ce] text-[#52606d] hover:bg-[#f3ede3] text-[11px]"
+                              className="h-8 gap-1 border-[#dcd7ce] dark:border-[#384554] text-[#52606d] dark:text-slate-300 hover:bg-[#f3ede3] dark:hover:bg-[#25303c] text-[11px]"
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
                               <span>Restore as Draft</span>
@@ -1014,7 +1014,7 @@ export default function FormTemplatesPage() {
                                 downloadBase64File(cfg.fileBase64, fn);
                                 toast.success(`Downloaded: ${fn}`);
                               }}
-                              className="h-8 px-2 text-[11px] text-[#1d4ed8] hover:bg-[#eff6ff]"
+                              className="h-8 px-2 text-[11px] text-[#1d4ed8] dark:text-blue-400 hover:bg-[#eff6ff] dark:hover:bg-blue-950/40"
                               title="Download this specific Excel workbook version"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -1034,13 +1034,13 @@ export default function FormTemplatesPage() {
       {/* TAB 4: RUNTIME TRANSACTION PAYLOAD INSPECTOR */}
       {activeViewTab === "payload" && (
         <div className="mt-5 space-y-4 no-print">
-          <div className="rounded-lg border border-[#e5dfd5] bg-white p-4 shadow-sm">
+          <div className="rounded-lg border border-[#e5dfd5] dark:border-[#384554] bg-white dark:bg-[#1b2229] p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[#1f2933]">
+                <h3 className="text-sm font-bold text-[#1f2933] dark:text-slate-100">
                   Runtime Procurement Payload ({currentTab.name})
                 </h3>
-                <p className="text-xs text-[#52606d]">
+                <p className="text-xs text-[#52606d] dark:text-slate-400">
                   This is the transaction record being injected into the Excel template placeholders.
                 </p>
               </div>
@@ -1078,11 +1078,11 @@ export default function FormTemplatesPage() {
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base text-[#1f2933]">
-              <FileSpreadsheet className="h-5 w-5 text-[#047857]" />
+            <DialogTitle className="flex items-center gap-2 text-base text-[#1f2933] dark:text-slate-100">
+              <FileSpreadsheet className="h-5 w-5 text-[#047857] dark:text-emerald-400" />
               <span>Upload Custom Excel Template (.xlsx)</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#52606d]">
+            <DialogDescription className="text-xs text-[#52606d] dark:text-slate-400">
               Target: <strong>{currentTab.name}</strong> ({currentTab.shortCode}).
               The server will parse detected placeholders, column widths, and cell borders automatically.
             </DialogDescription>
@@ -1090,7 +1090,7 @@ export default function FormTemplatesPage() {
 
           <div className="space-y-4 py-2">
             <div>
-              <Label className="text-xs font-semibold text-[#1f2933]">
+              <Label className="text-xs font-semibold text-[#1f2933] dark:text-slate-200">
                 Template Display Name
               </Label>
               <Input
@@ -1102,11 +1102,11 @@ export default function FormTemplatesPage() {
             </div>
 
             <div>
-              <Label className="text-xs font-semibold text-[#1f2933]">
+              <Label className="text-xs font-semibold text-[#1f2933] dark:text-slate-200">
                 Excel File (.xlsx)
               </Label>
               <div className="mt-1 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dcd7ce] dark:border-[#384554] bg-[#fbf9f5] dark:bg-[#151c24] p-6 hover:bg-[#f6f2e9] dark:hover:bg-[#1c2633] transition-all">
-                <FileSpreadsheet className="h-8 w-8 text-[#047857]" />
+                <FileSpreadsheet className="h-8 w-8 text-[#047857] dark:text-emerald-400" />
                 <label className="mt-2 cursor-pointer rounded bg-[#7b1e1e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#641818]">
                   Browse Excel File
                   <input
@@ -1116,13 +1116,13 @@ export default function FormTemplatesPage() {
                     className="hidden"
                   />
                 </label>
-                <p className="mt-1 text-[11px] text-[#52606d]">
+                <p className="mt-1 text-[11px] text-[#52606d] dark:text-slate-400">
                   {uploadFile ? uploadFile.name : "Select master .xlsx file from your computer"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 rounded border border-[#e5dfd5] bg-[#faf8f4] p-3 text-xs">
+            <div className="flex items-center gap-2 rounded border border-[#e5dfd5] dark:border-[#384554] bg-[#faf8f4] dark:bg-[#151c24] p-3 text-xs">
               <input
                 type="checkbox"
                 id="activateImmediately"
@@ -1130,7 +1130,7 @@ export default function FormTemplatesPage() {
                 onChange={(e) => setActivateImmediately(e.target.checked)}
                 className="h-4 w-4 rounded border-[#dcd7ce] text-[#7b1e1e] focus:ring-[#7b1e1e]"
               />
-              <label htmlFor="activateImmediately" className="font-semibold text-[#1f2933] cursor-pointer">
+              <label htmlFor="activateImmediately" className="font-semibold text-[#1f2933] dark:text-slate-200 cursor-pointer">
                 Activate immediately upon successful upload
               </label>
             </div>

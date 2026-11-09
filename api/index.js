@@ -1397,6 +1397,519 @@ var INSTITUTIONAL_OFFICES = [
   }
 ];
 
+// server/services/emailService.ts
+import net from "node:net";
+import tls from "node:tls";
+var ALLOWED_PPMP_MIME_TYPES = /* @__PURE__ */ new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel"
+]);
+var ALLOWED_PPMP_EXTENSIONS = /* @__PURE__ */ new Set([".pdf", ".xlsx", ".xls"]);
+var MAX_PPMP_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+var PPMP_FILE_REJECTION_MESSAGE = "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.";
+function validatePpmpFileUpload(input) {
+  const fileName = (input.originalFileName || "").trim().toLowerCase();
+  const extMatch = fileName.match(/\.[a-z0-9]+$/i);
+  const ext = extMatch ? extMatch[0].toLowerCase() : "";
+  const normalizedMime = (input.mimeType || "").trim().toLowerCase();
+  const hasValidExtension = ALLOWED_PPMP_EXTENSIONS.has(ext);
+  const hasValidMime = ALLOWED_PPMP_MIME_TYPES.has(normalizedMime) || hasValidExtension && normalizedMime === "application/octet-stream";
+  if (!hasValidExtension || !hasValidMime) {
+    return { valid: false, error: PPMP_FILE_REJECTION_MESSAGE };
+  }
+  if (!input.byteLength || input.byteLength <= 0 || input.byteLength > MAX_PPMP_FILE_SIZE_BYTES) {
+    return { valid: false, error: PPMP_FILE_REJECTION_MESSAGE };
+  }
+  return { valid: true };
+}
+function escapeHtml(value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function formatPhpCurrency(amount) {
+  return `\u20B1${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+function buildEndUserConfirmationEmailHtml(payload) {
+  const formattedTotal = formatPhpCurrency(payload.totalEstimatedBudget);
+  const safeName = escapeHtml(payload.recipientName || "BSC End-User");
+  const safePrNo = escapeHtml(payload.prTrackingNumber);
+  const safeCategory = escapeHtml(payload.category || "Office Supplies");
+  const safePpmpFile = escapeHtml(payload.ppmpFileName || "Approved Department PPMP");
+  const safePurpose = escapeHtml(payload.purpose);
+  const safeUrl = escapeHtml(payload.dashboardUrl);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[ProcureWise] Purchase Request Submitted: #${safePrNo}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #0f172a; font-size: 16px; line-height: 1.6;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 620px; background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 16px; overflow: hidden;">
+          <!-- BSC Maroon Institutional Header -->
+          <tr>
+            <td style="background-color: #881337; padding: 28px 32px; color: #ffffff;">
+              <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #fecdd3; margin-bottom: 6px;">
+                Batanes State College \xB7 ProcureWise System
+              </div>
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; line-height: 1.3; color: #ffffff;">
+                Purchase Request Submitted
+              </h1>
+              <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffe4e6;">
+                Tracking Reference: <strong style="color: #ffffff; font-family: monospace; font-size: 17px;">#${safePrNo}</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Greeting & Plain-Language Explanation -->
+          <tr>
+            <td style="padding: 28px 32px 16px 32px;">
+              <p style="margin: 0 0 16px 0; font-size: 16px; color: #0f172a;">
+                Good day, <strong>${safeName}</strong>,
+              </p>
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #1e293b;">
+                Your Purchase Request has been officially recorded in <strong>ProcureWise</strong> under Quality Procedure <strong>BSC \u2013 PRO -QP- 95 \u2013 1</strong>. Keep this email for your department records.
+              </p>
+
+              <!-- High-Contrast Summary Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+                <tr style="background-color: #f8fafc;">
+                  <td colspan="2" style="padding: 12px 16px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; border-bottom: 2px solid #cbd5e1;">
+                    Request Summary (Appendix 60 / Annex B)
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; width: 42%;">
+                    PR Tracking Number
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; font-family: monospace;">
+                    #${safePrNo}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Item Category (Rule 5.1.1)
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${safeCategory}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Number of Line Items
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${payload.itemCount} ${payload.itemCount === 1 ? "item" : "items"}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Attached Budget Plan (PPMP)
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${safePpmpFile}
+                  </td>
+                </tr>
+                <tr style="background-color: #fff1f2;">
+                  <td style="padding: 14px 16px; font-size: 16px; font-weight: 800; color: #881337; border-bottom: 1px solid #fecdd3;">
+                    Total Estimated Budget
+                  </td>
+                  <td style="padding: 14px 16px; font-size: 18px; font-weight: 800; color: #881337; border-bottom: 1px solid #fecdd3;">
+                    ${formattedTotal}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; vertical-align: top;">
+                    Stated Purpose
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 15px; color: #1e293b;">
+                    ${safePurpose}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Next Step Guidance Box -->
+              <div style="background-color: #f8fafc; border: 2px solid #cbd5e1; border-left: 6px solid #881337; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px;">
+                <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">
+                  What Happens Next? (Step 5.1 Verification)
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #334155;">
+                  <strong>Procurement Officer II</strong> has been notified to check your attached PPMP budget plan and verify single-category compliance under Clause 5.1.1. You will receive an update as soon as your request advances.
+                </p>
+              </div>
+
+              <!-- Primary Action Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="${safeUrl}" style="display: inline-block; min-height: 48px; line-height: 48px; background-color: #881337; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 0 28px; border-radius: 12px;">
+                      View My Request Online
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 2px solid #e2e8f0; padding: 20px 32px; font-size: 14px; color: #475569;">
+              <strong>Batanes State College \xB7 Procurement Management Office</strong><br />
+              Basco, Batanes \xB7 Compliant with RA 12009 &amp; BSC \u2013 PRO -QP- 95 \u2013 1
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+function buildEndUserConfirmationEmailText(payload) {
+  const formattedTotal = formatPhpCurrency(payload.totalEstimatedBudget);
+  return [
+    `[ProcureWise] Purchase Request Submitted: #${payload.prTrackingNumber}`,
+    `Batanes State College \xB7 Quality Procedure BSC \u2013 PRO -QP- 95 \u2013 1`,
+    ``,
+    `Good day, ${payload.recipientName || "BSC End-User"},`,
+    ``,
+    `Your Purchase Request has been officially submitted in ProcureWise.`,
+    ``,
+    `REQUEST SUMMARY:`,
+    `- PR Tracking Number: #${payload.prTrackingNumber}`,
+    `- Item Category (Rule 5.1.1): ${payload.category || "Office Supplies"}`,
+    `- Number of Line Items: ${payload.itemCount}`,
+    `- Attached PPMP File: ${payload.ppmpFileName || "Approved Department PPMP"}`,
+    `- Total Estimated Budget: ${formattedTotal}`,
+    `- Purpose: ${payload.purpose}`,
+    ``,
+    `WHAT HAPPENS NEXT (Step 5.1 Verification):`,
+    `Procurement Officer II has been notified to verify your attached PPMP budget plan and item category segregation under Clause 5.1.1.`,
+    ``,
+    `View My Request Online: ${payload.dashboardUrl}`
+  ].join("\n");
+}
+function buildProcurementOfficerAlertEmailHtml(payload) {
+  const formattedTotal = formatPhpCurrency(payload.totalEstimatedBudget);
+  const safeName = escapeHtml(payload.recipientName || "BSC End-User");
+  const safeEmail = escapeHtml(payload.recipientEmail || "enduser@bsc.edu.ph");
+  const safePrNo = escapeHtml(payload.prTrackingNumber);
+  const safeCategory = escapeHtml(payload.category || "Office Supplies");
+  const safePpmpFile = escapeHtml(payload.ppmpFileName || "Approved Department PPMP");
+  const safePurpose = escapeHtml(payload.purpose);
+  const verificationUrl = escapeHtml(
+    payload.dashboardUrl.replace(/\/purchase-requests.*$/, "/pr-verification")
+  );
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[ProcureWise Action Required] New Request for Verification: #${safePrNo}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #0f172a; font-size: 16px; line-height: 1.6;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 620px; background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 16px; overflow: hidden;">
+          <!-- BSC Maroon Institutional Header -->
+          <tr>
+            <td style="background-color: #881337; padding: 28px 32px; color: #ffffff;">
+              <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #fecdd3; margin-bottom: 6px;">
+                Action Required \xB7 Step 5.1 Verification Queue
+              </div>
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; line-height: 1.3; color: #ffffff;">
+                New Purchase Request for Verification
+              </h1>
+              <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffe4e6;">
+                PR Number: <strong style="color: #ffffff; font-family: monospace; font-size: 17px;">#${safePrNo}</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 28px 32px 16px 32px;">
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #1e293b;">
+                A new Purchase Request package has been submitted and requires <strong>Step 5.1 Completeness &amp; PPMP Verification</strong> by Procurement Officer II.
+              </p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+                <tr style="background-color: #f8fafc;">
+                  <td colspan="2" style="padding: 12px 16px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; border-bottom: 2px solid #cbd5e1;">
+                    Submission Details
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; width: 42%;">
+                    Submitted By (End-User)
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${safeName} (${safeEmail})
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Declared Category
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${safeCategory}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Attached PPMP File
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${safePpmpFile}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;">
+                    Line Items Count
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 16px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                    ${payload.itemCount} ${payload.itemCount === 1 ? "item" : "items"}
+                  </td>
+                </tr>
+                <tr style="background-color: #fff1f2;">
+                  <td style="padding: 14px 16px; font-size: 16px; font-weight: 800; color: #881337; border-bottom: 1px solid #fecdd3;">
+                    Total Estimated Budget
+                  </td>
+                  <td style="padding: 14px 16px; font-size: 18px; font-weight: 800; color: #881337; border-bottom: 1px solid #fecdd3;">
+                    ${formattedTotal}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; font-size: 15px; font-weight: 600; color: #475569; vertical-align: top;">
+                    Purpose
+                  </td>
+                  <td style="padding: 12px 16px; font-size: 15px; color: #1e293b;">
+                    ${safePurpose}
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="${verificationUrl}" style="display: inline-block; min-height: 48px; line-height: 48px; background-color: #881337; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 0 28px; border-radius: 12px;">
+                      Open Verification Workbench (Step 5.1)
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 2px solid #e2e8f0; padding: 20px 32px; font-size: 14px; color: #475569;">
+              <strong>Batanes State College \xB7 Procurement Management Office</strong><br />
+              Automated Workflow Alert \xB7 BSC \u2013 PRO -QP- 95 \u2013 1 Step 5.1
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+function buildProcurementOfficerAlertEmailText(payload) {
+  const formattedTotal = formatPhpCurrency(payload.totalEstimatedBudget);
+  const verificationUrl = payload.dashboardUrl.replace(/\/purchase-requests.*$/, "/pr-verification");
+  return [
+    `[ProcureWise Action Required] New Request for Verification: #${payload.prTrackingNumber}`,
+    `Batanes State College \xB7 Step 5.1 Verification Queue`,
+    ``,
+    `A new Purchase Request has been submitted and awaits Step 5.1 verification:`,
+    `- PR Tracking Number: #${payload.prTrackingNumber}`,
+    `- Submitted By: ${payload.recipientName} (${payload.recipientEmail})`,
+    `- Declared Category (Rule 5.1.1): ${payload.category || "Office Supplies"}`,
+    `- Attached PPMP File: ${payload.ppmpFileName || "Approved Department PPMP"}`,
+    `- Line Items: ${payload.itemCount}`,
+    `- Total Estimated Budget: ${formattedTotal}`,
+    `- Purpose: ${payload.purpose}`,
+    ``,
+    `Open Verification Workbench (Step 5.1): ${verificationUrl}`
+  ].join("\n");
+}
+async function dispatchSingleEmail(message) {
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: message.from,
+        to: [message.to],
+        subject: message.subject,
+        html: message.html,
+        text: message.text
+      })
+    });
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      throw new Error(`Resend API responded with HTTP ${response.status}: ${errBody}`);
+    }
+    return "resend_api";
+  }
+  const smtpHost = process.env.SMTP_HOST?.trim();
+  const smtpPort = Number(process.env.SMTP_PORT || "587");
+  if (smtpHost) {
+    await sendRawSmtpEmail({
+      host: smtpHost,
+      port: smtpPort,
+      secure: process.env.SMTP_SECURE === "true" || smtpPort === 465,
+      user: process.env.SMTP_USER?.trim(),
+      pass: process.env.SMTP_PASS?.trim(),
+      from: message.from,
+      to: message.to,
+      subject: message.subject,
+      html: message.html,
+      text: message.text
+    });
+    return "smtp";
+  }
+  console.info(
+    `[ProcureWise Email Dispatch] To: ${message.to} | Subject: ${message.subject}`
+  );
+  return "development_log";
+}
+async function sendRawSmtpEmail(config) {
+  return new Promise((resolve, reject) => {
+    const socket = config.secure ? tls.connect({ host: config.host, port: config.port, rejectUnauthorized: false }) : net.createConnection({ host: config.host, port: config.port });
+    socket.setTimeout(8e3);
+    const boundary = `----=_ProcureWise_${Date.now().toString(16)}`;
+    const mimeBody = [
+      `From: ${config.from}`,
+      `To: <${config.to}>`,
+      `Subject: ${config.subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/plain; charset="UTF-8"`,
+      `Content-Transfer-Encoding: 7bit`,
+      ``,
+      config.text,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/html; charset="UTF-8"`,
+      `Content-Transfer-Encoding: 7bit`,
+      ``,
+      config.html,
+      ``,
+      `--${boundary}--`,
+      `.`,
+      `QUIT`
+    ].join("\r\n");
+    let step = 0;
+    socket.on("data", () => {
+      try {
+        if (step === 0) {
+          step = 1;
+          socket.write(`EHLO procurewise.bsc.edu.ph\r
+`);
+        } else if (step === 1 && config.user && config.pass) {
+          step = 2;
+          const authToken = Buffer.from(`\0${config.user}\0${config.pass}`).toString("base64");
+          socket.write(`AUTH PLAIN ${authToken}\r
+`);
+        } else if (step <= 2) {
+          step = 3;
+          const fromAddr = config.from.match(/<([^>]+)>/)?.[1] || config.from;
+          socket.write(`MAIL FROM:<${fromAddr}>\r
+`);
+        } else if (step === 3) {
+          step = 4;
+          socket.write(`RCPT TO:<${config.to}>\r
+`);
+        } else if (step === 4) {
+          step = 5;
+          socket.write(`DATA\r
+`);
+        } else if (step === 5) {
+          step = 6;
+          socket.write(`${mimeBody}\r
+`);
+          socket.end();
+          resolve();
+        }
+      } catch (err) {
+        socket.destroy();
+        reject(err);
+      }
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      reject(new Error("SMTP connection timed out."));
+    });
+    socket.on("error", (err) => {
+      socket.destroy();
+      reject(err);
+    });
+  });
+}
+async function sendPrSubmissionNotifications(payload) {
+  const fromAddress = process.env.SMTP_FROM || "Batanes State College ProcureWise <no-reply@bsc.edu.ph>";
+  const procurementOfficeEmail = process.env.PROCUREMENT_OFFICE_EMAIL || "procurement@bsc.edu.ph";
+  const recipientEmail = payload.recipientEmail?.trim() || "enduser@bsc.edu.ph";
+  const sentAt = (/* @__PURE__ */ new Date()).toISOString();
+  try {
+    const endUserSubject = `[ProcureWise] Purchase Request Submitted: #${payload.prTrackingNumber}`;
+    const endUserHtml = buildEndUserConfirmationEmailHtml(payload);
+    const endUserText = buildEndUserConfirmationEmailText(payload);
+    const officerSubject = `[ProcureWise Action Required] New Request for Verification: #${payload.prTrackingNumber}`;
+    const officerHtml = buildProcurementOfficerAlertEmailHtml(payload);
+    const officerText = buildProcurementOfficerAlertEmailText(payload);
+    const [transport] = await Promise.all([
+      dispatchSingleEmail({
+        from: fromAddress,
+        to: recipientEmail,
+        subject: endUserSubject,
+        html: endUserHtml,
+        text: endUserText
+      }),
+      dispatchSingleEmail({
+        from: fromAddress,
+        to: procurementOfficeEmail,
+        subject: officerSubject,
+        html: officerHtml,
+        text: officerText
+      })
+    ]);
+    return {
+      status: "SENT",
+      recipientEmail,
+      procurementOfficeEmail,
+      sentAt,
+      transport
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[ProcureWise Email Error] Failed to send PR submission notifications:", errMsg);
+    return {
+      status: "FAILED",
+      recipientEmail,
+      procurementOfficeEmail,
+      sentAt,
+      transport: "smtp",
+      error: errMsg
+    };
+  }
+}
+
 // server/db.ts
 var _db = null;
 var _pool = null;
@@ -1411,7 +1924,17 @@ var PERMITTED_DOCUMENT_TYPES = /* @__PURE__ */ new Set([
   "application/msword",
   "application/vnd.ms-excel"
 ]);
-function validateProcurementDocumentUpload(mimeType, byteLength) {
+function validateProcurementDocumentUpload(mimeType, byteLength, documentType, originalFileName) {
+  if (documentType && /ppmp/i.test(documentType)) {
+    const ppmpCheck = validatePpmpFileUpload({
+      originalFileName: originalFileName || "ppmp.pdf",
+      mimeType,
+      byteLength
+    });
+    if (!ppmpCheck.valid) {
+      return ppmpCheck.error ?? "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.";
+    }
+  }
   if (!PERMITTED_DOCUMENT_TYPES.has(mimeType)) return "Only PDF, JPG, PNG, DOC, DOCX, XLS, and XLSX procurement documents may be attached.";
   if (!byteLength || byteLength > MAX_DOCUMENT_BYTES) return "Document uploads must be between 1 byte and 10 MB.";
   return null;
@@ -2860,7 +3383,7 @@ async function notifyRoles(roles, input) {
 }
 async function createProcurementDocument(input, user, options) {
   const data = Buffer.from(input.dataBase64, "base64");
-  const validationError = validateProcurementDocumentUpload(input.mimeType, data.length);
+  const validationError = validateProcurementDocumentUpload(input.mimeType, data.length, input.documentType, input.originalFileName);
   if (validationError) throw new Error(validationError);
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
@@ -3125,7 +3648,35 @@ async function createPurchaseRequest(input, user, options) {
     estimatedUnitCost: item.estimatedUnitCost.toFixed(2),
     totalCost: (item.quantity * item.estimatedUnitCost).toFixed(2)
   })));
-  await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber, requestedSignatoryId: requestedSignatory?.id ?? null, approvedSignatoryId: approvedSignatory?.id ?? null } });
+  const appBaseUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const emailResult = await sendPrSubmissionNotifications({
+    recipientEmail: user.email || "enduser@bsc.edu.ph",
+    recipientName: user.name || requestedSignatory?.fullName || "BSC End-User",
+    prTrackingNumber: prNumber,
+    category: input.category || "Office Supplies",
+    itemCount: input.items.length,
+    totalEstimatedBudget: totalEstimate,
+    ppmpFileName: input.ppmpFileName || "Approved Department PPMP",
+    purpose: input.purpose,
+    dashboardUrl: `${appBaseUrl}/purchase-requests`
+  });
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: created.id,
+    action: "created",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      prNumber,
+      category: input.category || null,
+      ppmpFileName: input.ppmpFileName || null,
+      requestedSignatoryId: requestedSignatory?.id ?? null,
+      approvedSignatoryId: approvedSignatory?.id ?? null,
+      notification_status: emailResult.status,
+      notification_recipient: emailResult.recipientEmail,
+      notification_procurement_office: emailResult.procurementOfficeEmail
+    }
+  });
   return created;
 }
 async function requirePreliminaryQuotationAttachment(db, preCanvassId) {
@@ -6070,7 +6621,7 @@ function convertWorksheetToHtml(ws) {
       }
       styles.push("padding: 4px 6px");
       const styleStr = styles.length ? ` style="${styles.join("; ")}"` : "";
-      cellsHtml.push(`<td${spanAttrs}${styleStr}>${escapeHtml(val)}</td>`);
+      cellsHtml.push(`<td${spanAttrs}${styleStr}>${escapeHtml2(val)}</td>`);
     }
     if (hasContentInRow || rowNumber <= 15) {
       rowsHtml.push(`<tr>${cellsHtml.join("")}</tr>`);
@@ -6091,27 +6642,27 @@ function generateResilientHtmlPreview(templateKey, data) {
   const title = meta?.displayName || "PROCUREMENT DOCUMENT";
   const rowsHtml = items.map((it) => `
     <tr>
-      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml(String(it.item_no || "1"))}</td>
-      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml(String(it.unit || "unit"))}</td>
-      <td style="border: 1px solid #1e293b; padding: 6px;">${escapeHtml(String(it.item_desc || "Item description"))}</td>
-      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml(String(it.quantity || "1"))}</td>
-      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml(String(it.unit_cost || it.unit_price || "0.00"))}</td>
-      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; font-weight: 600;">${escapeHtml(String(it.total_cost || it.total_price || "0.00"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml2(String(it.item_no || "1"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: center;">${escapeHtml2(String(it.unit || "unit"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px;">${escapeHtml2(String(it.item_desc || "Item description"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml2(String(it.quantity || "1"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right;">${escapeHtml2(String(it.unit_cost || it.unit_price || "0.00"))}</td>
+      <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; font-weight: 600;">${escapeHtml2(String(it.total_cost || it.total_price || "0.00"))}</td>
     </tr>
   `).join("");
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; padding: 16px;">
       <div style="text-align: center; margin-bottom: 20px;">
         <div style="font-size: 11px; font-style: italic; color: #64748b;">Republic of the Philippines</div>
-        <div style="font-size: 16px; font-weight: 800; color: #7B1E1E; margin: 4px 0;">${escapeHtml(entityName)}</div>
-        <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(title)}</div>
+        <div style="font-size: 16px; font-weight: 800; color: #7B1E1E; margin: 4px 0;">${escapeHtml2(entityName)}</div>
+        <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml2(title)}</div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 12px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-        <div><strong>Entity Name:</strong> ${escapeHtml(entityName)}</div>
-        <div><strong>Document Reference:</strong> ${escapeHtml(String(data.pr_no || data.rfq_no || data.po_no || data.aoq_no || "\u2014"))}</div>
-        <div><strong>Office / Section:</strong> ${escapeHtml(String(data.office || "[Office / Department]"))}</div>
-        <div><strong>Date:</strong> ${escapeHtml(String(data.date || (/* @__PURE__ */ new Date()).toISOString().split("T")[0]))}</div>
+        <div><strong>Entity Name:</strong> ${escapeHtml2(entityName)}</div>
+        <div><strong>Document Reference:</strong> ${escapeHtml2(String(data.pr_no || data.rfq_no || data.po_no || data.aoq_no || "\u2014"))}</div>
+        <div><strong>Office / Section:</strong> ${escapeHtml2(String(data.office || "[Office / Department]"))}</div>
+        <div><strong>Date:</strong> ${escapeHtml2(String(data.date || (/* @__PURE__ */ new Date()).toISOString().split("T")[0]))}</div>
       </div>
 
       <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px;">
@@ -6131,7 +6682,7 @@ function generateResilientHtmlPreview(templateKey, data) {
         <tfoot>
           <tr style="font-weight: 700; background: #fafafa;">
             <td colspan="5" style="border: 1px solid #1e293b; padding: 6px; text-align: right;">Total Amount:</td>
-            <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; color: #7B1E1E;">${escapeHtml(String(data.total_abc || data.total_amount || "0.00"))}</td>
+            <td style="border: 1px solid #1e293b; padding: 6px; text-align: right; color: #7B1E1E;">${escapeHtml2(String(data.total_abc || data.total_amount || "0.00"))}</td>
           </tr>
         </tfoot>
       </table>
@@ -6139,19 +6690,19 @@ function generateResilientHtmlPreview(templateKey, data) {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; font-size: 11px; margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd5e1;">
         <div>
           <div style="color: #64748b; margin-bottom: 24px;">Requested / Prepared by:</div>
-          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml(String(data.requestor_name || "[Authorized End-User]"))}</div>
-          <div style="color: #64748b;">${escapeHtml(String(data.requestor_designation || "[Designation]"))}</div>
+          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml2(String(data.requestor_name || "[Authorized End-User]"))}</div>
+          <div style="color: #64748b;">${escapeHtml2(String(data.requestor_designation || "[Designation]"))}</div>
         </div>
         <div>
           <div style="color: #64748b; margin-bottom: 24px;">Approved by:</div>
-          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml(String(data.approver_name || "[Head of Procuring Entity / Approver]"))}</div>
-          <div style="color: #64748b;">${escapeHtml(String(data.approver_designation || "[Designation]"))}</div>
+          <div style="font-weight: 700; border-top: 1px solid #334155; padding-top: 4px;">${escapeHtml2(String(data.approver_name || "[Head of Procuring Entity / Approver]"))}</div>
+          <div style="color: #64748b;">${escapeHtml2(String(data.approver_designation || "[Designation]"))}</div>
         </div>
       </div>
     </div>
   `;
 }
-function escapeHtml(str) {
+function escapeHtml2(str) {
   if (!str) return "&nbsp;";
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\n/g, "<br/>");
 }
@@ -6322,6 +6873,8 @@ var appRouter = router({
       signatories: protectedProcedure.query(() => listPurchaseRequestSignatories()),
       create: protectedProcedure.input(z2.object({
         purpose: z2.string().trim().min(10, "Purpose must be at least 10 characters"),
+        category: z2.string().max(120).optional(),
+        ppmpFileName: z2.string().max(255).optional(),
         fundSource: z2.string().max(160).optional(),
         fundCluster: z2.string().max(80).optional(),
         responsibilityCenterCode: z2.string().max(80).optional(),
@@ -6737,8 +7290,9 @@ var appRouter = router({
             };
           }
         }
+        const { xlsxBuffer: _ignoredBuffer, ...safeInjected } = injected;
         return {
-          ...injected,
+          ...safeInjected,
           metaInfo: meta,
           activeRecord,
           sampleData: transactionData
