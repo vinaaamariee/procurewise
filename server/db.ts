@@ -11,6 +11,7 @@ import { storagePut } from "./storage";
 import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
 import { deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses, type SupplierEvaluationAudience } from "../shared/supplierEvaluationForm";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
+import { sendPrSubmissionNotifications, validatePpmpFileUpload } from "./services/emailService";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -32,7 +33,22 @@ const PERMITTED_DOCUMENT_TYPES = new Set([
   "application/vnd.ms-excel",
 ]);
 
-export function validateProcurementDocumentUpload(mimeType: string, byteLength: number) {
+export function validateProcurementDocumentUpload(
+  mimeType: string,
+  byteLength: number,
+  documentType?: string,
+  originalFileName?: string
+) {
+  if (documentType && /ppmp/i.test(documentType)) {
+    const ppmpCheck = validatePpmpFileUpload({
+      originalFileName: originalFileName || "ppmp.pdf",
+      mimeType,
+      byteLength,
+    });
+    if (!ppmpCheck.valid) {
+      return ppmpCheck.error ?? "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.";
+    }
+  }
   if (!PERMITTED_DOCUMENT_TYPES.has(mimeType)) return "Only PDF, JPG, PNG, DOC, DOCX, XLS, and XLSX procurement documents may be attached.";
   if (!byteLength || byteLength > MAX_DOCUMENT_BYTES) return "Document uploads must be between 1 byte and 10 MB.";
   return null;
@@ -1854,7 +1870,7 @@ export async function notifyRoles(roles: ProcurementRole[], input: Omit<Paramete
 
 export async function createProcurementDocument(input: { entityType: DocumentEntityType; entityId: number; documentType: string; originalFileName: string; mimeType: string; dataBase64: string }, user: User, options?: OperationalServiceOptions) {
   const data = Buffer.from(input.dataBase64, "base64");
-  const validationError = validateProcurementDocumentUpload(input.mimeType, data.length);
+  const validationError = validateProcurementDocumentUpload(input.mimeType, data.length, input.documentType, input.originalFileName);
   if (validationError) throw new Error(validationError);
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
@@ -2119,7 +2135,7 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
   };
 }
 
-export async function createPurchaseRequest(input: { purpose: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
+export async function createPurchaseRequest(input: { purpose: string; category?: string; ppmpFileName?: string; fundSource?: string; fundCluster?: string; responsibilityCenterCode?: string; requesterDesignation?: string; requestedSignatoryId?: number; approvedSignatoryId?: number; ppmpEntryId?: number; officeId: number; objectOfExpenditureId: number; items: Array<{ catalogItemId?: number; stockPropertyNo?: string; description: string; specification?: string; quantity: number; unit: string; estimatedUnitCost: number }> }, user: User, options?: Pick<OperationalServiceOptions, "db" | "recordAudit">) {
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
@@ -2167,7 +2183,38 @@ export async function createPurchaseRequest(input: { purpose: string; fundSource
     estimatedUnitCost: item.estimatedUnitCost.toFixed(2),
     totalCost: (item.quantity * item.estimatedUnitCost).toFixed(2),
   })));
-  await recordAudit({ entityType: "purchase_request", entityId: created.id, action: "created", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { prNumber, requestedSignatoryId: requestedSignatory?.id ?? null, approvedSignatoryId: approvedSignatory?.id ?? null } });
+
+  // Non-blocking dual-recipient email notification dispatch (BSC-PRO-QP-95-1 Step 5.1)
+  const appBaseUrl = (process.env.PUBLIC_APP_URL || process.env.VITE_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const emailResult = await sendPrSubmissionNotifications({
+    recipientEmail: user.email || "enduser@bsc.edu.ph",
+    recipientName: user.name || requestedSignatory?.fullName || "BSC End-User",
+    prTrackingNumber: prNumber,
+    category: input.category || "Office Supplies",
+    itemCount: input.items.length,
+    totalEstimatedBudget: totalEstimate,
+    ppmpFileName: input.ppmpFileName || "Approved Department PPMP",
+    purpose: input.purpose,
+    dashboardUrl: `${appBaseUrl}/purchase-requests`,
+  });
+
+  await recordAudit({
+    entityType: "purchase_request",
+    entityId: created.id,
+    action: "created",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      prNumber,
+      category: input.category || null,
+      ppmpFileName: input.ppmpFileName || null,
+      requestedSignatoryId: requestedSignatory?.id ?? null,
+      approvedSignatoryId: approvedSignatory?.id ?? null,
+      notification_status: emailResult.status,
+      notification_recipient: emailResult.recipientEmail,
+      notification_procurement_office: emailResult.procurementOfficeEmail,
+    },
+  });
   return created;
 }
 

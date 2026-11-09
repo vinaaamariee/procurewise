@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { checkSupabaseConfig } from "./configCheck";
 import { registerStorageProxy } from "./storageProxy";
+import { registerPurchaseRequestRoutes } from "../services/prController";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -35,6 +36,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
+  registerPurchaseRequestRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
