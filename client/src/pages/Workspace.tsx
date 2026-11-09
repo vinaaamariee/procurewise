@@ -165,12 +165,19 @@ export function PurchaseRequestsPage() {
       // If user is registering a new PPMP entry on the fly
       if (!resolvedPpmpId && newPpmpData) {
         const estTotal = input.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.estimatedUnitCost) || 0), 0);
+        const ceiling = Number(newPpmpData.plannedAmount) || 0;
+        if (ceiling > 0 && estTotal > ceiling + 0.01) {
+          toast.error(
+            `Total Estimated Cost (₱${estTotal.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) exceeds the Approved PPMP Budget Ceiling of ₱${ceiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+          );
+          return;
+        }
         const createdPpmp = await createPpmpMutation.mutateAsync({
           fiscalYear: newPpmpData.fiscalYear,
           officeId: input.officeId,
           objectOfExpenditureId: input.objectOfExpenditureId,
           description: newPpmpData.title.trim() || input.purpose.trim() || "Annual Department PPMP",
-          plannedAmount: newPpmpData.plannedAmount && newPpmpData.plannedAmount > 0 ? newPpmpData.plannedAmount : Math.max(estTotal, 1000),
+          plannedAmount: ceiling > 0 ? ceiling : Math.max(estTotal, 1000),
           fundSource: input.fundSource,
           modeOfProcurement: "Small Value Procurement",
         });
@@ -840,13 +847,46 @@ function PurchaseRequestForm({
       },
     ]);
 
-  // Step 1 Valid Check: Next Step button remains disabled until a valid document passes inspection (or existing PPMP selected)
+  const linkedExistingPpmp = useMemo(
+    () =>
+      ppmpMode === "existing"
+        ? ppmpEntries?.find((entry) => String(entry.id) === selectedPpmpId)
+        : undefined,
+    [ppmpMode, ppmpEntries, selectedPpmpId]
+  );
+
+  const activeBudgetCeiling = useMemo(() => {
+    if (ppmpMode === "existing" && selectedPpmpId) {
+      const amt = Number(linkedExistingPpmp?.plannedAmount);
+      if (!isNaN(amt) && amt > 0) return amt;
+    }
+    const custom = Number(customPpmpBudget);
+    return !isNaN(custom) && custom > 0 ? custom : 0;
+  }, [ppmpMode, selectedPpmpId, linkedExistingPpmp, customPpmpBudget]);
+
+  const isOverBudget = activeBudgetCeiling > 0 && total > activeBudgetCeiling + 0.001;
+  const remainingBudget = activeBudgetCeiling > 0 ? Math.max(0, activeBudgetCeiling - total) : 0;
+  const overBudgetAmount = isOverBudget ? total - activeBudgetCeiling : 0;
+  const budgetUtilizationRatio = activeBudgetCeiling > 0 ? total / activeBudgetCeiling : 0;
+  const budgetUtilizationPct = activeBudgetCeiling > 0 ? Math.min(Math.round(budgetUtilizationRatio * 100), 999) : 0;
+
+  // Step 1 Valid Check: Next Step button remains disabled until a valid document passes inspection (or existing PPMP selected) and positive ceiling is set
+  const isCustomBudgetValid =
+    ppmpMode === "upload" ? !isNaN(Number(customPpmpBudget)) && Number(customPpmpBudget) > 0 : true;
+
   const isStep1Valid =
     ppmpMode === "upload"
-      ? Boolean(uploadedFile && !ppmpFileError)
+      ? Boolean(uploadedFile && !ppmpFileError && isCustomBudgetValid)
       : Boolean(selectedPpmpId);
 
   const handleAdvanceFromStep1 = () => {
+    if (
+      ppmpMode === "upload" &&
+      (!customPpmpBudget.trim() || isNaN(Number(customPpmpBudget)) || Number(customPpmpBudget) <= 0)
+    ) {
+      toast.error("Please enter a valid Approved PPMP Budget Ceiling greater than ₱0.00.");
+      return;
+    }
     if (!isStep1Valid) {
       setPpmpFileError(
         "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB."
@@ -899,6 +939,21 @@ function PurchaseRequestForm({
       );
       return;
     }
+    if (isOverBudget) {
+      toast.error(
+        `Budget Limiter Alert: Total Estimated Cost (₱${total.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}) exceeds the Approved PPMP Budget Ceiling of ₱${activeBudgetCeiling.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} by ₱${overBudgetAmount.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}. Please adjust item quantities or unit prices before proceeding.`
+      );
+      return;
+    }
     setAttemptedSubmit(false);
     setCurrentStep(3);
   };
@@ -917,6 +972,19 @@ function PurchaseRequestForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
+    if (isOverBudget) {
+      toast.error(
+        `Cannot submit: Total Estimated Cost (₱${total.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}) exceeds the Approved PPMP Budget Ceiling of ₱${activeBudgetCeiling.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}.`
+      );
+      return;
+    }
+
     const resolvedOffice =
       setup?.offices.find((o) => String(o.id) === resolvedOfficeIdValue) ||
       setup?.offices.find((o) => o.code.toLowerCase() === resolvedOfficeIdValue.toLowerCase()) ||
@@ -925,17 +993,15 @@ function PurchaseRequestForm({
     const finalOfficeId = resolvedOffice ? resolvedOffice.id : Number(resolvedOfficeIdValue) || 1;
     const finalObjectId = Number(resolvedObjectIdValue) || setup?.objectsOfExpenditure[0]?.id || 1;
 
-    const linkedExistingPpmp =
-      ppmpMode === "existing"
-        ? ppmpEntries?.find((entry) => String(entry.id) === selectedPpmpId)
-        : undefined;
-
     const ppmpTitle =
       linkedExistingPpmp?.description ||
       customPpmpTitle.trim() ||
       (uploadedFile ? uploadedFile.name.replace(/\.[^/.]+$/, "") : `${selectedCategory} PPMP`);
 
-    const plannedBudgetNum = Number(customPpmpBudget) || Math.max(total, 1000);
+    const plannedBudgetNum =
+      activeBudgetCeiling > 0
+        ? activeBudgetCeiling
+        : Number(customPpmpBudget) || Math.max(total, 1000);
 
     try {
       sessionStorage.removeItem("procurewise.prWizardStep");
@@ -1174,7 +1240,7 @@ function PurchaseRequestForm({
 
             <div>
               <Label htmlFor="ppmp-budget-ceiling" className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Approved PPMP Budget Ceiling (PHP)
+                Approved PPMP Budget Ceiling (PHP) <span className="text-rose-700 dark:text-rose-400">*</span>
               </Label>
               <Input
                 id="ppmp-budget-ceiling"
@@ -1184,8 +1250,15 @@ function PurchaseRequestForm({
                 value={customPpmpBudget}
                 onChange={(e) => setCustomPpmpBudget(e.target.value)}
                 placeholder="e.g., 50000.00"
-                className="mt-2"
+                className={`mt-2 ${
+                  customPpmpBudget.trim() && (isNaN(Number(customPpmpBudget)) || Number(customPpmpBudget) <= 0)
+                    ? "border-rose-500 focus-visible:ring-rose-500"
+                    : ""
+                }`}
               />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Mandatory budget ceiling under BSC Budgetary Control. Total line items in Step 2 cannot exceed this amount.
+              </p>
             </div>
           </div>
 
@@ -1229,6 +1302,39 @@ function PurchaseRequestForm({
               procedureRef="Single-Category Rule"
               role="End-User"
             />
+          </div>
+
+          {/* PPMP Budget Ceiling Context Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-800/50">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                Approved Budget Plan:
+              </span>
+              <span className="truncate text-slate-600 dark:text-slate-300">
+                {uploadedFile?.name || (linkedExistingPpmp?.description ? linkedExistingPpmp.description : "Approved Department PPMP")}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Approved PPMP Ceiling:
+                </span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">
+                  ₱ {activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  isOverBudget
+                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                }`}
+              >
+                {isOverBudget
+                  ? `Over ceiling (+₱${overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+                  : `₱${remainingBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining`}
+              </span>
+            </div>
           </div>
 
           {/* College Rule Banner */}
@@ -1506,24 +1612,164 @@ function PurchaseRequestForm({
             </div>
           )}
 
-          {/* Add Another Item Button & Inline Total Calculator */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/60">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addItem}
-              className="min-h-12 border-2 border-dashed border-slate-400 bg-white px-6 py-3 text-base font-bold text-slate-900 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          {/* Budget Limiter Over-Ceiling Warning Banner */}
+          {isOverBudget && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-xl border-2 border-rose-500 bg-rose-50 p-4 text-base font-semibold text-rose-950 dark:border-rose-600 dark:bg-rose-950/60 dark:text-rose-100"
             >
-              <PlusCircle className="h-5 w-5 text-[#881337] dark:text-rose-400" />
-              <span>Add Another Item</span>
-            </Button>
-
-            <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Total Estimated Cost:{" "}
-              <span className="text-[#881337] dark:text-rose-400">
-                ₱ {total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+              <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-rose-600 dark:text-rose-400" />
+              <div className="space-y-1">
+                <p className="font-bold text-rose-950 dark:text-rose-100">
+                  Budget Limiter Exceeded: Total Estimated Cost exceeds Approved PPMP Allocation!
+                </p>
+                <p className="text-sm font-medium text-rose-900 dark:text-rose-200">
+                  Your current total of{" "}
+                  <strong>
+                    ₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </strong>{" "}
+                  exceeds the Approved PPMP Budget Ceiling of{" "}
+                  <strong>
+                    ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </strong>{" "}
+                  by{" "}
+                  <strong className="text-rose-700 dark:text-rose-300">
+                    ₱{overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </strong>
+                  .
+                </p>
+                <p className="text-xs text-rose-800 dark:text-rose-300">
+                  Under BSC Budgetary Control guidelines (Annex B), Purchase Requests cannot exceed the approved PPMP allocation. Reduce line item quantities, adjust unit prices, or go back to Step 1 to revise the PPMP ceiling before proceeding.
+                </p>
+              </div>
             </div>
+          )}
+
+          {/* Add Another Item Button & Budget Limiter Summary Panel */}
+          <div
+            className={`rounded-2xl border-2 p-5 transition-all ${
+              isOverBudget
+                ? "border-rose-400 bg-rose-50/70 dark:border-rose-800 dark:bg-rose-950/40"
+                : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60"
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addItem}
+                className="min-h-12 border-2 border-dashed border-slate-400 bg-white px-6 py-3 text-base font-bold text-slate-900 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <PlusCircle className="h-5 w-5 text-[#881337] dark:text-rose-400" />
+                <span>Add Another Item</span>
+              </Button>
+
+              <div className="flex flex-wrap items-end gap-6 text-right">
+                {activeBudgetCeiling > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Approved PPMP Ceiling
+                    </p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                      ₱{" "}
+                      {activeBudgetCeiling.toLocaleString("en-PH", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                <div className="text-right">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Total Estimated Cost
+                  </p>
+                  <p
+                    className={`text-2xl font-black ${
+                      isOverBudget
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-[#881337] dark:text-rose-400"
+                    }`}
+                  >
+                    ₱{" "}
+                    {total.toLocaleString("en-PH", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+
+                {activeBudgetCeiling > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {isOverBudget ? "Over Ceiling By" : "Remaining Ceiling"}
+                    </p>
+                    <p
+                      className={`text-lg font-bold ${
+                        isOverBudget
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-emerald-700 dark:text-emerald-400"
+                      }`}
+                    >
+                      {isOverBudget ? "+" : ""}₱{" "}
+                      {Math.abs(activeBudgetCeiling - total).toLocaleString("en-PH", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Visual Budget Utilization Meter */}
+            {activeBudgetCeiling > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <span>
+                    Budget Allocation Usage:{" "}
+                    <strong
+                      className={
+                        isOverBudget
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-slate-900 dark:text-slate-100"
+                      }
+                    >
+                      {budgetUtilizationPct}%
+                    </strong>
+                  </span>
+                  <span
+                    className={
+                      isOverBudget
+                        ? "font-bold text-rose-600 dark:text-rose-400"
+                        : "text-slate-500 dark:text-slate-400"
+                    }
+                  >
+                    {isOverBudget
+                      ? `Exceeds ceiling by ₱${overBudgetAmount.toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      : `₱${remainingBudget.toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })} available under ceiling`}
+                  </span>
+                </div>
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div
+                    className={`h-full transition-all duration-300 rounded-full ${
+                      isOverBudget
+                        ? "bg-rose-600"
+                        : budgetUtilizationPct > 90
+                        ? "bg-amber-500"
+                        : "bg-emerald-600"
+                    }`}
+                    style={{ width: `${Math.min(budgetUtilizationPct, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Step 2 Bottom Navigation */}
@@ -1540,8 +1786,18 @@ function PurchaseRequestForm({
 
             <Button
               type="button"
+              disabled={isOverBudget}
               onClick={handleAdvanceFromStep2}
-              className="min-h-12 bg-[#881337] text-white hover:bg-[#70102e]"
+              className={`min-h-12 text-white ${
+                isOverBudget
+                  ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
+                  : "bg-[#881337] hover:bg-[#70102e]"
+              }`}
+              title={
+                isOverBudget
+                  ? "Cannot proceed: Total Estimated Cost exceeds Approved PPMP Budget Ceiling"
+                  : undefined
+              }
             >
               <span>Next Step: Purpose of Request</span>
               <ArrowRight className="h-5 w-5" />
@@ -1727,16 +1983,31 @@ function PurchaseRequestForm({
                 </span>
               </div>
 
-              <div className="rounded-xl border-2 border-[#881337]/30 bg-rose-50/60 p-4 dark:border-rose-800 dark:bg-rose-950/30">
-                <p className="text-sm font-bold uppercase tracking-wide text-[#881337] dark:text-rose-300">
+              <div className={`rounded-xl border-2 p-4 ${
+                isOverBudget
+                  ? "border-rose-400 bg-rose-50/70 dark:border-rose-800 dark:bg-rose-950/40"
+                  : "border-[#881337]/30 bg-rose-50/60 dark:border-rose-800 dark:bg-rose-950/30"
+              }`}>
+                <p className={`text-sm font-bold uppercase tracking-wide ${
+                  isOverBudget ? "text-rose-700 dark:text-rose-300" : "text-[#881337] dark:text-rose-300"
+                }`}>
                   Total Estimated Budget
                 </p>
-                <p className="mt-2 text-2xl font-extrabold text-[#881337] dark:text-rose-300">
+                <p className={`mt-2 text-2xl font-extrabold ${
+                  isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-[#881337] dark:text-rose-300"
+                }`}>
                   ₱ {total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <span className="mt-1 inline-block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {selectedOffice?.name || user?.officeName || "Batanes State College"}
-                </span>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-xs">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Ceiling: ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className={`font-semibold ${
+                    isOverBudget ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-400"
+                  }`}>
+                    {isOverBudget ? `Over by ₱${overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₱${remainingBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} left`}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1774,14 +2045,38 @@ function PurchaseRequestForm({
                   })}
                 </tbody>
                 <tfoot className="border-t-2 border-slate-300 bg-slate-50 font-bold dark:border-slate-700 dark:bg-slate-800/80">
+                  {activeBudgetCeiling > 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-2 text-right text-sm text-slate-600 dark:text-slate-400">
+                        Approved PPMP Budget Ceiling:
+                      </td>
+                      <td className="px-4 py-2 text-right text-base font-bold text-slate-800 dark:text-slate-200">
+                        ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )}
                   <tr>
-                    <td colSpan={5} className="px-4 py-3.5 text-right text-base text-slate-900 dark:text-slate-100">
+                    <td colSpan={5} className="px-4 py-3 text-right text-base text-slate-900 dark:text-slate-100">
                       Total Estimated Budget:
                     </td>
-                    <td className="px-4 py-3.5 text-right text-lg font-extrabold text-[#881337] dark:text-rose-400">
+                    <td className={`px-4 py-3 text-right text-lg font-extrabold ${
+                      isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-[#881337] dark:text-rose-400"
+                    }`}>
                       ₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
+                  {activeBudgetCeiling > 0 && (
+                    <tr className="border-t border-slate-200 dark:border-slate-700">
+                      <td colSpan={5} className="px-4 py-2 text-right text-sm text-slate-600 dark:text-slate-400">
+                        {isOverBudget ? "Exceeded Budget Ceiling By:" : "Remaining PPMP Budget:"}
+                      </td>
+                      <td className={`px-4 py-2 text-right text-sm font-bold ${
+                        isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"
+                      }`}>
+                        {isOverBudget ? "+" : ""}₱{Math.abs(activeBudgetCeiling - total).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )}
                 </tfoot>
               </table>
             </div>
@@ -1842,6 +2137,22 @@ function PurchaseRequestForm({
             </div>
           </div>
 
+          {/* Budget Limiter Over-Ceiling Blocker Banner */}
+          {isOverBudget && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-xl border-2 border-rose-500 bg-rose-50 p-4 text-base font-semibold text-rose-950 dark:border-rose-600 dark:bg-rose-950/60 dark:text-rose-100"
+            >
+              <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-rose-600 dark:text-rose-400" />
+              <div>
+                <p className="font-bold">Cannot Submit: Approved PPMP Budget Ceiling Exceeded</p>
+                <p className="text-sm font-normal">
+                  Total Estimated Cost (₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) exceeds the Approved PPMP Budget Ceiling of ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} by ₱{overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Under BSC Budgetary Control rules, requests exceeding the approved ceiling cannot be submitted. Please click "Go Back and Edit" to reduce item quantities or prices.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Automated Email Notification Notice Banner */}
           <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-base text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
             <div className="flex items-start gap-3">
@@ -1868,8 +2179,17 @@ function PurchaseRequestForm({
 
             <Button
               type="submit"
-              disabled={isSaving}
-              className="min-h-12 bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#70102e]"
+              disabled={isSaving || isOverBudget}
+              className={`min-h-12 px-6 py-3 text-base font-bold text-white ${
+                isOverBudget
+                  ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
+                  : "bg-[#881337] hover:bg-[#70102e]"
+              }`}
+              title={
+                isOverBudget
+                  ? "Cannot submit: Total Estimated Cost exceeds Approved PPMP Budget Ceiling"
+                  : undefined
+              }
             >
               {isSaving ? (
                 <LoaderCircle className="h-5 w-5 animate-spin text-white" />

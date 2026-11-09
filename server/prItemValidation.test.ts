@@ -92,4 +92,44 @@ describe("Purchase Request Item Validation & Error Formatting", () => {
     const result = prCreateSchema.safeParse(validPayload);
     expect(result.success).toBe(true);
   });
+
+  it("enforces PPMP budget ceiling and blocks creating PR when total estimate exceeds ceiling", async () => {
+    const { createPurchaseRequest } = await import("./db");
+    const mockActor = { id: 10, role: "end_user" } as any;
+
+    const mockDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [{ id: 50, plannedAmount: "1000.00" }],
+          }),
+        }),
+      }),
+      insert: () => ({
+        values: async () => [{ id: 1, prNumber: "PR-2026-TEST" }],
+      }),
+    } as any;
+
+    // Total: 6 * 168.96 = 1013.76 > 1000.00 ceiling
+    await expect(
+      createPurchaseRequest(
+        {
+          purpose: "Test Request that exceeds ceiling",
+          officeId: 1,
+          objectOfExpenditureId: 1,
+          ppmpEntryId: 50,
+          items: [
+            {
+              description: "FURNITURE CLEANER",
+              quantity: 6,
+              unit: "Piece",
+              estimatedUnitCost: 168.96,
+            },
+          ],
+        },
+        mockActor,
+        { db: mockDb, recordAudit: async () => undefined }
+      )
+    ).rejects.toThrow(/exceeds the Approved PPMP Budget Ceiling of ₱1,000.00/);
+  });
 });

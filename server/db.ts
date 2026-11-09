@@ -2140,6 +2140,15 @@ export async function createPurchaseRequest(input: { purpose: string; category?:
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const totalEstimate = input.items.reduce((sum, item) => sum + item.quantity * item.estimatedUnitCost, 0);
   if (totalEstimate <= 0) throw new Error("A Purchase Request must contain at least one item with a positive estimated cost.");
+  if (input.ppmpEntryId) {
+    const [ppmp] = await db.select().from(appPpmpEntries).where(eq(appPpmpEntries.id, input.ppmpEntryId)).limit(1);
+    if (ppmp && ppmp.plannedAmount) {
+      const budgetCeiling = Number(ppmp.plannedAmount);
+      if (budgetCeiling > 0 && totalEstimate > budgetCeiling + 0.01) {
+        throw new Error(`Total Estimated Cost (₱${totalEstimate.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) exceeds the Approved PPMP Budget Ceiling of ₱${budgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`);
+      }
+    }
+  }
   await assertActiveCatalogItemIds(input.items.map((item) => item.catalogItemId), db);
   const [requestedRows, approvedRows] = await Promise.all([
     input.requestedSignatoryId ? db.select().from(procurementSignatories).where(eq(procurementSignatories.id, input.requestedSignatoryId)).limit(1) : Promise.resolve([]),
