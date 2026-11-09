@@ -7146,15 +7146,26 @@ function resolveRewrittenUrl(req) {
   const matchedPath = typeof req.headers["x-matched-path"] === "string" ? req.headers["x-matched-path"] : null;
   const vercelMatched = typeof req.headers["x-vercel-matched-path"] === "string" ? req.headers["x-vercel-matched-path"] : null;
   const candidate = queryPath ? queryPath.startsWith("/") ? queryPath : `/${queryPath}` : forwardedUri || originalUrl || matchedPath || vercelMatched || req.url || "";
+  let sp;
   const rawUrl = req.url && req.url.includes("?") ? req.url : req.originalUrl && req.originalUrl.includes("?") ? req.originalUrl : "";
-  let queryString = "";
   const qIdx = rawUrl.indexOf("?");
   if (qIdx !== -1) {
-    const sp = new URLSearchParams(rawUrl.slice(qIdx + 1));
-    sp.delete("x_path");
-    const qs = sp.toString();
-    if (qs) queryString = `?${qs}`;
+    sp = new URLSearchParams(rawUrl.slice(qIdx + 1));
+  } else if (req.query && typeof req.query === "object") {
+    sp = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (typeof value === "string") {
+        sp.set(key, value);
+      } else if (Array.isArray(value)) {
+        value.forEach((v) => typeof v === "string" && sp.append(key, v));
+      }
+    }
+  } else {
+    sp = new URLSearchParams();
   }
+  sp.delete("x_path");
+  const qs = sp.toString();
+  const queryString = qs ? `?${qs}` : "";
   const pathPart = candidate.split("?")[0];
   if (pathPart.includes("/trpc")) {
     const idx = pathPart.indexOf("/trpc");
