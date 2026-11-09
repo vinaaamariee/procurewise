@@ -40,9 +40,11 @@ import {
   User as UserIcon,
   XCircle,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { DataTableToolbar } from "@/components/common/DataTableToolbar";
+import { TablePagination } from "@/components/common/TablePagination";
 
 function formatMoney(amount: number | string | null | undefined) {
   const numeric = typeof amount === "number" ? amount : Number(amount ?? 0);
@@ -103,7 +105,9 @@ export function OfficerPrVerificationPage() {
   const isOfficerOrAdmin = role === "procurement_officer" || role === "admin";
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "verified" | "returned">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   // Review & Verification Modal
   const [selectedVerificationItem, setSelectedVerificationItem] = useState<any | null>(null);
@@ -189,15 +193,33 @@ export function OfficerPrVerificationPage() {
       }
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const prNumber = pr.prNumber?.toLowerCase() ?? "";
         const purpose = pr.purpose?.toLowerCase() ?? "";
+        const officeName = item.office?.name?.toLowerCase() ?? pr.entityName?.toLowerCase() ?? "";
         const ppmpDesc = item.linkedPpmp?.description?.toLowerCase() ?? "";
-        return prNumber.includes(q) || purpose.includes(q) || ppmpDesc.includes(q);
+        const ppmpFile = item.uploadedPpmpDoc?.originalFileName?.toLowerCase() ?? "";
+        return (
+          prNumber.includes(q) ||
+          purpose.includes(q) ||
+          officeName.includes(q) ||
+          ppmpDesc.includes(q) ||
+          ppmpFile.includes(q)
+        );
       }
       return true;
     });
   }, [allRecords, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / itemsPerPage));
+  const paginatedRecords = filteredRecords.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleOpenReview = (item: any) => {
     setSelectedVerificationItem(item);
@@ -383,70 +405,53 @@ export function OfficerPrVerificationPage() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button
-            variant={statusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("all")}
-            className={`h-8 text-xs ${statusFilter === "all" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            All Packages ({allRecords.length})
-          </Button>
-          <Button
-            variant={statusFilter === "pending" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("pending")}
-            className={`h-8 text-xs ${statusFilter === "pending" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            Pending Verification ({metrics.pending})
-          </Button>
-          <Button
-            variant={statusFilter === "verified" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("verified")}
-            className={`h-8 text-xs ${statusFilter === "verified" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            Verified ({metrics.verified})
-          </Button>
-          <Button
-            variant={statusFilter === "returned" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("returned")}
-            className={`h-8 text-xs ${statusFilter === "returned" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            Returned ({metrics.returned})
-          </Button>
-        </div>
-
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search PR number, purpose..."
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
-      </div>
+      {/* Reusable Excel-Style Search, Filter & Pagination Toolbar */}
+      <DataTableToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search by PR number, purpose, requesting office, or PPMP description..."
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        statusOptions={[
+          { label: `All Packages (${allRecords.length})`, value: "ALL" },
+          { label: `Pending Verification (${metrics.pending})`, value: "pending" },
+          { label: `Verified (${metrics.verified})`, value: "verified" },
+          { label: `Returned (${metrics.returned})`, value: "returned" },
+        ]}
+        totalCount={allRecords.length}
+        filteredCount={filteredRecords.length}
+      />
 
       {/* Records Table */}
-      <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
         {verificationsQuery.isLoading ? (
           <div className="flex h-48 items-center justify-center">
             <LoaderCircle className="h-6 w-6 animate-spin text-[#881337]" />
           </div>
         ) : filteredRecords.length === 0 ? (
-          <div className="py-12 text-center">
-            <FileSpreadsheet className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
-            <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">No PR packages found</p>
-            <p className="text-xs text-slate-500">There are no submitted packages matching this filter.</p>
+          <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+            <p className="text-lg font-bold text-slate-900 dark:text-white">
+              No matching records found
+            </p>
+            <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+              We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("ALL");
+              }}
+              className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+            >
+              Clear Filters & Show All Records
+            </button>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
+            <table className="w-full text-left text-base">
+              <thead className="border-b-2 border-slate-200 bg-slate-50/75 text-sm dark:border-slate-800 dark:bg-slate-800/50">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PR Number & Date</th>
                   <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Purpose & Office</th>
@@ -458,7 +463,7 @@ export function OfficerPrVerificationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredRecords.map((item) => {
+                {paginatedRecords.map((item) => {
                   const pr = item.purchaseRequest;
                   const isMixed = item.segregationAnalysis?.isMixed;
                   const detectedCats = item.segregationAnalysis?.categoryLabels ?? [];
@@ -621,11 +626,10 @@ export function OfficerPrVerificationPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button
-                          size="sm"
                           onClick={() => handleOpenReview(item)}
-                          className="h-7 gap-1 px-2.5 text-xs bg-[#881337] hover:bg-[#70102e] text-white rounded-md shadow-xs"
+                          className="min-h-12 gap-2 px-4 text-base font-bold bg-[#881337] hover:bg-[#70102e] text-white rounded-xl shadow-xs"
                         >
-                          <Eye className="h-3.5 w-3.5" />
+                          <Eye className="h-4 w-4" />
                           {isVerified ? "View Package" : "Review & Verify"}
                         </Button>
                       </td>
@@ -635,6 +639,12 @@ export function OfficerPrVerificationPage() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+          </>
         )}
       </div>
 

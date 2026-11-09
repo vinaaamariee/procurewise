@@ -23,8 +23,10 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
+import { DataTableToolbar } from "@/components/common/DataTableToolbar";
+import { TablePagination } from "@/components/common/TablePagination";
 
 function formatMoney(amount: number | string | null | undefined) {
   const numeric = typeof amount === "number" ? amount : Number(amount ?? 0);
@@ -40,7 +42,9 @@ export function OfficerDeliveryMonitoringPage() {
   const isOfficerOrAdmin = role === "procurement_officer" || role === "admin";
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterMode, setFilterMode] = useState<"all" | "in_transit" | "delivered" | "inspected">("all");
+  const [filterMode, setFilterMode] = useState<string>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   // Log Goods Receipt Modal
   const [selectedPoForDelivery, setSelectedPoForDelivery] = useState<any | null>(null);
@@ -115,15 +119,33 @@ export function OfficerDeliveryMonitoringPage() {
       }
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const poNumber = item.order.poNumber?.toLowerCase() ?? "";
         const supplier = item.supplier?.companyName?.toLowerCase() ?? "";
         const prNumber = item.purchaseRequest?.prNumber?.toLowerCase() ?? "";
-        return poNumber.includes(q) || supplier.includes(q) || prNumber.includes(q);
+        const drNum = item.deliveryReceipt?.receiptNumber?.toLowerCase() ?? "";
+        const iarNum = item.iar?.iarNumber?.toLowerCase() ?? "";
+        return (
+          poNumber.includes(q) ||
+          supplier.includes(q) ||
+          prNumber.includes(q) ||
+          drNum.includes(q) ||
+          iarNum.includes(q)
+        );
       }
       return true;
     });
   }, [items, filterMode, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterMode]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleOpenLogDelivery = (item: any) => {
     setSelectedPoForDelivery(item);
@@ -253,174 +275,162 @@ export function OfficerDeliveryMonitoringPage() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button
-            variant={filterMode === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterMode("all")}
-            className={`h-8 text-xs ${filterMode === "all" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            All Orders ({items.length})
-          </Button>
-          <Button
-            variant={filterMode === "in_transit" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterMode("in_transit")}
-            className={`h-8 text-xs ${filterMode === "in_transit" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            In Transit ({metrics.inTransit})
-          </Button>
-          <Button
-            variant={filterMode === "delivered" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterMode("delivered")}
-            className={`h-8 text-xs ${filterMode === "delivered" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            Delivered ({metrics.delivered})
-          </Button>
-          <Button
-            variant={filterMode === "inspected" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterMode("inspected")}
-            className={`h-8 text-xs ${filterMode === "inspected" ? "bg-[#881337] hover:bg-[#70102e] text-white" : ""}`}
-          >
-            Inspected ({metrics.inspected})
-          </Button>
-        </div>
-
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search PO, supplier, PR..."
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
-      </div>
+      {/* Reusable Excel-Style Search, Filter & Pagination Toolbar */}
+      <DataTableToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search by PO number, supplier name, PR number, DR, or IAR..."
+        statusFilter={filterMode}
+        onStatusChange={setFilterMode}
+        statusOptions={[
+          { label: `All Orders (${items.length})`, value: "ALL" },
+          { label: `In Transit (${metrics.inTransit})`, value: "in_transit" },
+          { label: `Delivered (${metrics.delivered})`, value: "delivered" },
+          { label: `Inspected (${metrics.inspected})`, value: "inspected" },
+        ]}
+        totalCount={items.length}
+        filteredCount={filteredItems.length}
+      />
 
       {/* Monitored Orders Table */}
-      <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+        <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Purchase Order Delivery & Inspection Register</h3>
-            <p className="text-xs text-slate-500">Monitor supplier fulfillment timelines, delivery receipts, and inspection reports.</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Purchase Order Delivery & Inspection Register</h3>
+            <p className="text-sm text-slate-500">Monitor supplier fulfillment timelines, delivery receipts, and inspection reports.</p>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & PR</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Supplier</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Scheduled Date</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Delivery Status</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">IAR Milestone</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    No purchase orders found matching this filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredItems.map((item) => {
-                  const po = item.order;
-                  const isDelivered = Boolean(item.deliveryReceipt) || po.status === "delivered";
-                  const isInspected = Boolean(item.iar);
+        {filteredItems.length === 0 ? (
+          <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+            <p className="text-lg font-bold text-slate-900 dark:text-white">
+              No matching records found
+            </p>
+            <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+              We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setFilterMode("ALL");
+              }}
+              className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+            >
+              Clear Filters & Show All Records
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-base">
+                <thead className="border-b-2 border-slate-200 bg-slate-50/75 text-sm dark:border-slate-800 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & PR</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Supplier</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Scheduled Date</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Delivery Status</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">IAR Milestone</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paginatedItems.map((item) => {
+                    const po = item.order;
+                    const isDelivered = Boolean(item.deliveryReceipt) || po.status === "delivered";
+                    const isInspected = Boolean(item.iar);
 
-                  return (
-                    <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900 dark:text-white">{po.poNumber}</div>
-                        <div className="text-[11px] text-slate-500">{item.purchaseRequest?.prNumber || "PR #" + po.purchaseRequestId}</div>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                        {item.supplier?.companyName || "Supplier #" + po.supplierId}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                        {formatMoney(po.totalAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                        {po.scheduledDeliveryDate
-                          ? new Date(po.scheduledDeliveryDate).toLocaleDateString("en-PH")
-                          : "15 days from PO"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isDelivered ? (
-                          <div>
-                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Goods Receipt Logged
+                    return (
+                      <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-slate-900 dark:text-white">{po.poNumber}</div>
+                          <div className="text-sm text-slate-500">{item.purchaseRequest?.prNumber || "PR #" + po.purchaseRequestId}</div>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
+                          {item.supplier?.companyName || "Supplier #" + po.supplierId}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                          {formatMoney(po.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                          {po.scheduledDeliveryDate
+                            ? new Date(po.scheduledDeliveryDate).toLocaleDateString("en-PH")
+                            : "15 days from PO"}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isDelivered ? (
+                            <div>
+                              <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs">
+                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Goods Receipt Logged
+                              </Badge>
+                              {item.deliveryReceipt?.receiptNumber && (
+                                <div className="font-mono text-sm text-slate-500 mt-0.5">
+                                  {item.deliveryReceipt.receiptNumber}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs">
+                              <Truck className="mr-1 h-3.5 w-3.5" /> In Transit
                             </Badge>
-                            {item.deliveryReceipt?.receiptNumber && (
-                              <div className="font-mono text-[10px] text-slate-500 mt-0.5">
-                                {item.deliveryReceipt.receiptNumber}
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {item.iar ? (
+                            <div>
+                              <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs">
+                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {item.iar.acceptanceStatus === "accepted" ? "IAR Accepted" : item.iar.acceptanceStatus}
+                              </Badge>
+                              <div className="font-mono text-sm text-slate-500 mt-0.5">
+                                {item.iar.iarNumber}
                               </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-amber-600 font-medium">Pending IAR</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {!isDelivered && (
+                              <Button
+                                onClick={() => handleOpenLogDelivery(item)}
+                                className="min-h-12 px-4 text-base font-bold bg-[#881337] hover:bg-[#70102e] text-white"
+                              >
+                                <PackageCheck className="mr-1.5 h-4 w-4" />
+                                Log Delivery
+                              </Button>
+                            )}
+                            {isDelivered && !isInspected && (
+                              <Button
+                                onClick={() => handleOpenRecordIar(item)}
+                                className="min-h-12 px-4 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                              >
+                                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                                Record IAR
+                              </Button>
+                            )}
+                            {isInspected && (
+                              <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs">
+                                Milestones Complete
+                              </Badge>
                             )}
                           </div>
-                        ) : (
-                          <Badge variant="outline" className="border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[10px]">
-                            <Truck className="mr-1 h-3 w-3" /> In Transit
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {item.iar ? (
-                          <div>
-                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> {item.iar.acceptanceStatus === "accepted" ? "IAR Accepted" : item.iar.acceptanceStatus}
-                            </Badge>
-                            <div className="font-mono text-[10px] text-slate-500 mt-0.5">
-                              {item.iar.iarNumber}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-amber-600 font-medium">Pending IAR</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {!isDelivered && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenLogDelivery(item)}
-                              className="h-7 text-xs bg-[#881337] hover:bg-[#70102e] text-white"
-                            >
-                              <PackageCheck className="mr-1 h-3 w-3" />
-                              Log Delivery
-                            </Button>
-                          )}
-                          {isDelivered && !isInspected && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenRecordIar(item)}
-                              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                              <CheckCircle2 className="mr-1 h-3 w-3" />
-                              Record IAR
-                            </Button>
-                          )}
-                          {isInspected && (
-                            <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                              Milestones Complete
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </div>
 
       {/* Log Delivery Modal */}

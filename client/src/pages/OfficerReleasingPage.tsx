@@ -25,9 +25,11 @@ import {
   ShieldCheck,
   UserCheck,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { DataTableToolbar } from "@/components/common/DataTableToolbar";
+import { TablePagination } from "@/components/common/TablePagination";
 
 function formatMoney(amount: number | string | null | undefined) {
   const numeric = typeof amount === "number" ? amount : Number(amount ?? 0);
@@ -48,6 +50,9 @@ export function OfficerReleasingPage({
 
   const [activeTab, setActiveTab] = useState<"notices" | "pos">(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   // Serve Notice Modal
   const [selectedNoticeForServe, setSelectedNoticeForServe] = useState<any | null>(null);
@@ -116,6 +121,81 @@ export function OfficerReleasingPage({
 
     return { pendingNotices, servedNotices, pendingPos, releasedPos };
   }, [notices, poItems]);
+
+  // Multi-Field Smart Search & Status Filter for Notices
+  const filteredNotices = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return notices.filter((n) => {
+      const isServed = n.status === "served";
+      const isAwaitingHope =
+        !isServed &&
+        n.noticeType === "award" &&
+        n.status !== "issued" &&
+        n.status !== "approved";
+
+      if (statusFilter === "awaiting_service" && (isServed || isAwaitingHope)) return false;
+      if (statusFilter === "served" && !isServed) return false;
+      if (statusFilter === "awaiting_hope" && !isAwaitingHope) return false;
+
+      if (q) {
+        const noticeNum = n.noticeNumber?.toLowerCase() ?? "";
+        const subject = n.subject?.toLowerCase() ?? "";
+        const noticeType = n.noticeType?.toLowerCase() ?? "";
+        const recipient = n.recipientName?.toLowerCase() ?? "";
+        return (
+          noticeNum.includes(q) ||
+          subject.includes(q) ||
+          noticeType.includes(q) ||
+          recipient.includes(q)
+        );
+      }
+      return true;
+    });
+  }, [notices, searchQuery, statusFilter]);
+
+  // Multi-Field Smart Search & Status Filter for POs
+  const filteredPoItems = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return poItems.filter((item) => {
+      const po = item.order;
+      const isReleased = item.isReleased;
+      const isReadyForRelease = po.status === "approved";
+
+      if (statusFilter === "ready" && (isReleased || !isReadyForRelease)) return false;
+      if (statusFilter === "released" && !isReleased) return false;
+      if (statusFilter === "awaiting_signatures" && (isReleased || isReadyForRelease)) return false;
+
+      if (q) {
+        const poNum = po.poNumber?.toLowerCase() ?? "";
+        const supplierName = item.supplier?.companyName?.toLowerCase() ?? "";
+        const contactPerson = item.supplier?.contactPerson?.toLowerCase() ?? "";
+        const prNum = item.purchaseRequest?.prNumber?.toLowerCase() ?? "";
+        return (
+          poNum.includes(q) ||
+          supplierName.includes(q) ||
+          contactPerson.includes(q) ||
+          prNum.includes(q)
+        );
+      }
+      return true;
+    });
+  }, [poItems, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, activeTab]);
+
+  const totalNoticePages = Math.max(1, Math.ceil(filteredNotices.length / itemsPerPage));
+  const paginatedNotices = filteredNotices.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPoPages = Math.max(1, Math.ceil(filteredPoItems.length / itemsPerPage));
+  const paginatedPoItems = filteredPoItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleOpenServeNotice = (notice: any) => {
     setSelectedNoticeForServe(notice);
@@ -303,250 +383,319 @@ export function OfficerReleasingPage({
 
       {/* Main Content Tables */}
       {activeTab === "notices" ? (
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+          <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Letters of Notice (Award / Notice to Proceed)</h3>
-              <p className="text-xs text-slate-500">Deliver and document service of Letters of Notice to winning suppliers.</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Letters of Notice (Award / Notice to Proceed)</h3>
+              <p className="text-sm text-slate-500">Deliver and document service of Letters of Notice to winning suppliers.</p>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Notice Number</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Type & Subject</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Date Issued</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Service Status</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {notices.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-500">
-                      No letters of notice found in the registry.
-                    </td>
-                  </tr>
-                ) : (
-                  notices.map((n) => {
-                    const isServed = n.status === "served";
-                    const isAwaitingHope =
-                      !isServed &&
-                      n.noticeType === "award" &&
-                      n.status !== "issued" &&
-                      n.status !== "approved";
-                    const hasLinkedPo = Boolean(
-                      n.purchaseRequestId &&
-                        poItems.some((p) => p.order.purchaseRequestId === n.purchaseRequestId)
-                    );
+          <DataTableToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search by notice number, subject, notice type, or recipient..."
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={[
+              { label: `All Notices (${notices.length})`, value: "ALL" },
+              { label: `Awaiting Service (${metrics.pendingNotices})`, value: "awaiting_service" },
+              { label: `Served to Supplier (${metrics.servedNotices})`, value: "served" },
+              { label: "Awaiting HoPE Approval", value: "awaiting_hope" },
+            ]}
+            totalCount={notices.length}
+            filteredCount={filteredNotices.length}
+          />
 
-                    return (
-                      <tr key={n.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                          {n.noticeNumber}
-                        </td>
-                        <td className="px-4 py-3 min-w-[160px] max-w-[240px]">
-                          <Badge variant="outline" className="text-[10px] uppercase font-semibold mb-1 border-slate-300">
-                            {n.noticeType}
-                          </Badge>
-                          <div className="truncate font-medium text-slate-800 dark:text-slate-200" title={n.subject}>
-                            {n.subject}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-400">
-                          {n.issuedAt ? new Date(n.issuedAt).toLocaleDateString("en-PH") : new Date(n.createdAt).toLocaleDateString("en-PH")}
-                        </td>
-                        <td className="px-4 py-3">
-                          {isServed ? (
-                            <div>
-                              <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                                <CheckCircle2 className="mr-1 h-3 w-3" /> Served to Supplier
-                              </Badge>
-                              {(n.recipientName || n.servedAt) && (
-                                <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={n.recipientName ? `Received by ${n.recipientName}` : undefined}>
-                                  {n.recipientName ? `Rcvd: ${n.recipientName}` : ""}
-                                  {n.recipientName && n.servedAt ? " · " : ""}
-                                  {n.servedAt ? new Date(n.servedAt).toLocaleDateString("en-PH") : ""}
-                                </div>
-                              )}
+          {filteredNotices.length === 0 ? (
+            <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
+                No matching records found
+              </p>
+              <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+                We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("ALL");
+                }}
+                className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+              >
+                Clear Filters & Show All Records
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-base">
+                  <thead className="border-b-2 border-slate-200 bg-slate-50/75 text-sm dark:border-slate-800 dark:bg-slate-800/50">
+                    <tr>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Notice Number</th>
+                      <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Type & Subject</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Date Issued</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Service Status</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {paginatedNotices.map((n) => {
+                      const isServed = n.status === "served";
+                      const isAwaitingHope =
+                        !isServed &&
+                        n.noticeType === "award" &&
+                        n.status !== "issued" &&
+                        n.status !== "approved";
+                      const hasLinkedPo = Boolean(
+                        n.purchaseRequestId &&
+                          poItems.some((p) => p.order.purchaseRequestId === n.purchaseRequestId)
+                      );
+
+                      return (
+                        <tr key={n.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                          <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                            {n.noticeNumber}
+                          </td>
+                          <td className="px-4 py-3 min-w-[160px] max-w-[260px]">
+                            <Badge variant="outline" className="text-xs uppercase font-semibold mb-1 border-slate-300">
+                              {n.noticeType}
+                            </Badge>
+                            <div className="truncate font-medium text-slate-800 dark:text-slate-200" title={n.subject}>
+                              {n.subject}
                             </div>
-                          ) : isAwaitingHope ? (
-                            <Badge variant="outline" className="whitespace-nowrap border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-[10px]">
-                              <Clock className="mr-1 h-3 w-3" /> Awaiting HoPE Approval
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
-                              <Clock className="mr-1 h-3 w-3" /> Awaiting Service
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Link href={`/print/notice?noticeNumber=${n.noticeNumber}`}>
-                              <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs gap-1">
-                                <Printer className="h-3 w-3" />
-                                Print
-                              </Button>
-                            </Link>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-400">
+                            {n.issuedAt ? new Date(n.issuedAt).toLocaleDateString("en-PH") : new Date(n.createdAt).toLocaleDateString("en-PH")}
+                          </td>
+                          <td className="px-4 py-3">
                             {isServed ? (
-                              hasLinkedPo ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setActiveTab("pos")}
-                                  className="h-7 px-2.5 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
-                                  title="View or release the Purchase Order for this award"
-                                >
-                                  PO Queue →
+                              <div>
+                                <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs">
+                                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Served to Supplier
+                                </Badge>
+                                {(n.recipientName || n.servedAt) && (
+                                  <div className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={n.recipientName ? `Received by ${n.recipientName}` : undefined}>
+                                    {n.recipientName ? `Rcvd: ${n.recipientName}` : ""}
+                                    {n.recipientName && n.servedAt ? " · " : ""}
+                                    {n.servedAt ? new Date(n.servedAt).toLocaleDateString("en-PH") : ""}
+                                  </div>
+                                )}
+                              </div>
+                            ) : isAwaitingHope ? (
+                              <Badge variant="outline" className="whitespace-nowrap border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-xs">
+                                <Clock className="mr-1 h-3.5 w-3.5" /> Awaiting HoPE Approval
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-xs">
+                                <Clock className="mr-1 h-3.5 w-3.5" /> Awaiting Service
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Link href={`/print/notice?noticeNumber=${n.noticeNumber}`}>
+                                <Button variant="outline" className="min-h-12 px-4 text-base font-bold gap-1.5">
+                                  <Printer className="h-4 w-4" />
+                                  Print
                                 </Button>
-                              ) : role === "admin" ? (
-                                <Link href="/purchase-orders">
+                              </Link>
+                              {isServed ? (
+                                hasLinkedPo ? (
                                   <Button
                                     variant="outline"
-                                    size="sm"
-                                    className="h-7 px-2.5 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
-                                    title="Open Purchase Order preparation"
+                                    onClick={() => setActiveTab("pos")}
+                                    className="min-h-12 px-4 text-base font-bold border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                                    title="View or release the Purchase Order for this award"
                                   >
-                                    Prepare PO →
+                                    PO Queue →
                                   </Button>
-                                </Link>
-                              ) : (
-                                <span
-                                  className="inline-flex h-7 items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"
-                                  title="Notice served. Procurement Staff will now draft the Purchase Order."
+                                ) : role === "admin" ? (
+                                  <Link href="/purchase-orders">
+                                    <Button
+                                      variant="outline"
+                                      className="min-h-12 px-4 text-base font-bold border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                                      title="Open Purchase Order preparation"
+                                    >
+                                      Prepare PO →
+                                    </Button>
+                                  </Link>
+                                ) : (
+                                  <span
+                                    className="inline-flex min-h-12 items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"
+                                    title="Notice served. Procurement Staff will now draft the Purchase Order."
+                                  >
+                                    Awaiting Staff PO
+                                  </span>
+                                )
+                              ) : isAwaitingHope ? (
+                                <Button
+                                  disabled
+                                  className="min-h-12 px-4 text-base font-bold bg-slate-100 text-slate-400 dark:bg-slate-800"
+                                  title="HoPE must approve the Notice of Award before it can be served"
                                 >
-                                  Awaiting Staff PO
-                                </span>
-                              )
-                            ) : isAwaitingHope ? (
-                              <Button
-                                size="sm"
-                                disabled
-                                className="h-7 px-2.5 text-xs bg-slate-100 text-slate-400 dark:bg-slate-800"
-                                title="HoPE must approve the Notice of Award before it can be served"
-                              >
-                                Pending HoPE
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenServeNotice(n)}
-                                className="h-7 px-2.5 text-xs bg-[#881337] hover:bg-[#70102e] text-white"
-                              >
-                                <Send className="mr-1 h-3 w-3" />
-                                Serve Notice
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                                  Pending HoPE
+                                </Button>
+                              ) : (
+                                <Button
+                                  onClick={() => handleOpenServeNotice(n)}
+                                  className="min-h-12 px-4 text-base font-bold bg-[#881337] hover:bg-[#70102e] text-white"
+                                >
+                                  <Send className="mr-1.5 h-4 w-4" />
+                                  Serve Notice
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalNoticePages}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
         </div>
       ) : (
         /* Purchase Order Releasing Table */
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+          <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Purchase Order / Contract Releasing</h3>
-              <p className="text-xs text-slate-500">Formally release approved and signed Purchase Orders / Contracts to awarded suppliers.</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Purchase Order / Contract Releasing</h3>
+              <p className="text-sm text-slate-500">Formally release approved and signed Purchase Orders / Contracts to awarded suppliers.</p>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-800/50">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & Date</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Awarded Supplier</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PR Reference</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Release Status</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {poItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
-                      No Purchase Orders found in the releasing queue.
-                    </td>
-                  </tr>
-                ) : (
-                  poItems.map((item) => {
-                    const po = item.order;
-                    const isReleased = item.isReleased;
-                    const isReadyForRelease = po.status === "approved";
+          <DataTableToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search by PO number, supplier name, contact person, or PR number..."
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={[
+              { label: `All Purchase Orders (${poItems.length})`, value: "ALL" },
+              { label: `Ready for Releasing (${metrics.pendingPos})`, value: "ready" },
+              { label: `Released to Suppliers (${metrics.releasedPos})`, value: "released" },
+              { label: "Awaiting Signatures", value: "awaiting_signatures" },
+            ]}
+            totalCount={poItems.length}
+            filteredCount={filteredPoItems.length}
+          />
 
-                    return (
-                      <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                          {po.poNumber}
-                          <div className="text-[11px] text-slate-500 font-normal">
-                            {new Date(po.createdAt).toLocaleDateString("en-PH")}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 min-w-[160px] max-w-[240px]">
-                          <div className="truncate font-medium text-slate-800 dark:text-slate-200" title={item.supplier?.companyName || "Supplier #" + po.supplierId}>
-                            {item.supplier?.companyName || "Supplier #" + po.supplierId}
-                          </div>
-                          {item.supplier?.contactPerson && (
-                            <div className="truncate text-[11px] text-slate-500">{item.supplier.contactPerson}</div>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
-                          {item.purchaseRequest?.prNumber || "PR #" + po.purchaseRequestId}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                          {formatMoney(po.totalAmount)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {isReleased ? (
-                            <div>
-                              <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                                <CheckCircle2 className="mr-1 h-3 w-3" /> Released to Supplier
-                              </Badge>
-                              {item.releaseDetails?.releasedAt && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 whitespace-nowrap">
-                                  {new Date(item.releaseDetails.releasedAt).toLocaleDateString("en-PH")} via {item.releaseDetails.releaseMode?.replace("_", " ")}
-                                </div>
-                              )}
+          {filteredPoItems.length === 0 ? (
+            <div className="my-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
+                No matching records found
+              </p>
+              <p className="mt-1 text-base text-slate-600 dark:text-slate-400">
+                We couldn't find any entries matching "{searchQuery}". Try checking for typos or resetting your filters.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("ALL");
+                }}
+                className="mt-4 min-h-12 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white hover:bg-[#6b0f2b]"
+              >
+                Clear Filters & Show All Records
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-base">
+                  <thead className="border-b-2 border-slate-200 bg-slate-50/75 text-sm dark:border-slate-800 dark:bg-slate-800/50">
+                    <tr>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PO Number & Date</th>
+                      <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Awarded Supplier</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">PR Reference</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Total Amount</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Release Status</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {paginatedPoItems.map((item) => {
+                      const po = item.order;
+                      const isReleased = item.isReleased;
+                      const isReadyForRelease = po.status === "approved";
+
+                      return (
+                        <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                          <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                            {po.poNumber}
+                            <div className="text-sm text-slate-500 font-normal">
+                              {new Date(po.createdAt).toLocaleDateString("en-PH")}
                             </div>
-                          ) : (
-                            <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10px]">
-                              <Clock className="mr-1 h-3 w-3" />
-                              {isReadyForRelease ? "Ready for Releasing" : "Awaiting Signatures"}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right">
-                          <Button
-                            size="sm"
-                            disabled={isReleased || !isReadyForRelease}
-                            onClick={() => handleOpenReleasePo(item)}
-                            className={`h-7 px-2.5 text-xs ${
-                              isReleased
-                                ? "bg-slate-100 text-slate-400 dark:bg-slate-800"
-                                : "bg-[#881337] hover:bg-[#70102e] text-white"
-                            }`}
-                          >
-                            <FileCheck2 className="mr-1 h-3 w-3" />
-                            {isReleased ? "Released" : isReadyForRelease ? "Release PO" : "Awaiting Signatures"}
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          </td>
+                          <td className="px-4 py-3 min-w-[160px] max-w-[240px]">
+                            <div className="truncate font-medium text-slate-800 dark:text-slate-200" title={item.supplier?.companyName || "Supplier #" + po.supplierId}>
+                              {item.supplier?.companyName || "Supplier #" + po.supplierId}
+                            </div>
+                            {item.supplier?.contactPerson && (
+                              <div className="truncate text-sm text-slate-500">{item.supplier.contactPerson}</div>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300">
+                            {item.purchaseRequest?.prNumber || "PR #" + po.purchaseRequestId}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                            {formatMoney(po.totalAmount)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isReleased ? (
+                              <div>
+                                <Badge variant="outline" className="whitespace-nowrap border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs">
+                                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Released to Supplier
+                                </Badge>
+                                {item.releaseDetails?.releasedAt && (
+                                  <div className="text-sm text-slate-500 mt-0.5 whitespace-nowrap">
+                                    {new Date(item.releaseDetails.releasedAt).toLocaleDateString("en-PH")} via {item.releaseDetails.releaseMode?.replace("_", " ")}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="whitespace-nowrap border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-xs">
+                                <Clock className="mr-1 h-3.5 w-3.5" />
+                                {isReadyForRelease ? "Ready for Releasing" : "Awaiting Signatures"}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <Button
+                              disabled={isReleased || !isReadyForRelease}
+                              onClick={() => handleOpenReleasePo(item)}
+                              className={`min-h-12 px-4 text-base font-bold ${
+                                isReleased
+                                  ? "bg-slate-100 text-slate-400 dark:bg-slate-800"
+                                  : "bg-[#881337] hover:bg-[#70102e] text-white"
+                              }`}
+                            >
+                              <FileCheck2 className="mr-1.5 h-4 w-4" />
+                              {isReleased ? "Released" : isReadyForRelease ? "Release PO" : "Awaiting Signatures"}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPoPages}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
         </div>
       )}
 
