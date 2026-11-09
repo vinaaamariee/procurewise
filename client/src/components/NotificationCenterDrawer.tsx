@@ -44,7 +44,7 @@ import { useLocation } from "wouter";
 
 interface NotificationCenterDrawerProps {
   className?: string;
-  triggerVariant?: "default" | "minimal" | "topbar";
+  triggerVariant?: "default" | "minimal" | "topbar" | "accessible";
 }
 
 export function NotificationCenterDrawer({
@@ -223,27 +223,40 @@ export function NotificationCenterDrawer({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Notification Center (${totalActionCount} actionable updates)`}
-          title={`Notification Center (${totalActionCount} actionable updates)`}
-          className={
-            triggerVariant === "topbar"
-              ? "relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 shadow-2xs transition hover:bg-slate-100 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-white"
-              : triggerVariant === "minimal"
-              ? "relative flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60"
-              : `relative flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#121826] text-slate-600 dark:text-slate-300 shadow-2xs transition hover:border-[#881337]/40 hover:text-[#881337] dark:hover:text-[#fda4af] ${className}`
-          }
-        >
-          <div className="relative">
-            <Bell className="h-4 w-4" />
-            {totalActionCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#881337] dark:bg-rose-600 px-1 text-[9px] font-bold text-white shadow-xs animate-in zoom-in-50">
-                {totalActionCount > 9 ? "9+" : totalActionCount}
-              </span>
-            )}
-          </div>
-        </button>
+        {triggerVariant === "accessible" || triggerVariant === "topbar" ? (
+          <button
+            type="button"
+            aria-label={`Alerts (${totalActionCount} actionable updates)`}
+            title={`Alerts (${totalActionCount} actionable updates)`}
+            className={`inline-flex min-h-12 items-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 ${className}`}
+          >
+            <Bell className="h-5 w-5 shrink-0 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+            <span>Alerts</span>
+            <span
+              className={
+                totalActionCount > 0
+                  ? "inline-flex min-h-6 min-w-7 items-center justify-center rounded-lg bg-[#881337] px-2 py-0.5 text-sm font-bold text-white dark:bg-rose-600"
+                  : "inline-flex min-h-6 min-w-7 items-center justify-center rounded-lg bg-slate-200 px-2 py-0.5 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+              }
+            >
+              {totalActionCount > 99 ? "99+" : totalActionCount}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Notification Center (${totalActionCount} actionable updates)`}
+            title={`Notification Center (${totalActionCount} actionable updates)`}
+            className={
+              triggerVariant === "minimal"
+                ? "relative inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-3.5 py-2 text-base font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                : `relative inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-base font-semibold text-slate-800 dark:text-slate-200 shadow-2xs transition hover:border-[#881337]/40 ${className}`
+            }
+          >
+            <Bell className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>Alerts ({totalActionCount})</span>
+          </button>
+        )}
       </SheetTrigger>
 
       <SheetContent

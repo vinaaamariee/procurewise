@@ -20,28 +20,18 @@ function Textarea({
     onKeyDown: handleKeyDown,
   } = useComposition<HTMLTextAreaElement>({
     onKeyDown: (e) => {
-      // Check if this is an Enter key that should be blocked
       const isComposing = (e.nativeEvent as any).isComposing || dialogComposition.justEndedComposing();
-
-      // If Enter key is pressed while composing or just after composition ended,
-      // don't call the user's onKeyDown (this blocks the business logic)
-      // Note: For textarea, Shift+Enter should still work for newlines
       if (e.key === "Enter" && !e.shiftKey && isComposing) {
         return;
       }
-
-      // Otherwise, call the user's onKeyDown
       onKeyDown?.(e);
     },
-    onCompositionStart: e => {
+    onCompositionStart: (e) => {
       dialogComposition.setComposing(true);
       onCompositionStart?.(e);
     },
-    onCompositionEnd: e => {
-      // Mark that composition just ended - this helps handle the Enter key that confirms input
+    onCompositionEnd: (e) => {
       dialogComposition.markCompositionEnd();
-      // Delay setting composing to false to handle Safari's event order
-      // In Safari, compositionEnd fires before the ESC keydown event
       setTimeout(() => {
         dialogComposition.setComposing(false);
       }, 100);
@@ -53,7 +43,10 @@ function Textarea({
     <textarea
       data-slot="textarea"
       className={cn(
-        "border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "flex field-sizing-content min-h-28 w-full rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 shadow-xs transition-[color,box-shadow] outline-none",
+        "focus:border-[#881337] focus:ring-4 focus:ring-[#881337]/15 focus-visible:border-[#881337] focus-visible:ring-4 focus-visible:ring-[#881337]/20",
+        "disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:opacity-75",
+        "aria-invalid:border-rose-600 aria-invalid:ring-4 aria-invalid:ring-rose-600/20",
         className
       )}
       onCompositionStart={handleCompositionStart}

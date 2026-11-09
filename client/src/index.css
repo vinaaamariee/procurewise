@@ -173,7 +173,7 @@ html[data-appearance-theme="dark"] {
   html {
     overflow-y: scroll;
     scrollbar-gutter: stable;
-    font-size: 17.5px;
+    font-size: 16px;
     font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -181,10 +181,29 @@ html[data-appearance-theme="dark"] {
   body {
     overflow-y: scroll;
     scrollbar-gutter: stable;
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-slate-900 dark:text-slate-100 text-base leading-relaxed antialiased;
     font-size: 1rem;
-    line-height: 1.55;
+    line-height: 1.625;
     font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  /* Accessible Focus Rings: thick, unmistakable 4px BSC Maroon focus ring for keyboard & mouse navigation */
+  :where(button, [role="button"], a[href], input, select, textarea, summary):not(.pw-shell *):focus-visible {
+    @apply border-[#881337] ring-4 ring-[#881337]/20 outline-none;
+  }
+
+  /* Form Resets: default native inputs, selects, and textareas to high-contrast 2px borders (excluding printable A4 sheets) */
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
+    select,
+    textarea
+  ):not(.document-canvas *):not(.official-purchase-request *):not(.print-document *):not(.evaluation-document-sheet *) {
+    @apply border-2 border-slate-300 dark:border-slate-700 text-base;
+  }
+
+  /* Prevent downscaling of form inputs and table cells below 14px (0.875rem) outside printable sheets */
+  :where(input, select, textarea, th, td):not(.document-canvas *):not(.official-purchase-request *):not(.print-document *):not(.evaluation-document-sheet *) {
+    font-size: max(0.875rem, 1em);
   }
 
   /* Utility class to disable all transitions during theme toggling */
@@ -201,22 +220,24 @@ html[data-appearance-theme="dark"] {
 
   button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [type="button"]:not(:disabled), [type="submit"]:not(:disabled), [type="reset"]:not(:disabled), a[href], select:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled) { @apply cursor-pointer; }
 
-  /* Accessibility & System-wide Typography Scaling for Readability */
+  /* Accessibility & System-wide Typography Scaling for Readability (minimum 14px / 0.875rem floor for table cells & controls) */
   .text-\[8px\], .text-\[9px\] {
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
   }
   .text-\[10px\] {
-    font-size: 0.76rem !important;
-    letter-spacing: 0.04em;
+    font-size: 0.8125rem !important;
+    letter-spacing: 0.03em;
   }
   .text-\[11px\] {
-    font-size: 0.82rem !important;
+    font-size: 0.875rem !important;
   }
   .text-\[12px\], .text-xs {
-    font-size: 0.88rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
   }
   .text-\[13px\], .text-sm {
-    font-size: 0.96rem !important;
+    font-size: 0.9375rem !important;
+    line-height: 1.55 !important;
   }
 }
 
