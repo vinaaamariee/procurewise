@@ -19,6 +19,28 @@ describe("ProcureWise common-use procurement catalog", () => {
     expect(result.items.map((item) => item.id)).toEqual([3]);
   });
 
+  it("uses case-insensitive ILIKE conditions for catalog description and product code search", async () => {
+    let capturedWhere: any = null;
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: (cond: any) => {
+            capturedWhere = cond;
+            return {
+              orderBy: async () => [
+                { id: 10, productCode: "43211507-DS-C01", description: "COMPUTER MOUSE, Wireless", unit: "Piece", referencePrice: "350.00", isActive: 1 },
+              ],
+            };
+          },
+        }),
+      }),
+    } as any;
+    const result = await listProcurementCatalogItems({ search: "computer" }, { db });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].description).toBe("COMPUTER MOUSE, Wireless");
+    expect(capturedWhere).toBeTruthy();
+  });
+
   it("filters catalog records by the source product-code family without inventing descriptive categories", async () => {
     const rows = [
       { id: 1, productCode: "44121708-MP-B01", description: "MARKER", unit: "Piece", referencePrice: "15.84", isActive: 1 },

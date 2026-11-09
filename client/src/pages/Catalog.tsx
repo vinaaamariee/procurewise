@@ -61,11 +61,19 @@ export default function CatalogPage() {
   const isEndUser = normalizedRole === "end_user";
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [codeFamily, setCodeFamily] = useState("all");
   const [minReference, setMinReference] = useState("");
   const [maxReference, setMaxReference] = useState("");
   const [sort, setSort] = useState<SortOption>("description");
   const [savedSelection, setSavedSelection] = useState<SavedSelection[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Dialog state for PO & Staff item creation
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -80,8 +88,8 @@ export default function CatalogPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const queryInput = useMemo(
-    () => ({ search: search.trim() || undefined, codeFamily: codeFamily === "all" ? undefined : codeFamily, page: 1, limit: 100 }),
-    [search, codeFamily]
+    () => ({ search: debouncedSearch.trim() || undefined, codeFamily: codeFamily === "all" ? undefined : codeFamily, page: 1, limit: 100 }),
+    [debouncedSearch, codeFamily]
   );
 
   const catalog = trpc.procurement.catalog.list.useQuery(queryInput, { retry: false });
@@ -135,15 +143,25 @@ export default function CatalogPage() {
   const filteredItems = useMemo(() => {
     const min = minReference === "" ? 0 : Number(minReference);
     const max = maxReference === "" ? Number.POSITIVE_INFINITY : Number(maxReference);
+    const query = debouncedSearch.trim().toLowerCase();
     return [...(catalog.data?.items ?? [])]
-      .filter((item) => Number(item.referencePrice) >= min && Number(item.referencePrice) <= max)
+      .filter((item) => {
+        const price = Number(item.referencePrice);
+        if (price < min || price > max) return false;
+        if (query) {
+          const matchDesc = item.description?.toLowerCase().includes(query);
+          const matchCode = item.productCode?.toLowerCase().includes(query);
+          if (!matchDesc && !matchCode) return false;
+        }
+        return true;
+      })
       .sort((left, right) => {
         if (sort === "code") return left.productCode.localeCompare(right.productCode, undefined, { numeric: true });
         if (sort === "reference_low") return Number(left.referencePrice) - Number(right.referencePrice);
         if (sort === "reference_high") return Number(right.referencePrice) - Number(left.referencePrice);
         return left.description.localeCompare(right.description);
       });
-  }, [catalog.data?.items, minReference, maxReference, sort]);
+  }, [catalog.data?.items, minReference, maxReference, sort, debouncedSearch]);
 
   const selectedIds = useMemo(() => new Set(savedSelection.map((item) => item.id)), [savedSelection]);
 
@@ -181,6 +199,7 @@ export default function CatalogPage() {
 
   const clearFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setCodeFamily("all");
     setMinReference("");
     setMaxReference("");
@@ -286,16 +305,35 @@ export default function CatalogPage() {
           </div>
           <p className="mt-1.5 text-[10px] leading-4 text-[#77818d]">Search by item name or product code.</p>
 
-          <label className="relative mt-4 block">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setDebouncedSearch(search);
+            }}
+            className="relative mt-4 block"
+          >
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9aa1aa]" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Type a name or code"
-              className="h-9 rounded-[4px] pl-9 text-xs"
+              className="h-9 rounded-[4px] pl-9 pr-8 text-xs"
               aria-label="Search catalog items by name or code"
             />
-          </label>
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setDebouncedSearch("");
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#9aa1aa] hover:text-[#34404e]"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </form>
 
           <div className="mt-4 grid gap-3">
             <div>

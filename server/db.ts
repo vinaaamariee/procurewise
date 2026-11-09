@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createHash } from "node:crypto";
-import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, formTemplates, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrHistoricalRecords, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestDecisions, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqNumberAssignments, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
@@ -701,7 +701,7 @@ export async function listProcurementCatalogItems(input?: { search?: string; cod
   const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
   const safeSearch = search ? escapeSqlLike(search) : "";
   const condition = safeSearch
-    ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${safeSearch}%`), like(procurementCatalogItems.productCode, `%${safeSearch}%`)))
+    ? and(eq(procurementCatalogItems.isActive, 1), or(ilike(procurementCatalogItems.description, `%${safeSearch}%`), ilike(procurementCatalogItems.productCode, `%${safeSearch}%`)))
     : eq(procurementCatalogItems.isActive, 1);
   const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
   const categorizedRecords = codeFamily ? records.filter((record) => getCatalogCodeFamily(record.productCode) === codeFamily) : records;
@@ -3377,7 +3377,7 @@ export async function listHistoricalPmrRecords(filters: { fiscalYear?: number; m
   if (filters.search) {
     const safeTerm = escapeSqlLike(filters.search.trim().slice(0, 120));
     const term = `%${safeTerm}%`;
-    conditions.push(or(like(pmrHistoricalRecords.prNumber, term), like(pmrHistoricalRecords.item, term), like(pmrHistoricalRecords.endUser, term), like(pmrHistoricalRecords.supplier, term)));
+    conditions.push(or(ilike(pmrHistoricalRecords.prNumber, term), ilike(pmrHistoricalRecords.item, term), ilike(pmrHistoricalRecords.endUser, term), ilike(pmrHistoricalRecords.supplier, term)));
   }
   return db.select().from(pmrHistoricalRecords).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(pmrHistoricalRecords.prNumber), pmrHistoricalRecords.id).limit(Math.min(filters.limit ?? 500, 2000));
 }

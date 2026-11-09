@@ -29,4 +29,19 @@ describe("Vercel deployment configuration", () => {
     expect(config.rewrites).toContainEqual({ source: "/api/(.*)", destination: "/api/index?x_path=$1" });
     expect(config.rewrites).toContainEqual({ source: "/(.*)", destination: "/index.html" });
   });
+
+  it("preserves tRPC query parameters and input filters when rewritten by Vercel", async () => {
+    const { resolveRewrittenUrl } = await import("./vercelUrlResolver");
+    const testReq = {
+      url: "/api/index?x_path=trpc/procurement.catalog.list&batch=1&input=%7B%220%22%3A%7B%22search%22%3A%22computer%22%7D%7D",
+      query: {
+        x_path: "trpc/procurement.catalog.list",
+        batch: "1",
+        input: '{"0":{"search":"computer"}}',
+      },
+      headers: {},
+    };
+    const resolved = resolveRewrittenUrl(testReq);
+    expect(resolved).toBe("/trpc/procurement.catalog.list?batch=1&input=%7B%220%22%3A%7B%22search%22%3A%22computer%22%7D%7D");
+  });
 });

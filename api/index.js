@@ -332,7 +332,7 @@ var systemRouter = router({
 // server/db.ts
 import { randomUUID } from "node:crypto";
 import { createHash } from "node:crypto";
-import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -1931,7 +1931,7 @@ async function listProcurementCatalogItems(input, options) {
   const page = Math.max(1, input?.page ?? 1);
   const limit = Math.min(100, Math.max(1, input?.limit ?? 30));
   const safeSearch = search ? escapeSqlLike(search) : "";
-  const condition = safeSearch ? and(eq(procurementCatalogItems.isActive, 1), or(like(procurementCatalogItems.description, `%${safeSearch}%`), like(procurementCatalogItems.productCode, `%${safeSearch}%`))) : eq(procurementCatalogItems.isActive, 1);
+  const condition = safeSearch ? and(eq(procurementCatalogItems.isActive, 1), or(ilike(procurementCatalogItems.description, `%${safeSearch}%`), ilike(procurementCatalogItems.productCode, `%${safeSearch}%`))) : eq(procurementCatalogItems.isActive, 1);
   const records = await db.select().from(procurementCatalogItems).where(condition).orderBy(procurementCatalogItems.description);
   const categorizedRecords = codeFamily ? records.filter((record) => getCatalogCodeFamily(record.productCode) === codeFamily) : records;
   const start = (page - 1) * limit;
@@ -4019,7 +4019,7 @@ async function listHistoricalPmrRecords(filters = {}) {
   if (filters.search) {
     const safeTerm = escapeSqlLike(filters.search.trim().slice(0, 120));
     const term = `%${safeTerm}%`;
-    conditions.push(or(like(pmrHistoricalRecords.prNumber, term), like(pmrHistoricalRecords.item, term), like(pmrHistoricalRecords.endUser, term), like(pmrHistoricalRecords.supplier, term)));
+    conditions.push(or(ilike(pmrHistoricalRecords.prNumber, term), ilike(pmrHistoricalRecords.item, term), ilike(pmrHistoricalRecords.endUser, term), ilike(pmrHistoricalRecords.supplier, term)));
   }
   return db.select().from(pmrHistoricalRecords).where(conditions.length ? and(...conditions) : void 0).orderBy(desc(pmrHistoricalRecords.prNumber), pmrHistoricalRecords.id).limit(Math.min(filters.limit ?? 500, 2e3));
 }
@@ -7138,25 +7138,43 @@ async function createContext(opts) {
   };
 }
 
+// server/vercelUrlResolver.ts
+function resolveRewrittenUrl(req) {
+  const queryPath = typeof req.query?.x_path === "string" ? req.query.x_path : null;
+  const forwardedUri = typeof req.headers["x-forwarded-uri"] === "string" ? req.headers["x-forwarded-uri"] : null;
+  const originalUrl = typeof req.headers["x-original-url"] === "string" ? req.headers["x-original-url"] : null;
+  const matchedPath = typeof req.headers["x-matched-path"] === "string" ? req.headers["x-matched-path"] : null;
+  const vercelMatched = typeof req.headers["x-vercel-matched-path"] === "string" ? req.headers["x-vercel-matched-path"] : null;
+  const candidate = queryPath ? queryPath.startsWith("/") ? queryPath : `/${queryPath}` : forwardedUri || originalUrl || matchedPath || vercelMatched || req.url || "";
+  const rawUrl = req.url && req.url.includes("?") ? req.url : req.originalUrl && req.originalUrl.includes("?") ? req.originalUrl : "";
+  let queryString = "";
+  const qIdx = rawUrl.indexOf("?");
+  if (qIdx !== -1) {
+    const sp = new URLSearchParams(rawUrl.slice(qIdx + 1));
+    sp.delete("x_path");
+    const qs = sp.toString();
+    if (qs) queryString = `?${qs}`;
+  }
+  const pathPart = candidate.split("?")[0];
+  if (pathPart.includes("/trpc")) {
+    const idx = pathPart.indexOf("/trpc");
+    return `${pathPart.slice(idx)}${queryString}`;
+  }
+  if (pathPart.includes("/health")) {
+    return `/health${queryString}`;
+  }
+  return req.url || "";
+}
+
 // server/vercelApiEntrypoint.ts
 var app = express();
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 registerStorageProxy(app);
 app.use((req, _res, next) => {
-  const queryPath = typeof req.query?.x_path === "string" ? req.query.x_path : null;
-  const forwardedUri = typeof req.headers["x-forwarded-uri"] === "string" ? req.headers["x-forwarded-uri"] : null;
-  const originalUrl = typeof req.headers["x-original-url"] === "string" ? req.headers["x-original-url"] : null;
-  const matchedPath = typeof req.headers["x-matched-path"] === "string" ? req.headers["x-matched-path"] : null;
-  const vercelMatched = typeof req.headers["x-vercel-matched-path"] === "string" ? req.headers["x-vercel-matched-path"] : null;
-  const candidate = queryPath ? queryPath.startsWith("/") ? queryPath : `/${queryPath}` : forwardedUri || originalUrl || matchedPath || vercelMatched || req.url;
-  if (candidate) {
-    if (candidate.includes("/trpc")) {
-      const idx = candidate.indexOf("/trpc");
-      req.url = candidate.slice(idx);
-    } else if (candidate.includes("/health")) {
-      req.url = "/health";
-    }
+  const resolved = resolveRewrittenUrl(req);
+  if (resolved) {
+    req.url = resolved;
   }
   next();
 });
