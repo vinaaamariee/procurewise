@@ -858,12 +858,30 @@ html[data-appearance-theme="dark"] .bg-\[\#eeeae2\],
 html[data-appearance-theme="dark"] .bg-\[\#faf9f6\],
 html[data-appearance-theme="dark"] .bg-\[\#f0ede6\],
 html[data-appearance-theme="dark"] .bg-\[\#efebe4\],
+html[data-appearance-theme="dark"] .bg-\[\#faf8f4\],
+html[data-appearance-theme="dark"] .bg-\[\#f5f2eb\],
+html[data-appearance-theme="dark"] .bg-\[\#fbf9f5\],
+html[data-appearance-theme="dark"] .bg-\[\#fcfbf9\],
+html[data-appearance-theme="dark"] .bg-\[\#f6f2e9\],
+html[data-appearance-theme="dark"] .bg-\[\#f3ede3\],
+html[data-appearance-theme="dark"] .bg-\[\#f3f4f6\],
+html[data-appearance-theme="dark"] .bg-\[\#e8e2d5\],
+html[data-appearance-theme="dark"] .bg-\[\#ece7de\],
 html.dark .bg-\[\#fbfaf7\],
 html.dark .bg-\[\#f5f3ee\],
 html.dark .bg-\[\#eeeae2\],
 html.dark .bg-\[\#faf9f6\],
 html.dark .bg-\[\#f0ede6\],
-html.dark .bg-\[\#efebe4\] {
+html.dark .bg-\[\#efebe4\],
+html.dark .bg-\[\#faf8f4\],
+html.dark .bg-\[\#f5f2eb\],
+html.dark .bg-\[\#fbf9f5\],
+html.dark .bg-\[\#fcfbf9\],
+html.dark .bg-\[\#f6f2e9\],
+html.dark .bg-\[\#f3ede3\],
+html.dark .bg-\[\#f3f4f6\],
+html.dark .bg-\[\#e8e2d5\],
+html.dark .bg-\[\#ece7de\] {
   background-color: var(--app-surface-muted) !important;
 }
 
@@ -879,25 +897,39 @@ html[data-appearance-theme="dark"] .bg-\[\#fcfaf4\],
 html[data-appearance-theme="dark"] .bg-\[\#fffaf0\],
 html[data-appearance-theme="dark"] .bg-\[\#fff8e8\],
 html[data-appearance-theme="dark"] .bg-\[\#f8f1e0\],
+html[data-appearance-theme="dark"] .bg-\[\#fffbf2\],
 html.dark .bg-\[\#fcfaf4\],
 html.dark .bg-\[\#fffaf0\],
 html.dark .bg-\[\#fff8e8\],
-html.dark .bg-\[\#f8f1e0\] {
+html.dark .bg-\[\#f8f1e0\],
+html.dark .bg-\[\#fffbf2\] {
   background-color: #272118 !important;
 }
 
 html[data-appearance-theme="dark"] .bg-\[\#fff4f1\],
-html.dark .bg-\[\#fff4f1\] {
+html[data-appearance-theme="dark"] .bg-\[\#fef2f2\],
+html[data-appearance-theme="dark"] .bg-\[\#fee2e2\],
+html[data-appearance-theme="dark"] .bg-\[\#fbf2f2\],
+html.dark .bg-\[\#fff4f1\],
+html.dark .bg-\[\#fef2f2\],
+html.dark .bg-\[\#fee2e2\],
+html.dark .bg-\[\#fbf2f2\] {
   background-color: #341f1f !important;
 }
 
 html[data-appearance-theme="dark"] .bg-\[\#f1f6fc\],
-html.dark .bg-\[\#f1f6fc\] {
+html[data-appearance-theme="dark"] .bg-\[\#f0f7ff\],
+html[data-appearance-theme="dark"] .bg-\[\#eff6ff\],
+html.dark .bg-\[\#f1f6fc\],
+html.dark .bg-\[\#f0f7ff\],
+html.dark .bg-\[\#eff6ff\] {
   background-color: #1a2736 !important;
 }
 
 html[data-appearance-theme="dark"] .bg-\[\#f1f9f4\],
-html.dark .bg-\[\#f1f9f4\] {
+html[data-appearance-theme="dark"] .bg-\[\#ecfdf5\],
+html.dark .bg-\[\#f1f9f4\],
+html.dark .bg-\[\#ecfdf5\] {
   background-color: #162c20 !important;
 }
 
@@ -918,6 +950,13 @@ html[data-appearance-theme="dark"] .border-\[\#ece9e2\],
 html[data-appearance-theme="dark"] .border-\[\#efebe4\],
 html[data-appearance-theme="dark"] .border-\[\#f0ede6\],
 html[data-appearance-theme="dark"] .border-\[\#ddd6ca\],
+html[data-appearance-theme="dark"] .border-\[\#e0dad0\],
+html[data-appearance-theme="dark"] .border-\[\#e5dfd5\],
+html[data-appearance-theme="dark"] .border-\[\#dcd7ce\],
+html[data-appearance-theme="dark"] .border-\[\#c5bcad\],
+html[data-appearance-theme="dark"] .border-\[\#f0ece5\],
+html[data-appearance-theme="dark"] .border-\[\#d6cfc4\],
+html[data-appearance-theme="dark"] .border-\[\#ece7de\],
 html.dark .border-\[\#e4e1da\],
 html.dark .border-\[\#e5e1d9\],
 html.dark .border-\[\#e1ddd3\],
@@ -933,7 +972,14 @@ html.dark .border-\[\#ece8df\],
 html.dark .border-\[\#ece9e2\],
 html.dark .border-\[\#efebe4\],
 html.dark .border-\[\#f0ede6\],
-html.dark .border-\[\#ddd6ca\] {
+html.dark .border-\[\#ddd6ca\],
+html.dark .border-\[\#e0dad0\],
+html.dark .border-\[\#e5dfd5\],
+html.dark .border-\[\#dcd7ce\],
+html.dark .border-\[\#c5bcad\],
+html.dark .border-\[\#f0ece5\],
+html.dark .border-\[\#d6cfc4\],
+html.dark .border-\[\#ece7de\] {
   border-color: var(--app-border) !important;
 }
 
@@ -992,10 +1038,13 @@ html.dark .text-\[\#222222\]:not(.document-canvas *):not(.official-purchase-requ
 }
 
 /* Muted / secondary texts in dark mode */
+html[data-appearance-theme="dark"] .text-\[\#52606d\],
 html[data-appearance-theme="dark"] .text-\[\#65707e\],
 html[data-appearance-theme="dark"] .text-\[\#65717e\],
+html[data-appearance-theme="dark"] .text-\[\#667280\],
 html[data-appearance-theme="dark"] .text-\[\#677281\],
 html[data-appearance-theme="dark"] .text-\[\#6a7280\],
+html[data-appearance-theme="dark"] .text-\[\#6b7280\],
 html[data-appearance-theme="dark"] .text-\[\#6e7885\],
 html[data-appearance-theme="dark"] .text-\[\#718\],
 html[data-appearance-theme="dark"] .text-\[\#74808c\],
@@ -1010,10 +1059,13 @@ html[data-appearance-theme="dark"] .text-\[\#9098a2\],
 html[data-appearance-theme="dark"] .text-\[\#9198a1\],
 html[data-appearance-theme="dark"] .text-\[\#9aa1aa\],
 html[data-appearance-theme="dark"] .text-\[\#a1a7ae\],
+html.dark .text-\[\#52606d\],
 html.dark .text-\[\#65707e\],
 html.dark .text-\[\#65717e\],
+html.dark .text-\[\#667280\],
 html.dark .text-\[\#677281\],
 html.dark .text-\[\#6a7280\],
+html.dark .text-\[\#6b7280\],
 html.dark .text-\[\#6e7885\],
 html.dark .text-\[\#718\],
 html.dark .text-\[\#74808c\],

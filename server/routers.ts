@@ -566,8 +566,10 @@ export const appRouter = router({
           }
         }
 
+        const { xlsxBuffer: _ignoredBuffer, ...safeInjected } = injected;
+
         return {
-          ...injected,
+          ...safeInjected,
           metaInfo: meta,
           activeRecord,
           sampleData: transactionData,

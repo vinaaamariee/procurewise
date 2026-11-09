@@ -8,6 +8,11 @@ import App from "./App";
 import { supabaseAuth } from "./lib/supabaseAuth";
 import "./index.css";
 
+// Polyfill Buffer in browser environment so superjson can deserialize typed arrays without throwing
+if (typeof window !== "undefined" && !(window as any).Buffer) {
+  (window as any).Buffer = Uint8Array;
+}
+
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = async (error: unknown) => {
