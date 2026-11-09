@@ -11,7 +11,7 @@ function resolveStorageConfiguration(env) {
     return { provider: "forge", forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
   }
   const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
   if (supabaseUrl && serviceRoleKey) {
     return {
       provider: "supabase",
@@ -81,21 +81,22 @@ async function storagePut(relKey, data, contentType = "application/octet-stream"
   }
   return { key, url: `/manus-storage/${key}` };
 }
-async function storageGetSignedUrl(relKey) {
+async function storageGetSignedUrl(relKey, options) {
   const key = normalizeKey(relKey);
-  if (key.startsWith("supabase/")) {
-    const configuration2 = resolveStorageConfiguration(process.env);
-    if (configuration2.provider !== "supabase") {
-      throw new Error("Supabase Storage credentials are required to retrieve this document.");
-    }
-    const client = await ensureSupabaseBucket(configuration2);
-    const { data, error } = await client.storage.from(configuration2.bucket).createSignedUrl(key.slice("supabase/".length), 60);
+  const configuration = resolveStorageConfiguration(process.env);
+  if (configuration.provider === "supabase") {
+    const bucketPath = key.startsWith("supabase/") ? key.slice("supabase/".length) : key;
+    const client = await ensureSupabaseBucket(configuration);
+    const { data, error } = await client.storage.from(configuration.bucket).createSignedUrl(
+      bucketPath,
+      3600,
+      options?.download !== void 0 ? { download: options.download } : void 0
+    );
     if (error || !data?.signedUrl) {
       throw new Error(`Supabase storage signed URL failed: ${error?.message ?? "No signed URL returned"}`);
     }
     return data.signedUrl;
   }
-  const configuration = resolveStorageConfiguration(process.env);
   if (configuration.provider !== "forge") {
     throw new Error("Forge Storage credentials are required to retrieve this legacy document.");
   }
@@ -115,14 +116,17 @@ async function storageGetSignedUrl(relKey) {
 
 // server/_core/storageProxy.ts
 function registerStorageProxy(app2) {
-  app2.get("/manus-storage/*", async (req, res) => {
-    const key = req.params[0];
+  app2.get(["/manus-storage/*", "/api/manus-storage/*"], async (req, res) => {
+    const rawKey = req.params[0] || (req.path || req.url || "").split("?")[0].replace(/^\/?(api\/)?manus-storage\/?/, "");
+    const key = rawKey.replace(/^\/+/, "");
     if (!key) {
       res.status(400).send("Missing storage key");
       return;
     }
     try {
-      const url = await storageGetSignedUrl(key);
+      const downloadParam = req.query?.download;
+      const download = downloadParam === "1" || downloadParam === "true" || typeof downloadParam === "string" ? downloadParam : void 0;
+      const url = await storageGetSignedUrl(key, { download });
       res.set("Cache-Control", "no-store");
       res.redirect(307, url);
     } catch (err) {
@@ -7171,6 +7175,10 @@ function resolveRewrittenUrl(req) {
     const idx = pathPart.indexOf("/trpc");
     return `${pathPart.slice(idx)}${queryString}`;
   }
+  if (pathPart.includes("/manus-storage")) {
+    const idx = pathPart.indexOf("/manus-storage");
+    return `${pathPart.slice(idx)}${queryString}`;
+  }
   if (pathPart.includes("/health")) {
     return `/health${queryString}`;
   }
@@ -7181,7 +7189,6 @@ function resolveRewrittenUrl(req) {
 var app = express();
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-registerStorageProxy(app);
 app.use((req, _res, next) => {
   const resolved = resolveRewrittenUrl(req);
   if (resolved) {
@@ -7189,6 +7196,7 @@ app.use((req, _res, next) => {
   }
   next();
 });
+registerStorageProxy(app);
 var trpcMiddleware = createExpressMiddleware({ router: appRouter, createContext });
 app.use(["/api/trpc", "/trpc"], trpcMiddleware);
 app.get(["/api/health", "/health"], async (_req, res) => {

@@ -47,6 +47,10 @@ export function resolveRewrittenUrl(req: {
     const idx = pathPart.indexOf("/trpc");
     return `${pathPart.slice(idx)}${queryString}`;
   }
+  if (pathPart.includes("/manus-storage")) {
+    const idx = pathPart.indexOf("/manus-storage");
+    return `${pathPart.slice(idx)}${queryString}`;
+  }
   if (pathPart.includes("/health")) {
     return `/health${queryString}`;
   }

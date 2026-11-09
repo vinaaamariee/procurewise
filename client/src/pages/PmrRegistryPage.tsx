@@ -1185,7 +1185,23 @@ export function PmrRegistryPage() {
                   variant="outline"
                   className="h-8 text-xs border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
                 >
-                  <a href={previewDoc.url} target="_blank" rel="noopener noreferrer" download>
+                  <a href={previewDoc.url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Open in New Tab
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <a
+                    href={`${previewDoc.url}${previewDoc.url.includes("?") ? "&" : "?"}download=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                  >
                     <Download className="mr-1.5 h-3.5 w-3.5" />
                     Download Original
                   </a>

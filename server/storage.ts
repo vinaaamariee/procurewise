@@ -17,7 +17,7 @@ export function resolveStorageConfiguration(env: Record<string, string | undefin
   }
 
   const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
   if (supabaseUrl && serviceRoleKey) {
     return {
       provider: "supabase",
@@ -118,25 +118,29 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: `/manus-storage/${key}` };
 }
 
-export async function storageGetSignedUrl(relKey: string): Promise<string> {
+export async function storageGetSignedUrl(
+  relKey: string,
+  options?: { download?: boolean | string }
+): Promise<string> {
   const key = normalizeKey(relKey);
+  const configuration = resolveStorageConfiguration(process.env);
 
-  if (key.startsWith("supabase/")) {
-    const configuration = resolveStorageConfiguration(process.env);
-    if (configuration.provider !== "supabase") {
-      throw new Error("Supabase Storage credentials are required to retrieve this document.");
-    }
+  if (configuration.provider === "supabase") {
+    const bucketPath = key.startsWith("supabase/") ? key.slice("supabase/".length) : key;
     const client = await ensureSupabaseBucket(configuration);
     const { data, error } = await client.storage
       .from(configuration.bucket)
-      .createSignedUrl(key.slice("supabase/".length), 60);
+      .createSignedUrl(
+        bucketPath,
+        3600,
+        options?.download !== undefined ? { download: options.download } : undefined
+      );
     if (error || !data?.signedUrl) {
       throw new Error(`Supabase storage signed URL failed: ${error?.message ?? "No signed URL returned"}`);
     }
     return data.signedUrl;
   }
 
-  const configuration = resolveStorageConfiguration(process.env);
   if (configuration.provider !== "forge") {
     throw new Error("Forge Storage credentials are required to retrieve this legacy document.");
   }

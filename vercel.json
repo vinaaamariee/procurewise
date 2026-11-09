@@ -9,6 +9,10 @@
       "destination": "/api/index?x_path=$1"
     },
     {
+      "source": "/manus-storage/(.*)",
+      "destination": "/api/index?x_path=manus-storage/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -27,6 +27,7 @@ describe("Vercel deployment configuration", () => {
     expect(config.outputDirectory).toBe("dist/public");
     expect(config.functions).toBeUndefined();
     expect(config.rewrites).toContainEqual({ source: "/api/(.*)", destination: "/api/index?x_path=$1" });
+    expect(config.rewrites).toContainEqual({ source: "/manus-storage/(.*)", destination: "/api/index?x_path=manus-storage/$1" });
     expect(config.rewrites).toContainEqual({ source: "/(.*)", destination: "/index.html" });
   });
 
@@ -43,5 +44,18 @@ describe("Vercel deployment configuration", () => {
     };
     const resolved = resolveRewrittenUrl(testReq);
     expect(resolved).toBe("/trpc/procurement.catalog.list?batch=1&input=%7B%220%22%3A%7B%22search%22%3A%22computer%22%7D%7D");
+  });
+
+  it("resolves rewritten document storage proxy URLs on Vercel", async () => {
+    const { resolveRewrittenUrl } = await import("./vercelUrlResolver");
+    const testReq = {
+      url: "/api/index?x_path=manus-storage/supabase/procurewise/purchase_request/1/remaining_students.22.pdf",
+      query: {
+        x_path: "manus-storage/supabase/procurewise/purchase_request/1/remaining_students.22.pdf",
+      },
+      headers: {},
+    };
+    const resolved = resolveRewrittenUrl(testReq);
+    expect(resolved).toBe("/manus-storage/supabase/procurewise/purchase_request/1/remaining_students.22.pdf");
   });
 });

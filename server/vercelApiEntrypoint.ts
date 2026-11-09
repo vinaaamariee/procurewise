@@ -11,7 +11,6 @@ const app = express();
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-registerStorageProxy(app);
 
 // Preserve incoming path and query parameters if rewritten by Vercel
 app.use((req, _res, next) => {
@@ -21,6 +20,8 @@ app.use((req, _res, next) => {
   }
   next();
 });
+
+registerStorageProxy(app);
 
 const trpcMiddleware = createExpressMiddleware({ router: appRouter, createContext });
 app.use(["/api/trpc", "/trpc"], trpcMiddleware);
