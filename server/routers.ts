@@ -139,6 +139,8 @@ export const appRouter = router({
       signatories: protectedProcedure.query(() => listPurchaseRequestSignatories()),
       create: protectedProcedure.input(z.object({
         purpose: z.string().trim().min(10, "Purpose must be at least 10 characters"),
+        category: z.string().max(120).optional(),
+        ppmpFileName: z.string().max(255).optional(),
         fundSource: z.string().max(160).optional(),
         fundCluster: z.string().max(80).optional(),
         responsibilityCenterCode: z.string().max(80).optional(),
