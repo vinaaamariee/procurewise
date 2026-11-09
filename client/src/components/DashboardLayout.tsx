@@ -1,39 +1,101 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { NotificationToastListener } from "@/components/NotificationToastListener";
 import { NotificationCenterDrawer } from "@/components/NotificationCenterDrawer";
 import { HelpSupportDialog } from "@/components/HelpSupportDialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { trpc } from "@/lib/trpc";
-import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole, type ProcurementRole, type PersistedUserRole } from "../../../shared/procurementRules";
 import {
-  Archive, Bell, BookOpenCheck, BookOpenText, Boxes, ChevronDown, ChevronLeft, ChevronRight,
-  ClipboardList, FileCheck2, FileSearch, FileSpreadsheet, FileText,
-  LayoutDashboard, LifeBuoy, LineChart, LoaderCircle, LogOut, Menu,
-  Moon, PackageSearch, Paperclip, ReceiptText, Scale, Search,
-  Send, Settings2, ShieldCheck, Star, Sun, UserCog, UsersRound,
+  OFFICIAL_ROLE_LABELS,
+  normalizeProcurementRole,
+  type ProcurementRole,
+  type PersistedUserRole,
+} from "../../../shared/procurementRules";
+import {
+  Archive,
+  BookOpen,
+  BookOpenText,
+  Boxes,
+  CheckSquare,
+  FileCheck,
+  FileSearch,
+  FileSpreadsheet,
+  FileText,
+  Globe,
+  HelpCircle,
+  Home,
+  Layers,
+  LineChart,
+  LoaderCircle,
+  LogOut,
+  Menu,
+  Moon,
+  PackageSearch,
+  Paperclip,
+  ReceiptText,
+  Scale,
+  ScrollText,
+  Search,
+  Send,
+  Settings2,
+  ShieldCheck,
+  Star,
+  Sun,
+  Truck,
+  UserCheck,
+  UserCog,
+  UsersRound,
   WalletCards,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 
-// ─── Navigation registry (strict role-gated per Section 5) ────────────────────
-const navigation: Array<{
-  label: string;
+// ─── TypeScript Navigation Config Structure ───────────────────────────────────
+export type NavSectionId =
+  | "workspace"
+  | "procedure_steps"
+  | "reference_reports"
+  | "administration";
+
+export interface NavItemConfig {
+  id: string;
   path: string;
-  icon: typeof LayoutDashboard;
+  label: string;
+  stepNumber?: string;
+  procedureRef?: string;
+  icon: LucideIcon;
+  section: NavSectionId;
   roles: ProcurementRole[];
-  category?: string;
-}> = [
-  // ── Workspace ──
+  roleLabels?: Partial<Record<ProcurementRole, string>>;
+}
+
+export const NAV_SECTION_HEADERS: Record<NavSectionId, string> = {
+  workspace: "GENERAL WORKSPACE",
+  procedure_steps: "OFFICIAL PROCEDURE STEPS",
+  reference_reports: "BUDGET, RECORDS & REPORTS",
+  administration: "SYSTEM & FORMS",
+};
+
+export const NAV_ITEMS: NavItemConfig[] = [
+  // ── Section 1: General Workspace ──
   {
-    label: "Overview",
+    id: "dashboard",
     path: "/dashboard",
-    icon: LayoutDashboard,
+    label: "Dashboard & Current Tasks",
+    icon: Home,
+    section: "workspace",
     roles: [
       "end_user",
       "procurement_officer",
@@ -45,154 +107,299 @@ const navigation: Array<{
       "hope",
       "budget_officer",
       "administrative_approver",
+      "supplier_contractor",
       "admin",
     ],
-    category: "workspace",
   },
   {
-    label: "Receive & Verify PR/PPMP",
-    path: "/officer/pr-verification",
-    icon: FileCheck2,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "Distribute & Retrieve RFQ / Transmit to BAC",
-    path: "/officer/rfq-distribution",
-    icon: Send,
-    roles: ["procurement_staff", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "PhilGEPS Posting",
-    path: "/officer/philgeps",
-    icon: FileSpreadsheet,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "Letters of Notice (Serving)",
-    path: "/officer/notices-serving",
-    icon: FileText,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "processing",
-  },
-  {
-    label: "Purchase Order / Contract Releasing",
-    path: "/officer/releasing",
-    icon: FileCheck2,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "processing",
-  },
-  {
-    label: "Delivery & Inspection Monitoring",
-    path: "/officer/delivery-monitoring",
-    icon: Boxes,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "processing",
-  },
-  {
-    label: "Procurement Catalog",
-    path: "/catalog",
-    icon: PackageSearch,
-    // Accessible to PO, Staff, End-User, and Admin
-    roles: ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "PPMP Planning",
-    path: "/plans",
-    icon: BookOpenText,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "PPMP & Purchase Requests",
+    id: "my-purchase-requests",
     path: "/purchase-requests",
-    icon: ClipboardList,
-    // Strictly End-User only; completely hidden and blocked for Procurement Staff, PO, BAC, Budget Officer, and HoPE
-    roles: ["end_user", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "PMR Registry",
-    path: "/pmr-registry",
-    icon: BookOpenCheck,
-    roles: ["procurement_staff", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "RFQ Management",
-    path: "/rfq-management",
-    icon: FileSpreadsheet,
-    roles: ["procurement_staff", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "Suppliers",
-    path: "/suppliers",
-    icon: UsersRound,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "workspace",
-  },
-  {
-    label: "Pre-Canvass",
-    path: "/rfq",
-    icon: FileSearch,
-    // Exclusively visible to End-Users; strictly hidden from all other roles
-    roles: ["end_user"],
-    category: "workspace",
-  },
-
-  // ── Processing ──
-  {
-    label: "Letters of Notice",
-    path: "/officer/notices",
+    label: "My Purchase Requests",
+    stepNumber: "Annex A & B",
+    procedureRef: "BSC-PRO-QP-95-1 §5.1",
     icon: FileText,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "hope", "administrative_approver", "admin"],
-    category: "processing",
+    section: "workspace",
+    roles: ["end_user", "admin"],
   },
   {
-    label: "BAC Transmittals",
-    path: "/officer/transmittals",
-    icon: Send,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "bac", "bac_secretariat", "admin"],
-    category: "processing",
+    id: "pre-canvass",
+    path: "/rfq",
+    label: "Collect Supplier Quotes",
+    stepNumber: "Pre-Canvass",
+    icon: FileSearch,
+    section: "workspace",
+    roles: ["end_user"],
   },
   {
-    label: "Prepare Purchase Order (App. 61)",
-    path: "/purchase-orders",
-    icon: FileCheck2,
-    roles: [
-      "procurement_officer",
-      "procurement_officer_i",
-      "procurement_officer_ii",
-      "procurement_staff",
-      "bac",
-      "bac_secretariat",
-      "hope",
-      "budget_officer",
-      "administrative_approver",
-      "admin",
-    ],
-    category: "processing",
-  },
-  {
-    label: "Supplier Evaluation Form",
-    path: "/supplier-evaluation-form",
-    icon: Star,
-    roles: ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "processing",
-  },
-  {
-    label: "Documents",
-    path: "/documents",
-    icon: Paperclip,
+    id: "catalog",
+    path: "/catalog",
+    label: "Browse Item Catalog",
+    icon: PackageSearch,
+    section: "workspace",
     roles: [
       "end_user",
       "procurement_officer",
       "procurement_officer_i",
       "procurement_officer_ii",
+      "procurement_staff",
+      "admin",
+    ],
+  },
+  {
+    id: "ppmp-plans",
+    path: "/plans",
+    label: "Department PPMP Plans",
+    stepNumber: "Annex B",
+    icon: BookOpenText,
+    section: "workspace",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+
+  // ── Section 2: Official Procedure Steps (BSC – PRO -QP- 95 – 1) ──
+  {
+    id: "step-1-verify-pr",
+    path: "/officer/pr-verification",
+    label: "Step 1: Verify PR & PPMP",
+    stepNumber: "Step 5.1",
+    procedureRef: "BSC-PRO-QP-95-1 §5.1",
+    icon: CheckSquare,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-2-pmr-log",
+    path: "/pmr-registry",
+    label: "Step 2: PMR Log & Tracking Slip",
+    stepNumber: "Step 5.2",
+    procedureRef: "BSC-PRO-QP-95-1 §5.2",
+    icon: BookOpen,
+    section: "procedure_steps",
+    roles: [
+      "procurement_staff",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-3-bac-resolution",
+    path: "/officer/transmittals",
+    label: "Step 3: BAC Resolution",
+    stepNumber: "Step 5.3",
+    procedureRef: "BSC-PRO-QP-95-1 §5.3",
+    icon: ScrollText,
+    section: "procedure_steps",
+    roles: [
+      "bac",
+      "bac_secretariat",
+      "procurement_staff",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-4-prepare-rfq",
+    path: "/rfq-management",
+    label: "Step 4: Prepare RFQ Sheet",
+    stepNumber: "Step 5.4",
+    procedureRef: "BSC-PRO-QP-95-1 §5.4",
+    icon: FileSpreadsheet,
+    section: "procedure_steps",
+    roles: [
+      "procurement_staff",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "steps-4-6-rfq-philgeps",
+    path: "/officer/rfq-distribution",
+    label: "Steps 4–6: RFQ & PhilGEPS",
+    stepNumber: "Steps 5.4–5.6",
+    procedureRef: "BSC-PRO-QP-95-1 §5.5",
+    icon: Layers,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "procurement_staff",
+      "admin",
+    ],
+    roleLabels: {
+      procurement_staff: "Step 7: Forward Quotes for AOQ",
+    },
+  },
+  {
+    id: "step-6-philgeps-posting",
+    path: "/officer/philgeps",
+    label: "Step 6: PhilGEPS Posting",
+    stepNumber: "Step 5.6",
+    procedureRef: "BSC-PRO-QP-95-1 §5.6",
+    icon: Globe,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-9-prepare-notice",
+    path: "/officer/notices",
+    label: "Step 9: Prepare Notice of Award",
+    stepNumber: "Step 5.9",
+    procedureRef: "BSC-PRO-QP-95-1 §5.9",
+    icon: FileText,
+    section: "procedure_steps",
+    roles: [
+      "procurement_staff",
+      "hope",
+      "administrative_approver",
+      "admin",
+    ],
+    roleLabels: {
+      hope: "Steps 8–9: Approve Award & Notice",
+    },
+  },
+  {
+    id: "steps-9-10-serve-notice",
+    path: "/officer/notices-serving",
+    label: "Steps 9–10: Deliver Notice of Award",
+    stepNumber: "Step 5.10",
+    procedureRef: "BSC-PRO-QP-95-1 §5.10",
+    icon: Send,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "steps-11-12-prepare-sign-po",
+    path: "/purchase-orders",
+    label: "Steps 11–13: Prepare & Release PO",
+    stepNumber: "Steps 5.11–5.12",
+    procedureRef: "BSC-PRO-QP-95-1 §5.11",
+    icon: FileCheck,
+    section: "procedure_steps",
+    roles: [
+      "procurement_staff",
+      "bac",
+      "bac_secretariat",
+      "budget_officer",
+      "hope",
+      "administrative_approver",
+      "admin",
+    ],
+    roleLabels: {
+      bac: "Steps 7–8: Compare Quotes (AOQ)",
+      bac_secretariat: "Steps 7–8: Compare Quotes (AOQ)",
+      procurement_staff: "Step 11: Prepare Purchase Order",
+      budget_officer: "Step 12: Certify Funds & Sign PO",
+      hope: "Step 12: Sign Purchase Orders",
+    },
+  },
+  {
+    id: "step-13-release-po",
+    path: "/officer/releasing",
+    label: "Steps 11–13: Prepare & Release PO",
+    stepNumber: "Step 5.13",
+    procedureRef: "BSC-PRO-QP-95-1 §5.13",
+    icon: FileCheck,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "steps-14-15-deliveries",
+    path: "/officer/delivery-monitoring",
+    label: "Steps 14–15: Deliveries & Reminders",
+    stepNumber: "Steps 5.14–5.15",
+    procedureRef: "BSC-PRO-QP-95-1 §5.15",
+    icon: Truck,
+    section: "procedure_steps",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+
+  // ── Section 3: Budget, Records & Reports ──
+  {
+    id: "budget-control",
+    path: "/budgets",
+    label: "Budget Control & Allotments",
+    icon: WalletCards,
+    section: "reference_reports",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "budget_officer",
+      "administrative_approver",
+      "admin",
+    ],
+  },
+  {
+    id: "supplier-evaluation",
+    path: "/supplier-evaluation-form",
+    label: "Rate a Supplier (Evaluation)",
+    icon: Star,
+    section: "reference_reports",
+    roles: [
+      "end_user",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "suppliers-registry",
+    path: "/suppliers",
+    label: "Supplier Directory",
+    icon: UsersRound,
+    section: "reference_reports",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "documents",
+    path: "/documents",
+    label: "Uploaded Documents",
+    icon: Paperclip,
+    section: "reference_reports",
+    roles: [
+      "end_user",
       "bac",
       "bac_secretariat",
       "hope",
@@ -200,28 +407,13 @@ const navigation: Array<{
       "administrative_approver",
       "admin",
     ],
-    category: "processing",
   },
   {
-    label: "Budget Control",
-    path: "/budgets",
-    icon: WalletCards,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "budget_officer", "administrative_approver", "admin"],
-    category: "processing",
-  },
-
-  // ── Reports ──
-  {
-    label: "Procurement Forecast",
-    path: "/officer/forecast",
-    icon: LineChart,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "reports",
-  },
-  {
-    label: "Analytics",
+    id: "analytics",
     path: "/analytics",
+    label: "Reports & Analytics",
     icon: Boxes,
+    section: "reference_reports",
     roles: [
       "end_user",
       "procurement_officer",
@@ -236,122 +428,155 @@ const navigation: Array<{
       "supplier_contractor",
       "admin",
     ],
-    category: "reports",
   },
   {
-    label: "Audit Trail",
+    id: "forecast",
+    path: "/officer/forecast",
+    label: "Procurement Forecast",
+    icon: LineChart,
+    section: "reference_reports",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "audit-trail",
     path: "/audit",
+    label: "Activity & Audit History",
     icon: ReceiptText,
-    roles: ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "reports",
+    section: "reference_reports",
+    roles: [
+      "end_user",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
   },
   {
-    label: "Historical PMR",
+    id: "pmr-history",
     path: "/pmr-history",
+    label: "Past Monitoring Records (PMR)",
     icon: ReceiptText,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "supplier_contractor", "admin"],
-    category: "reports",
+    section: "reference_reports",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "supplier_contractor",
+      "admin",
+    ],
   },
 
-  // ── Administration ──
+  // ── Section 4: System & Forms ──
   {
-    label: "Best Value Policy",
-    path: "/best-value-policy",
-    icon: Scale,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "admin",
-  },
-  {
-    label: "Forms Hub (Excel)",
+    id: "forms-hub",
     path: "/form-templates",
+    label: "Official Forms Hub (Annex A–H)",
     icon: FileSpreadsheet,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"],
-    category: "admin",
+    section: "administration",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "procurement_staff",
+      "admin",
+    ],
   },
   {
-    label: "System setup",
+    id: "best-value-policy",
+    path: "/best-value-policy",
+    label: "Best Value Policy (RA 12009)",
+    icon: Scale,
+    section: "administration",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "system-setup",
     path: "/setup",
+    label: "System & Signatory Setup",
     icon: Settings2,
-    roles: ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "admin"],
-    category: "admin",
+    section: "administration",
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
   },
   {
-    label: "Test Records",
+    id: "test-records",
     path: "/test-records",
+    label: "Test Records Archive",
     icon: Archive,
+    section: "administration",
     roles: ["admin"],
-    category: "admin",
   },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  workspace:  "Workspace",
-  processing: "Processing",
-  reports:    "Reports",
-  admin:      "Administration",
-};
-
-const SIDEBAR_STORAGE_KEY = "procurewise_sidebar_collapsed";
-
-// ─── Inline theme toggle (seamless light/dark transition) ──────────────────────
-function ThemeToggle() {
+// ─── Accessible Theme Toggle (Icon + Explicit Text, min-h-12) ─────────────────
+function ThemeToggle({ className = "" }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const toggle = () => setTheme(isDark ? "light" : "dark");
+
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:bg-[#881337]/25 dark:hover:text-[#fda4af] transition-colors"
+      aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      className={`inline-flex min-h-12 items-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 ${className}`}
     >
-      {isDark
-        ? <Sun  className="h-4 w-4" />
-        : <Moon className="h-4 w-4" />}
+      {isDark ? (
+        <>
+          <Sun className="h-5 w-5 shrink-0 text-amber-500" aria-hidden="true" />
+          <span>Light Mode</span>
+        </>
+      ) : (
+        <>
+          <Moon className="h-5 w-5 shrink-0 text-[#881337]" aria-hidden="true" />
+          <span>Dark Mode</span>
+        </>
+      )}
     </button>
   );
 }
 
-// ─── Main layout ──────────────────────────────────────────────────────────────
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+// ─── Main Accessible Layout Shell ─────────────────────────────────────────────
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { loading, user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [selectedOfficeName, setSelectedOfficeName] = useState(user?.officeName || "");
+  const [selectedOfficeName, setSelectedOfficeName] = useState(
+    user?.officeName || ""
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Collapsible category sections state (all expanded by default)
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-
-  const toggleSection = (cat: string) => {
-    setCollapsedSections((prev) => ({
-      ...prev,
-      [cat]: !prev[cat],
-    }));
-  };
-
-  // Hydration-safe sidebar collapse state
-  const [isCollapsed, setIsCollapsed] = useState(false);
   useEffect(() => {
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (saved !== null) setIsCollapsed(saved === "true");
-  }, []);
-
-  const toggleSidebar = () => {
-    setIsCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
-      return next;
-    });
-  };
+    if (user?.officeName) {
+      setSelectedOfficeName(user.officeName);
+    }
+  }, [user?.officeName]);
 
   const utils = trpc.useUtils();
   const updateMyOfficeMutation = trpc.auth.updateMyOffice.useMutation({
     onSuccess: () => {
-      toast.success("Profile office assignment updated.");
+      toast.success("Your office assignment has been saved.");
       setEditProfileOpen(false);
       void utils.auth.me.invalidate();
     },
@@ -361,12 +586,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const rawRole = (user?.role || "end_user") as PersistedUserRole;
   const currentRole = (user?.role || "end_user") as ProcurementRole;
   const roleLabel = user
-    ? (currentRole === "hope" ? "HoPE (College President)" : OFFICIAL_ROLE_LABELS[currentRole] ?? OFFICIAL_ROLE_LABELS[normalizeProcurementRole(rawRole)] ?? "End-User")
+    ? currentRole === "hope"
+      ? "HoPE (College President)"
+      : OFFICIAL_ROLE_LABELS[currentRole] ??
+        OFFICIAL_ROLE_LABELS[normalizeProcurementRole(rawRole)] ??
+        "End-User"
     : OFFICIAL_ROLE_LABELS.end_user;
 
-  // Strict role filter per Section 5 specification & Procurement Staff scoping
-  const allVisible = navigation.filter((item) => {
+  // Strict role-gated navigation filter matching Section 5 & staff/officer separation
+  const allVisible = NAV_ITEMS.filter((item) => {
     if (currentRole === "admin") return true;
+
     if (currentRole === "procurement_staff") {
       const allowedStaffPaths = [
         "/dashboard",
@@ -381,7 +611,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ];
       return allowedStaffPaths.includes(item.path);
     }
-    const isOfficer = currentRole === "procurement_officer" || currentRole === "procurement_officer_i" || currentRole === "procurement_officer_ii" || rawRole === "supply_officer";
+
+    const isOfficer =
+      currentRole === "procurement_officer" ||
+      currentRole === "procurement_officer_i" ||
+      currentRole === "procurement_officer_ii" ||
+      rawRole === "supply_officer";
+
     if (isOfficer) {
       const allowedOfficerPaths = [
         "/dashboard",
@@ -403,94 +639,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ];
       return allowedOfficerPaths.includes(item.path);
     }
-    // Block non-End-Users from PPMP-linked PRs
+
     if (item.path === "/purchase-requests" && currentRole !== "end_user") {
       return false;
     }
+
     return item.roles.includes(currentRole);
   });
 
-  // Apply role-specific descriptive label overrides
-  const getLabel = (item: (typeof navigation)[0]) => {
-    if (currentRole === "end_user") {
-      if (item.path === "/catalog") return "Browse Items";
-      if (item.path === "/purchase-requests") return "My Purchase Requests";
-      if (item.path === "/rfq") return "Collect Supplier Quotes";
-      if (item.path === "/supplier-evaluation-form") return "Rate a Supplier";
-      if (item.path === "/analytics") return "My reports";
-      if (item.path === "/audit") return "My Activity";
-    }
-    if (currentRole === "procurement_officer" || currentRole === "procurement_officer_i" || currentRole === "procurement_officer_ii" || rawRole === "supply_officer") {
-      if (item.path === "/dashboard") return "Overview";
-      if (item.path === "/officer/pr-verification") return "Receive & Verify PR/PPMP";
-      if (item.path === "/officer/rfq-distribution") return "Distribute & Retrieve RFQ / Transmit to BAC";
-      if (item.path === "/officer/philgeps") return "PhilGEPS Posting";
-      if (item.path === "/officer/notices-serving") return "Letters of Notice (Serving)";
-      if (item.path === "/officer/releasing") return "Purchase Order / Contract Releasing";
-      if (item.path === "/officer/delivery-monitoring") return "Delivery & Inspection Monitoring";
-      if (item.path === "/supplier-evaluation-form") return "Supplier Evaluation Form";
-      if (item.path === "/budgets") return "Budget Control";
-      if (item.path === "/analytics") return "Reports & Analytics";
-      if (item.path === "/officer/forecast") return "Procurement Forecast";
-      if (item.path === "/audit") return "Audit Trail";
-      if (item.path === "/pmr-history") return "Historical PMR";
-      if (item.path === "/best-value-policy") return "Best Value Policy";
-      if (item.path === "/setup") return "System Setup";
-      if (item.path === "/form-templates") return "Documents & Forms Hub";
-    }
-    if (currentRole === "procurement_staff") {
-      if (item.path === "/dashboard") return "Overview";
-      if (item.path === "/pmr-registry") return "PMR Registry";
-      if (item.path === "/rfq-management") return "RFQ & Supplier Quotations";
-      if (item.path === "/officer/rfq-distribution") return "Forward to BAC for AOQ";
-      if (item.path === "/officer/transmittals") return "BAC Transmittals Register";
-      if (item.path === "/officer/notices") return "Letters of Notice";
-      if (item.path === "/purchase-orders") return "Prepare Purchase Order";
-      if (item.path === "/form-templates") return "Documents & Forms Hub";
-    }
-    if (currentRole === "hope") {
-      if (item.path === "/dashboard") return "Overview (Executive metrics & sign-off)";
-      if (item.path === "/purchase-orders") return "Contract Signing (Purchase Orders)";
-    }
-    if (currentRole === "bac" || currentRole === "bac_secretariat") {
-      if (item.path === "/officer/transmittals") return "BAC Resolutions & Transmittals (ABC & Endorsement)";
-      if (item.path === "/purchase-orders") return "Purchase Orders & Quotation Abstracts";
-    }
-    if (currentRole === "budget_officer") {
-      if (item.path === "/budgets") return "Budget Control (Allotment & funds certification)";
-      if (item.path === "/purchase-orders") return "Funds Clearance & PO Signing";
+  const getLabel = (item: NavItemConfig) => {
+    if (item.roleLabels?.[currentRole]) {
+      return item.roleLabels[currentRole]!;
     }
     return item.label;
   };
 
   const visibleNavigation = allVisible.filter((item) => {
     if (!searchQuery.trim()) return true;
-    return getLabel(item).toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    return (
+      getLabel(item).toLowerCase().includes(q) ||
+      (item.stepNumber?.toLowerCase().includes(q) ?? false)
+    );
   });
 
-  // Group by category for section headers
-  const grouped = visibleNavigation.reduce<Record<string, typeof visibleNavigation>>((acc, item) => {
-    const cat = item.category ?? "workspace";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
-    return acc;
-  }, {});
+  const grouped = visibleNavigation.reduce<Record<NavSectionId, NavItemConfig[]>>(
+    (acc, item) => {
+      if (!acc[item.section]) acc[item.section] = [];
+      acc[item.section].push(item);
+      return acc;
+    },
+    {
+      workspace: [],
+      procedure_steps: [],
+      reference_reports: [],
+      administration: [],
+    }
+  );
 
-  const notifications = trpc.procurement.notifications.list.useQuery(undefined, {
-    retry: false, enabled: Boolean(user), refetchInterval: 15_000, refetchIntervalInBackground: true,
-  });
-  const unreadCount = notifications.data?.filter((n) => !n.readAt).length ?? 0;
-  const handleLogout = async () => { await logout(); setLocation("/access"); };
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/access");
+  };
 
-  const userInitials = (user?.name || "U").split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+  const userInitials = (user?.name || "U")
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-slate-50 dark:bg-[#090d16] px-5 transition-colors">
-        <div className="flex flex-col items-center gap-3">
-          <LoaderCircle className="h-8 w-8 animate-spin text-[#881337] dark:text-[#fda4af]" />
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loading ProcureWise workspace...</p>
+      <div className="grid min-h-screen place-items-center bg-slate-50 dark:bg-[#090d16] px-6 transition-colors">
+        <div className="flex flex-col items-center gap-4">
+          <LoaderCircle className="h-10 w-10 animate-spin text-[#881337] dark:text-[#fda4af]" />
+          <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
+            Loading your ProcureWise workspace...
+          </p>
         </div>
       </div>
     );
@@ -500,86 +707,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-50 dark:bg-[#090d16] px-5 transition-colors">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f172a] p-8 text-center shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
-          {/* Institutional BSC Logo */}
-          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[#d2b058]/50 bg-white p-1 shadow-md">
-            <img src="/bsc-logo.jpg" alt="Batanes State College" className="h-full w-full rounded-xl object-contain" />
+        <div className="w-full max-w-md rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-8 text-center shadow-lg">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-2 border-[#d2b058]/50 bg-white p-1 shadow-md">
+            <img
+              src="/bsc-logo.jpg"
+              alt="Batanes State College"
+              className="h-full w-full rounded-xl object-contain"
+            />
           </div>
-          <ShieldCheck className="mx-auto mt-6 h-8 w-8 text-[#881337] dark:text-[#fda4af]" />
-          <h1 className="mt-4 font-['Plus_Jakarta_Sans'] text-2xl font-bold text-slate-900 dark:text-white">Authorized access only</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Sign in to access your assigned procurement workspace and workflow actions.</p>
+          <ShieldCheck className="mx-auto mt-6 h-10 w-10 text-[#881337] dark:text-[#fda4af]" />
+          <h1 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+            Authorized Access Only
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-slate-600 dark:text-slate-300">
+            Please sign in to open your Batanes State College procurement workspace.
+          </p>
           <Link
             href="/access"
-            className="mt-7 flex h-11 w-full items-center justify-center rounded-xl bg-[#881337] text-sm font-semibold text-white shadow-lg shadow-[#881337]/30 transition hover:bg-[#9f1239]"
+            className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#881337] px-6 py-3 text-base font-bold text-white shadow-md transition hover:bg-[#70102e]"
           >
-            Sign in to ProcureWise
+            Sign In to ProcureWise
           </Link>
         </div>
       </div>
     );
   }
 
-  // ── Sidebar nav item ───────────────────────────────────────────────────────
-  // ── Sidebar nav item ───────────────────────────────────────────────────────
-  const NavItem = ({ item }: { item: (typeof navigation)[0] }) => {
+  // ── Accessible Sidebar Nav Item (min-h-12, text-base font-semibold) ────────
+  const renderNavItem = (item: NavItemConfig) => {
     const label = getLabel(item);
     const active = location === item.path;
+    const Icon = item.icon;
 
-    const btn = (
+    return (
       <button
-        key={item.path}
+        key={item.id}
         type="button"
-        onClick={() => { setLocation(item.path); setMenuOpen(false); }}
+        onClick={() => {
+          setLocation(item.path);
+          setMenuOpen(false);
+        }}
         aria-current={active ? "page" : undefined}
-        style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
         className={[
-          "group relative transition-all duration-150",
-          isCollapsed
-            ? "w-full flex justify-center items-center px-0 my-2 rounded-xl py-2"
-            : "flex w-full items-center rounded-xl py-2 px-3 gap-2.5 text-left",
+          "flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-base font-semibold transition-colors",
           active
-            ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
-            : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
+            ? "bg-[#881337] text-white shadow-sm"
+            : "text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
         ].join(" ")}
       >
-        {/* Active top accent hairline */}
-        {active && (
-          <span
-            className="pointer-events-none absolute inset-x-2 top-0 h-px rounded-full before:bg-[#d5ab55]"
-            style={{ background: "linear-gradient(90deg, transparent, #e11d48, transparent)" }}
-          />
-        )}
-
-        {/* Icon container */}
-        <span
+        <Icon
           className={[
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-            isCollapsed ? "mx-auto" : "",
+            "h-5 w-5 shrink-0",
             active
-              ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]"
-              : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
+              ? "text-white"
+              : "text-[#881337] dark:text-rose-400",
           ].join(" ")}
-        >
-          <item.icon className="h-4 w-4" />
-        </span>
-
-        {!isCollapsed && (
-          <span className="sidebar-nav-label flex-1 min-w-0 text-left font-medium leading-snug break-words">
-            {label}
-          </span>
-        )}
+          aria-hidden="true"
+        />
+        <span className="flex-1 leading-snug break-words">{label}</span>
       </button>
-    );
-
-    return isCollapsed ? (
-      <Tooltip key={item.path} delayDuration={50}>
-        <TooltipTrigger asChild>{btn}</TooltipTrigger>
-        <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs font-medium text-slate-800 dark:text-slate-200 shadow-md z-50">
-          {label}
-        </TooltipContent>
-      </Tooltip>
-    ) : (
-      <div key={item.path}>{btn}</div>
     );
   };
 
@@ -587,452 +773,381 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground transition-colors duration-200 print:bg-white">
       <NotificationToastListener />
 
-      {/* ── Mobile top bar ────────────────────────────────────────────────── */}
-      <div
-        className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0c1322]/95 backdrop-blur px-4 lg:hidden print:hidden transition-colors"
-      >
-        <button
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle navigation"
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          <Menu className="h-4.5 w-4.5" />
-        </button>
+      {/* ── Global Top Header Bar (No Standalone Icons, min-h-16) ───────────── */}
+      <header className="sticky top-0 z-30 flex min-h-16 w-full flex-wrap items-center justify-between gap-3 border-b-2 border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-900 print:hidden">
+        {/* Left Section: Mobile Menu Button + Institutional Branding + Active Role Pill */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          {/* Mobile Menu Trigger (min-h-12 min-w-12, Icon + Text) */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={menuOpen}
+            className="inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-bold text-slate-800 transition-colors hover:bg-slate-100 lg:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+          >
+            <Menu className="h-5 w-5 shrink-0 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+            <span>Menu</span>
+          </button>
 
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
-          <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-md object-contain" />
-        </div>
-        <span className="font-['Plus_Jakarta_Sans'] text-sm font-bold text-slate-900 dark:text-white">ProcureWise</span>
+          {/* Institutional Logo & Title */}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 rounded-xl py-1 pr-2 focus-visible:outline-none"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-[#d2b058]/50 bg-white p-0.5 shadow-xs">
+              <img
+                src="/bsc-logo.jpg"
+                alt="Batanes State College Logo"
+                className="h-full w-full rounded-lg object-contain"
+              />
+            </div>
+            <div>
+              <p className="font-['Plus_Jakarta_Sans'] text-lg font-extrabold leading-tight text-slate-900 dark:text-white">
+                ProcureWise
+              </p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Batanes State College
+              </p>
+            </div>
+          </Link>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
-            <NotificationCenterDrawer triggerVariant="minimal" />
-            {unreadCount > 0 && (
-              <span className="sr-only">
-                {unreadCount > 9 ? "9+" : unreadCount} unread notifications
-              </span>
-            )}
+          {/* Explicit Active Role Context Indicator Pill */}
+          <div className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200">
+            <UserCheck
+              className="h-4 w-4 shrink-0 text-[#881337] dark:text-rose-400"
+              aria-hidden="true"
+            />
+            <span>
+              Signed in as:{" "}
+              <strong className="text-slate-900 dark:text-white">
+                {roleLabel}
+              </strong>
+            </span>
           </div>
-          <ThemeToggle />
         </div>
-      </div>
 
-      {/* ── Mobile drawer overlay ─────────────────────────────────────────── */}
+        {/* Right Section: Accessible Utility Triggers (All min-h-12 with Icon + Text) */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Alerts / Notifications Trigger */}
+          <NotificationCenterDrawer triggerVariant="accessible" />
+
+          {/* Dark / Light Mode Toggle */}
+          <ThemeToggle className="hidden md:inline-flex" />
+
+          {/* Help Guide Trigger */}
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            className="hidden sm:inline-flex min-h-12 items-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            <HelpCircle
+              className="h-5 w-5 shrink-0 text-[#881337] dark:text-rose-400"
+              aria-hidden="true"
+            />
+            <span>Help Guide</span>
+          </button>
+
+          {/* Sign Out Button */}
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="hidden sm:inline-flex min-h-12 items-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-200"
+          >
+            <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── Mobile Navigation Drawer Overlay (w-80 max-w-[85vw]) ─────────────── */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden print:hidden"
           onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
       <aside
+        aria-label="Mobile navigation menu"
         className={[
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1322] text-slate-800 dark:text-slate-200 pt-14 transition-transform duration-300 lg:hidden print:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] flex-col border-r-2 border-slate-200 bg-white p-4 text-slate-900 shadow-2xl transition-transform duration-300 lg:hidden dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 print:hidden",
           menuOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
-        style={{ width: 296 }}
       >
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-850 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]"
-            />
+        {/* Top Close Bar */}
+        <div className="flex items-center justify-between gap-3 border-b-2 border-slate-200 pb-4 dark:border-slate-800">
+          <div className="min-w-0">
+            <p className="text-base font-bold text-slate-900 dark:text-white">
+              Navigation Menu
+            </p>
+            <p className="truncate text-sm font-medium text-[#881337] dark:text-rose-400">
+              {roleLabel}
+            </p>
           </div>
-          <MobileNavContent
-            grouped={grouped}
-            getLabel={getLabel}
-            location={location}
-            setLocation={setLocation}
-            setMenuOpen={setMenuOpen}
-            collapsedSections={collapsedSections}
-            toggleSection={toggleSection}
-          />
-        </div>
-        <MobileProfileFooter
-          user={user}
-          userInitials={userInitials}
-          roleLabel={roleLabel}
-          onEditProfile={() => { setEditProfileOpen(true); setMenuOpen(false); }}
-          onLogout={() => void handleLogout()}
-        />
-      </aside>
-
-      {/* ── Full layout: sidebar + main ──────────────────────────────────── */}
-      <div className="flex min-h-screen">
-
-        {/* ── DESKTOP SIDEBAR CONTAINER ────────────────────────────────────── */}
-        <div className="relative shrink-0 hidden lg:block sticky top-0 h-screen max-h-screen z-20 print:hidden no-print">
-          <aside
-            className={[
-              "sidebar-rail flex flex-col justify-between h-screen max-h-screen overflow-hidden border-r transition-all duration-300 ease-in-out",
-              "bg-white dark:bg-[#0c1322] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200",
-              isCollapsed ? "w-[72px]" : "w-64",
-            ].join(" ")}
-          >
-            {/* ── Header Section (Top) ── */}
-            {isCollapsed ? (
-              <div className="flex h-16 w-full shrink-0 items-center justify-center border-b border-slate-200 dark:border-slate-800">
-                <div className="mx-auto my-3 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
-                  <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-lg object-contain" />
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#d2b058]/40 bg-white p-0.5 shadow-sm">
-                    <img src="/bsc-logo.jpg" alt="BSC Logo" className="h-full w-full rounded-lg object-contain" />
-                  </div>
-                  <div>
-                    <p className="font-['Plus_Jakarta_Sans'] text-base font-bold text-slate-900 dark:text-white leading-tight">ProcureWise</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <NotificationCenterDrawer triggerVariant="minimal" />
-                  <ThemeToggle />
-                </div>
-              </div>
-            )}
-
-            {/* ── Search (expanded only) ── */}
-            {!isCollapsed && (
-              <div className="px-3 pt-3 pb-2 shrink-0">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <input
-                    ref={searchRef}
-                    type="text"
-                    placeholder="Search menu…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8.5 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/50 pl-9 pr-3 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-[#881337]"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* ── Navigation Links Area (Middle - ONLY scrollable section) ── */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full overflow-x-hidden">
-              {Object.entries(grouped).map(([cat, items]) => {
-                const isSectionCollapsed = Boolean(collapsedSections[cat]);
-                return (
-                  <div key={cat} className={isCollapsed ? "mb-1" : "mb-3"}>
-                    {!isCollapsed && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(cat)}
-                        aria-expanded={!isSectionCollapsed}
-                        className="group mb-1.5 flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                      >
-                        <span>{CATEGORY_LABELS[cat] ?? cat}</span>
-                        <ChevronDown
-                          className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
-                            isSectionCollapsed ? "-rotate-90" : "rotate-0"
-                          }`}
-                        />
-                      </button>
-                    )}
-                    {(!isSectionCollapsed || isCollapsed) && (
-                      <nav className="grid gap-0.5 transition-all">
-                        {items.map((item) => <NavItem key={item.path} item={item} />)}
-                      </nav>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── Bottom pinned section (Footer & Profile) ── */}
-            <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 p-3 bg-inherit space-y-2">
-              {/* Help & Support row */}
-              {!isCollapsed ? (
-                <button
-                  type="button"
-                  onClick={() => setHelpOpen(true)}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 text-xs font-medium text-slate-600 dark:text-slate-400"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400">
-                    <LifeBuoy className="h-4 w-4" />
-                  </span>
-                  <span className="sidebar-nav-label flex-1 truncate">Help &amp; Support</span>
-                </button>
-              ) : (
-                <Tooltip delayDuration={50}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setHelpOpen(true)}
-                      className="flex h-9 w-9 mx-auto items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                      aria-label="Help & Support"
-                    >
-                      <LifeBuoy className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200 shadow-md z-50">
-                    Help &amp; Support
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* Pinned profile card */}
-              {isCollapsed ? (
-                <div className="flex justify-center items-center py-1">
-                  <Tooltip delayDuration={50}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setEditProfileOpen(true)}
-                        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30 transition hover:ring-[#881337]/60"
-                        title="Edit profile"
-                      >
-                        <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
-                        <span className="absolute top-0 right-0 h-2 w-2 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] text-xs text-slate-800 dark:text-slate-200 shadow-md z-50">
-                      <p className="font-semibold">{user?.name || "Procurement User"}</p>
-                      <p className="text-[#881337] dark:text-[#fda4af] text-[10px]">{roleLabel}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#121826] p-2.5 transition-colors">
-                  {/* Avatar */}
-                  <button
-                    type="button"
-                    onClick={() => setEditProfileOpen(true)}
-                    className="relative flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30 transition hover:ring-[#881337]/60"
-                    title="Edit profile"
-                  >
-                    <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
-                  </button>
-
-                  {/* Name + role */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold leading-tight text-slate-800 dark:text-slate-100">
-                      {user?.name || "Procurement User"}
-                    </p>
-                    <p className="truncate text-[10px] leading-tight text-[#881337] dark:text-[#fda4af] font-medium mt-0.5">{roleLabel}</p>
-                  </div>
-
-                  {/* Logout */}
-                  <button
-                    type="button"
-                    onClick={() => void handleLogout()}
-                    aria-label="Sign out"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400"
-                    title="Sign out"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </aside>
-
-          {/* ── Centered Pull-Tab Sidebar Toggle ("Folder Tab" Style) ── */}
           <button
             type="button"
-            onClick={toggleSidebar}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-40 w-7 h-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-md flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+            onClick={() => setMenuOpen(false)}
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-bold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
-            {isCollapsed ? (
-              <ChevronRight className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
-            ) : (
-              <ChevronLeft className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
-            )}
+            <X className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>Close Menu</span>
           </button>
         </div>
 
-        {/* ── Main content (proper padding & breathing room) ────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 ease-in-out">
-          <main className="min-w-0 flex-1 overflow-x-auto pt-20 lg:pt-10 px-4 sm:px-6 md:px-8 pb-12 print:p-0 transition-all duration-300 ease-in-out">
-            <div className="mx-auto w-full max-w-[1440px]">
-              {children}
+        {/* Mobile Search */}
+        <div className="mt-4">
+          <label
+            htmlFor="mobile-nav-search"
+            className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-300"
+          >
+            Find a Step or Page
+          </label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
+              aria-hidden="true"
+            />
+            <input
+              id="mobile-nav-search"
+              type="text"
+              placeholder="e.g., Step 1, RFQ, Notice..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="min-h-12 w-full rounded-xl border-2 border-slate-300 bg-white pl-11 pr-4 py-2.5 text-base text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+        </div>
+
+        {/* Mobile Navigation Links */}
+        <div className="mt-5 flex-1 space-y-6 overflow-y-auto pr-1">
+          {(Object.keys(NAV_SECTION_HEADERS) as NavSectionId[]).map((sectionId) => {
+            const items = grouped[sectionId];
+            if (!items || items.length === 0) return null;
+            return (
+              <div key={sectionId} className="space-y-2">
+                <h2 className="px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {NAV_SECTION_HEADERS[sectionId]}
+                </h2>
+                <nav className="space-y-1.5" aria-label={NAV_SECTION_HEADERS[sectionId]}>
+                  {items.map((item) => renderNavItem(item))}
+                </nav>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mobile Utility & Profile Footer */}
+        <div className="mt-4 space-y-2.5 border-t-2 border-slate-200 pt-4 dark:border-slate-800">
+          <div className="grid grid-cols-1 gap-2">
+            <ThemeToggle className="w-full justify-center" />
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setHelpOpen(true);
+              }}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <HelpCircle className="h-5 w-5 shrink-0 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+              <span>Help Guide</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setEditProfileOpen(true);
+              }}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl border-2 border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <UserCog className="h-5 w-5 shrink-0 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+              <span>My Profile ({userInitials})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl border-2 border-rose-300 bg-rose-50 px-4 py-2.5 text-base font-bold text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+            >
+              <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Main Body: Desktop Sidebar (w-72) + Content Area ─────────────────── */}
+      <div className="flex min-h-[calc(100vh-4rem)]">
+        {/* Desktop Sidebar */}
+        <aside
+          aria-label="Primary Procedure Navigation"
+          className="hidden lg:flex w-72 shrink-0 flex-col justify-between border-r-2 border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60 print:hidden no-print"
+        >
+          <div className="space-y-6">
+            {/* Accessible Search Box */}
+            <div>
+              <label
+                htmlFor="desktop-nav-search"
+                className="mb-1.5 block px-1 text-sm font-bold text-slate-700 dark:text-slate-300"
+              >
+                Find a Step or Page
+              </label>
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
+                  aria-hidden="true"
+                />
+                <input
+                  id="desktop-nav-search"
+                  ref={searchRef}
+                  type="text"
+                  placeholder="e.g., Step 1, RFQ, PO..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="min-h-12 w-full rounded-xl border-2 border-slate-300 bg-white pl-11 pr-4 py-2.5 text-base text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
             </div>
+
+            {/* Sequential Grouped Navigation */}
+            <div className="space-y-6">
+              {(Object.keys(NAV_SECTION_HEADERS) as NavSectionId[]).map(
+                (sectionId) => {
+                  const items = grouped[sectionId];
+                  if (!items || items.length === 0) return null;
+                  return (
+                    <div key={sectionId}>
+                      <h2 className="mb-2 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {NAV_SECTION_HEADERS[sectionId]}
+                      </h2>
+                      <nav
+                        className="space-y-1.5"
+                        aria-label={NAV_SECTION_HEADERS[sectionId]}
+                      >
+                        {items.map((item) => renderNavItem(item))}
+                      </nav>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
+          {/* Bottom User & Office Assignment Card (min-h-12 interactive button) */}
+          <div className="mt-8 border-t-2 border-slate-200 pt-4 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setEditProfileOpen(true)}
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#881337] text-sm font-bold text-white">
+                {userInitials}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-base font-bold text-slate-900 dark:text-white">
+                  {user.name || "Procurement User"}
+                </span>
+                <span className="block truncate text-sm font-medium text-[#881337] dark:text-rose-400">
+                  Edit Office / Profile
+                </span>
+              </span>
+              <UserCog
+                className="h-5 w-5 shrink-0 text-slate-600 dark:text-slate-300"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content Viewport */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main className="min-w-0 flex-1 overflow-x-auto px-4 py-6 sm:px-6 md:px-8 lg:py-8 pb-14 print:p-0">
+            <div className="mx-auto w-full max-w-[1440px]">{children}</div>
           </main>
         </div>
       </div>
 
-      {/* ── Edit Profile Dialog ─────────────────────────────────────────────── */}
+      {/* ── Edit Profile & Office Assignment Dialog ─────────────────────────── */}
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
-        <DialogContent className="max-w-md border border-border bg-card">
+        <DialogContent className="max-w-lg border-2 border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <UserCog className="h-4 w-4 text-primary" />
+            <DialogTitle className="flex items-center gap-2.5 text-xl font-bold text-slate-900 dark:text-white">
+              <UserCog className="h-5 w-5 text-[#881337] dark:text-rose-400" />
               <span>My Profile &amp; Office Assignment</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Assign your active institutional office or department. This office will be prefilled on Purchase Requests and procurement forms.
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
+              Choose your Batanes State College office or department. This office will be filled in automatically on your Purchase Requests.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 space-y-4 text-xs">
+          <div className="mt-4 space-y-4 text-base">
             <div>
-              <label className="font-semibold text-foreground">Full Name</label>
-              <p className="mt-1 font-medium text-foreground">{user.name || "Procurement User"}</p>
+              <span className="block text-sm font-bold text-slate-600 dark:text-slate-400">
+                Full Name
+              </span>
+              <p className="mt-1 text-base font-semibold text-slate-900 dark:text-white">
+                {user.name || "Procurement User"}
+              </p>
             </div>
             <div>
-              <label className="font-semibold text-foreground">Account Email</label>
-              <p className="mt-1 text-muted-foreground">{user.email || "—"}</p>
+              <span className="block text-sm font-bold text-slate-600 dark:text-slate-400">
+                Account Email
+              </span>
+              <p className="mt-1 text-base text-slate-700 dark:text-slate-300">
+                {user.email || "—"}
+              </p>
             </div>
             <div>
-              <label className="font-semibold text-foreground">Workflow Role</label>
-              <p className="mt-1 font-semibold text-[#881337] dark:text-[#fda4af]">{roleLabel}</p>
+              <span className="block text-sm font-bold text-slate-600 dark:text-slate-400">
+                Assigned Workflow Role
+              </span>
+              <p className="mt-1 text-base font-bold text-[#881337] dark:text-rose-400">
+                {roleLabel}
+              </p>
             </div>
             <div>
-              <label htmlFor="user-office-select" className="font-semibold text-foreground">Assigned Office / Unit</label>
-              <div className="mt-1.5">
-                <OfficeSelect
-                  id="user-office-select"
-                  value={selectedOfficeName}
-                  valueMode="name"
-                  onChange={setSelectedOfficeName}
-                  placeholder="Search & select your institutional office..."
-                />
-              </div>
+              <label
+                htmlFor="user-office-select"
+                className="mb-1.5 block text-base font-bold text-slate-900 dark:text-white"
+              >
+                Assigned Office or Department
+              </label>
+              <OfficeSelect
+                id="user-office-select"
+                value={selectedOfficeName}
+                valueMode="name"
+                onChange={setSelectedOfficeName}
+                placeholder="Search & select your college office..."
+              />
             </div>
           </div>
 
-          <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditProfileOpen(false)} className="text-xs">Cancel</Button>
+          <DialogFooter className="mt-6 gap-3">
             <Button
               type="button"
-              size="sm"
-              disabled={updateMyOfficeMutation.isPending}
-              onClick={() => updateMyOfficeMutation.mutate({ officeName: selectedOfficeName })}
-              className="bg-[#881337] text-xs text-white hover:bg-[#70102b]"
+              variant="outline"
+              onClick={() => setEditProfileOpen(false)}
             >
-              {updateMyOfficeMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Save Office Assignment
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={updateMyOfficeMutation.isPending}
+              onClick={() =>
+                updateMyOfficeMutation.mutate({
+                  officeName: selectedOfficeName,
+                })
+              }
+            >
+              {updateMyOfficeMutation.isPending && (
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+              )}
+              Save My Office
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Decoupled Help & Support Center Dialog ─────────────────────────── */}
+      {/* ── Help & Procedure Guide Dialog ──────────────────────────────────── */}
       <HelpSupportDialog open={helpOpen} onOpenChange={setHelpOpen} />
-    </div>
-  );
-}
-
-// ─── Mobile-only nav content (with collapsible categories) ───────────────────
-function MobileNavContent({
-  grouped, getLabel, location, setLocation, setMenuOpen, collapsedSections, toggleSection,
-}: {
-  grouped: Record<string, typeof navigation>;
-  getLabel: (item: (typeof navigation)[0]) => string;
-  location: string;
-  setLocation: (path: string) => void;
-  setMenuOpen: (open: boolean) => void;
-  collapsedSections: Record<string, boolean>;
-  toggleSection: (cat: string) => void;
-}) {
-  return (
-    <>
-      {Object.entries(grouped).map(([cat, items]) => {
-        const isSectionCollapsed = Boolean(collapsedSections[cat]);
-        return (
-          <div key={cat} className="mb-4">
-            <button
-              type="button"
-              onClick={() => toggleSection(cat)}
-              className="mb-1.5 flex w-full items-center justify-between px-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-            >
-              <span>{CATEGORY_LABELS[cat] ?? cat}</span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
-                  isSectionCollapsed ? "-rotate-90" : "rotate-0"
-                }`}
-              />
-            </button>
-            {!isSectionCollapsed && (
-              <nav className="grid gap-0.5">
-                {items.map((item) => {
-                  const label = getLabel(item);
-                  const active = location === item.path;
-                  return (
-                    <button
-                      key={item.path}
-                      type="button"
-                      onClick={() => { setLocation(item.path); setMenuOpen(false); }}
-                      aria-current={active ? "page" : undefined}
-                      style={active ? { boxShadow: "0 0 14px rgba(136,19,55,0.22)" } : undefined}
-                      className={[
-                        "group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-all",
-                        active
-                          ? "border border-[#881337]/30 dark:border-[#881337]/50 bg-[#881337]/10 dark:bg-[#881337]/25 text-[#881337] dark:text-white font-semibold before:bg-[#d5ab55]"
-                          : "border border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200",
-                      ].join(" ")}
-                    >
-                      {active && (
-                        <span
-                          className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full before:bg-[#d5ab55]"
-                          style={{ background: "linear-gradient(90deg, transparent, #e11d48, transparent)" }}
-                        />
-                      )}
-                      <span className={[
-                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                        active ? "bg-[#881337]/15 dark:bg-[#881337]/35 text-[#881337] dark:text-[#fda4af]" : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700/80 group-hover:text-slate-800 dark:group-hover:text-slate-200",
-                      ].join(" ")}>
-                        <item.icon className="h-4 w-4" />
-                      </span>
-                      <span className="sidebar-nav-label flex-1 min-w-0 text-left font-medium leading-snug break-words">{label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            )}
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
-// ─── Mobile profile footer ────────────────────────────────────────────────────
-function MobileProfileFooter({
-  user, userInitials, roleLabel, onEditProfile, onLogout,
-}: {
-  user: { name?: string | null; email?: string | null };
-  userInitials: string;
-  roleLabel: string;
-  onEditProfile: () => void;
-  onLogout: () => void;
-}) {
-  return (
-    <div className="shrink-0 border-t border-slate-200 dark:border-slate-800/80 p-3 bg-slate-50/80 dark:bg-[#0c1322]">
-      <div
-        className="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-[#121826] transition-colors"
-      >
-        <button
-          type="button"
-          onClick={onEditProfile}
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#881337]/15 dark:bg-[#881337]/25 ring-2 ring-[#881337]/30"
-        >
-          <span className="text-xs font-bold text-[#881337] dark:text-[#fda4af]">{userInitials}</span>
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#121826] bg-emerald-500" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{user.name || "Procurement User"}</p>
-          <p className="truncate text-[10px] text-[#881337] dark:text-[#fda4af] font-medium">{roleLabel}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label="Sign out"
-          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-        </button>
-      </div>
     </div>
   );
 }
