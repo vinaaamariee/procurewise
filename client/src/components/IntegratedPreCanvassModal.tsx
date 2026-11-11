@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { filterSuppliersByTag } from "../../../shared/supplierTagging";
 import { getValidPreCanvassQuotes, hasRequiredSupplierQuotations } from "../../../shared/procurementRules";
 import { toast } from "sonner";
-import { ArrowRight, CheckCircle2, ChevronRight, ClipboardCheck, FileCheck2, FileSearch, Info, LoaderCircle, Plus, Send, Sparkles, Store, Trash2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronRight, ClipboardCheck, FileCheck2, FileSearch, Info, LoaderCircle, Plus, Send, Sparkles, Store, Trash2, Upload } from "lucide-react";
 
 interface IntegratedPreCanvassModalProps {
   open: boolean;
@@ -161,8 +161,13 @@ export function IntegratedPreCanvassModal({
   };
 
   // Handle Forward Package to Procurement
-  const handleForwardToProcurement = () => {
+  const handleForwardToProcurement = async () => {
     if (!hasPreliminaryAoq) {
+      if (preliminaryAoqFile) {
+        toast.info("Uploading your selected attachment before forwarding...");
+        await handleUploadPreliminaryAoq();
+        return;
+      }
       toast.error("Upload the preliminary quotation attachment before forwarding.");
       return;
     }
@@ -549,10 +554,10 @@ export function IntegratedPreCanvassModal({
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-[4px] border border-[#d5c89f] bg-white p-3 dark:border-[#635028] dark:bg-[#1b2229]">
+                <div className="mt-4 rounded-[4px] border border-[#d5c89f] bg-white p-3.5 dark:border-[#635028] dark:bg-[#1b2229]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Label htmlFor="integrated-preliminary-aoq" className="text-xs font-semibold">
-                      Preliminary quotation attachment {!hasPreliminaryAoq && <span className="text-rose-600">Required</span>}
+                      Preliminary quotation attachment {!hasPreliminaryAoq && <span className="text-rose-600 font-bold">Required</span>}
                     </Label>
                     {hasPreliminaryAoq && (
                       <StatusBadge tone="approved">ATTACHED</StatusBadge>
@@ -563,11 +568,7 @@ export function IntegratedPreCanvassModal({
                       ? "An attachment is uploaded. Choose a replacement only if needed. Excel or PDF, maximum size: 10 MB."
                       : "Upload the Excel or PDF worksheet that documents your three supplier quotes. Maximum size: 10 MB."}
                   </p>
-                  {preliminaryAoqDocument && (
-                    <p className="mt-2 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                      Attached: {preliminaryAoqDocument.originalFileName}
-                    </p>
-                  )}
+
                   <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       ref={preliminaryAoqInputRef}
@@ -582,27 +583,86 @@ export function IntegratedPreCanvassModal({
                       variant="outline"
                       disabled={attachDocumentMutation.isPending}
                       onClick={() => preliminaryAoqInputRef.current?.click()}
-                      className="h-9 shrink-0 text-[11px]"
+                      className="h-10 shrink-0 border-2 font-semibold text-xs px-3.5"
                     >
                       Choose file
                     </Button>
-                    <span
-                      className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+                    <div
+                      className={`min-w-0 flex-1 truncate rounded-md border px-3 py-2 text-xs ${
+                        preliminaryAoqFile
+                          ? "border-amber-400 bg-amber-50 font-semibold text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+                          : preliminaryAoqDocument
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          : "border-slate-200 bg-slate-50 text-muted-foreground dark:border-slate-800 dark:bg-slate-900/50"
+                      }`}
                       title={preliminaryAoqFile?.name ?? preliminaryAoqDocument?.originalFileName ?? undefined}
                     >
-                      {preliminaryAoqFile?.name ?? (!hasPreliminaryAoq ? "No file selected" : null)}
-                    </span>
+                      {preliminaryAoqFile ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <FileCheck2 className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                          <span className="truncate">{preliminaryAoqFile.name}</span>
+                          <span className="shrink-0 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                            ({(preliminaryAoqFile.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                      ) : preliminaryAoqDocument ? (
+                        <div className="flex items-center gap-1.5 truncate text-emerald-800 dark:text-emerald-300">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <span className="truncate">Attached: {preliminaryAoqDocument.originalFileName}</span>
+                        </div>
+                      ) : (
+                        "No file selected"
+                      )}
+                    </div>
                     <Button
                       type="button"
-                      variant="outline"
                       disabled={!existingPreCanvass || !preliminaryAoqFile || attachDocumentMutation.isPending}
                       onClick={() => void handleUploadPreliminaryAoq()}
-                      className="h-9 shrink-0 text-[11px]"
+                      className={`h-10 shrink-0 px-4 text-xs font-bold transition-all shadow-sm ${
+                        preliminaryAoqFile
+                          ? "bg-[#881337] text-white hover:bg-[#70102e] ring-2 ring-[#881337]/50 shadow-md animate-pulse cursor-pointer"
+                          : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed opacity-60"
+                      }`}
                     >
-                      {attachDocumentMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                      {attachDocumentMutation.isPending ? (
+                        <LoaderCircle className="mr-1.5 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-1.5 h-4 w-4" />
+                      )}
                       Upload attachment
                     </Button>
                   </div>
+
+                  {preliminaryAoqFile && !attachDocumentMutation.isPending && (
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md border-2 border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-950 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-100">
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-4 w-4 shrink-0 text-rose-700 dark:text-rose-400" />
+                        <span>
+                          File chosen: <u>{preliminaryAoqFile.name}</u>. Click <strong>Upload attachment</strong> on the right to attach it!
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleUploadPreliminaryAoq()}
+                        className="h-7 bg-[#881337] text-white hover:bg-[#70102e] px-3 text-[11px] font-bold shrink-0 shadow-xs"
+                      >
+                        Upload Now
+                      </Button>
+                    </div>
+                  )}
+
+                  {hasPreliminaryAoq && !preliminaryAoqFile && preliminaryAoqDocument && (
+                    <div className="mt-2.5 flex items-center justify-between rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                      <div className="flex items-center gap-2 truncate">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="truncate">Attached document: <strong>{preliminaryAoqDocument.originalFileName}</strong></span>
+                      </div>
+                      <span className="shrink-0 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                        VERIFIED
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
