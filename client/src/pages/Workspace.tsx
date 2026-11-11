@@ -508,7 +508,7 @@ const BSC_PR_UNITS = ["Ream", "Box", "Piece", "Pack", "Unit", "Lot", "Set"] as c
 const WIZARD_STEP_TITLES: Record<1 | 2 | 3 | 4, string> = {
   1: "Upload Your Approved Budget Plan",
   2: "Select Category and Add Items",
-  3: "Explain Why You Need These Items",
+  3: "Purpose of Request & Market Scoping",
   4: "Review Your Request Before Submitting",
 };
 
@@ -601,7 +601,7 @@ function PurchaseRequestForm({
   const [customPpmpYear, setCustomPpmpYear] = useState<number>(new Date().getFullYear());
   const [ppmpOfficeId, setPpmpOfficeId] = useState("");
   const [ppmpObjectId, setPpmpObjectId] = useState("");
-  const [customPpmpBudget, setCustomPpmpBudget] = useState("50000");
+  const [customPpmpBudget, setCustomPpmpBudget] = useState("");
   const [customFundSource, setCustomFundSource] = useState("General Appropriations Act");
   const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const [ppmpFileError, setPpmpFileError] = useState<string | null>(null);
@@ -609,6 +609,7 @@ function PurchaseRequestForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingPpmpFile, setIsDraggingPpmpFile] = useState(false);
   const marketScopingFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingMarketScopingFile, setIsDraggingMarketScopingFile] = useState(false);
 
   // Pre-select user's assigned office and default expenditure object if available
   useEffect(() => {
@@ -652,7 +653,7 @@ function PurchaseRequestForm({
       estimatedUnitCost: "",
     },
   ]);
-  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
+  const [showCatalogPicker, setShowCatalogPicker] = useState(true);
 
   // Step 3: Purpose & Signatories state
   const [purpose, setPurpose] = useState("");
@@ -717,6 +718,7 @@ function PurchaseRequestForm({
       return;
     }
     const reader = new FileReader();
+    reader.onerror = () => toast.error("The Market Scoping file could not be read.");
     reader.onload = () => {
       const result = String(reader.result || "");
       setMarketScopingFile({
@@ -728,6 +730,13 @@ function PurchaseRequestForm({
       toast.success(`Attached Market Scoping file: ${file.name}`);
     };
     reader.readAsDataURL(file);
+  };
+
+  const removeMarketScopingFile = () => {
+    setMarketScopingFile(null);
+    if (marketScopingFileInputRef.current) {
+      marketScopingFileInputRef.current.value = "";
+    }
   };
 
   // Catalog Queries (preserved for common-use catalog integration)
@@ -965,6 +974,12 @@ function PurchaseRequestForm({
       );
       return;
     }
+    if (!marketScopingFile) {
+      toast.error(
+        "Market Scoping document is mandatory under RA 12009 Art. II. Please upload your market scoping analysis before proceeding."
+      );
+      return;
+    }
     setCurrentStep(4);
   };
 
@@ -981,6 +996,13 @@ function PurchaseRequestForm({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}.`
+      );
+      return;
+    }
+
+    if (!marketScopingFile) {
+      toast.error(
+        "Cannot submit: Market Scoping document is mandatory under RA 12009 Art. II. Please upload your market scoping file before submitting."
       );
       return;
     }
@@ -1101,57 +1123,90 @@ function PurchaseRequestForm({
             />
           </div>
 
-          {/* File Dropzone Container */}
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsDraggingPpmpFile(true);
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsDraggingPpmpFile(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsDraggingPpmpFile(false);
-              handlePpmpFile(event.dataTransfer.files?.[0]);
-            }}
-            className={`min-h-[180px] rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${
-              isDraggingPpmpFile
-                ? "border-[#881337] bg-rose-50/60 dark:border-rose-400 dark:bg-rose-950/30"
-                : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={STRICT_PPMP_ACCEPT}
-              onChange={handleFileChange}
-              className="hidden"
-              id="ppmp-strict-file-upload"
-            />
-            <UploadCloud className="h-9 w-9 text-[#881337] dark:text-rose-400" aria-hidden="true" />
-            <p className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
-              Choose a file or drag it here
-            </p>
-            <p className="mt-1.5 max-w-xl text-sm font-medium text-slate-600 dark:text-slate-300">
-              Accepted formats only: .pdf, .xlsx, .xls (Max size: 10MB). Scanned pictures, Word files, and zip folders cannot be accepted.
-            </p>
-            <div className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="min-h-12 px-6 py-3 border-2 border-slate-300 rounded-xl font-bold bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <Folder className="h-5 w-5 text-[#881337] dark:text-rose-400" />
-                <span>Browse File</span>
-              </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={STRICT_PPMP_ACCEPT}
+            onChange={handleFileChange}
+            className="hidden"
+            id="ppmp-strict-file-upload"
+          />
+
+          {/* File Dropzone / Active Uploaded File Container */}
+          {!uploadedFile ? (
+            <div
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDraggingPpmpFile(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDraggingPpmpFile(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDraggingPpmpFile(false);
+                handlePpmpFile(event.dataTransfer.files?.[0]);
+              }}
+              className={`min-h-[180px] rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${
+                isDraggingPpmpFile
+                  ? "border-[#881337] bg-rose-50/60 dark:border-rose-400 dark:bg-rose-950/30"
+                  : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
+              }`}
+            >
+              <UploadCloud className="h-9 w-9 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+              <p className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
+                Choose a file or drag it here
+              </p>
+              <p className="mt-1.5 max-w-xl text-sm font-medium text-slate-600 dark:text-slate-300">
+                Accepted formats only: .pdf, .xlsx, .xls (Max size: 10MB). Scanned pictures, Word files, and zip folders cannot be accepted.
+              </p>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="min-h-12 px-6 py-3 border-2 border-slate-300 rounded-xl font-bold bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <Folder className="h-5 w-5 text-[#881337] dark:text-rose-400" />
+                  <span>Browse File</span>
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="min-h-[180px] rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 p-6 dark:border-emerald-700 dark:bg-emerald-950/30 flex flex-col items-center justify-center text-center transition-all">
+              <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              <p className="mt-3 max-w-xl truncate text-lg font-bold text-slate-900 dark:text-slate-100" title={uploadedFile.name}>
+                {uploadedFile.name}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB · Verified Official PPMP File
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="min-h-11 border-2 border-emerald-500 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:bg-slate-900 dark:text-emerald-300"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Change File</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={removeUploadedFile}
+                  className="min-h-11 border-2 border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Remove and choose another file</span>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Inline Error Alert (on invalid file type/size) */}
           {ppmpFileError && (
@@ -1163,32 +1218,6 @@ function PurchaseRequestForm({
               <span>
                 File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.
               </span>
-            </div>
-          )}
-
-          {/* Active State Card (Post-Upload) */}
-          {uploadedFile && (
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-emerald-400 bg-emerald-50/80 p-4 dark:border-emerald-700 dark:bg-emerald-950/30">
-              <div className="flex items-center gap-3 min-w-0">
-                <CheckCircle2 className="h-7 w-7 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                <div className="min-w-0">
-                  <p className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
-                    {uploadedFile.name}
-                  </p>
-                  <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB · Verified Official PPMP File
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={removeUploadedFile}
-                className="min-h-12 border-2 border-rose-300 bg-white px-4 py-2.5 text-base font-bold text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300"
-              >
-                <Trash2 className="h-5 w-5" />
-                <span>Remove and choose another file</span>
-              </Button>
             </div>
           )}
 
@@ -1384,7 +1413,7 @@ function PurchaseRequestForm({
                 className="min-h-12"
               >
                 <Search className="h-5 w-5" />
-                <span>{showCatalogPicker ? "Hide Catalog Search" : "Search Common-Use Catalog"}</span>
+                <span>{showCatalogPicker ? "Hide Catalog Filters" : "Filter Common-Use Catalog"}</span>
               </Button>
             </div>
 
@@ -1466,50 +1495,48 @@ function PurchaseRequestForm({
                     </div>
                   </div>
 
-                  {showCatalogPicker && catalogItems.length > 0 && (
-                    <div>
-                      <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                        Auto-Fill from Common-Use Catalog (Optional)
-                      </Label>
-                      <Select
-                        value={item.catalogItemId || "manual-item"}
-                        onValueChange={(value) => {
-                          if (value === "manual-item") return updateItem(index, "catalogItemId", "");
-                          const selected = [...catalogItems, ...(favorites.data ?? [])].find(
-                            (catalogItem) => String(catalogItem.id) === value
-                          );
-                          if (!selected) return;
-                          setItems((current) =>
-                            current.map((currentItem, itemIndex) =>
-                              itemIndex === index
-                                ? {
-                                    ...currentItem,
-                                    catalogItemId: value,
-                                    stockPropertyNo: selected.productCode,
-                                    description: selected.description,
-                                    unit: selected.unit || "Piece",
-                                    estimatedUnitCost: Number(selected.referencePrice).toFixed(2),
-                                  }
-                                : currentItem
-                            )
-                          );
-                        }}
-                      >
-                        <SelectTrigger className="mt-1.5">
-                          <SelectValue placeholder="Manual entry or choose a catalog item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual-item">Manual entry — type item below</SelectItem>
-                          {catalogItems.map((catalogItem) => (
-                            <SelectItem key={catalogItem.id} value={String(catalogItem.id)}>
-                              {favoriteIds.has(catalogItem.id) ? "★ " : ""}
-                              {catalogItem.productCode} — {catalogItem.description}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div>
+                    <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      Choose from Common-Use Catalog (or enter specifications manually below)
+                    </Label>
+                    <Select
+                      value={item.catalogItemId || "manual-item"}
+                      onValueChange={(value) => {
+                        if (value === "manual-item") return updateItem(index, "catalogItemId", "");
+                        const selected = [...catalogItems, ...(favorites.data ?? [])].find(
+                          (catalogItem) => String(catalogItem.id) === value
+                        );
+                        if (!selected) return;
+                        setItems((current) =>
+                          current.map((currentItem, itemIndex) =>
+                            itemIndex === index
+                              ? {
+                                  ...currentItem,
+                                  catalogItemId: value,
+                                  stockPropertyNo: selected.productCode,
+                                  description: selected.description,
+                                  unit: selected.unit || "Piece",
+                                  estimatedUnitCost: Number(selected.referencePrice).toFixed(2),
+                                }
+                              : currentItem
+                          )
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="mt-1.5 min-h-11">
+                        <SelectValue placeholder="Manual entry or choose a catalog item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual-item">Manual entry — type specifications directly below</SelectItem>
+                        {catalogItems.map((catalogItem) => (
+                          <SelectItem key={catalogItem.id} value={String(catalogItem.id)}>
+                            {favoriteIds.has(catalogItem.id) ? "★ " : ""}
+                            {catalogItem.productCode} — {catalogItem.description} (₱{Number(catalogItem.referencePrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div className="grid gap-4 sm:grid-cols-12">
                     <div className="sm:col-span-6">
@@ -1799,7 +1826,7 @@ function PurchaseRequestForm({
                   : undefined
               }
             >
-              <span>Next Step: Purpose of Request</span>
+              <span>Next Step: Purpose &amp; Market Scoping</span>
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -1807,22 +1834,22 @@ function PurchaseRequestForm({
       )}
 
       {/* ===================================================================== */}
-      {/* STEP 3 OF 4: EXPLAIN WHY YOU NEED THESE ITEMS (PURPOSE)               */}
+      {/* STEP 3 OF 4: PURPOSE OF REQUEST & MARKET SCOPING (RA 12009 ART. II)   */}
       {/* ===================================================================== */}
       {currentStep === 3 && (
         <section className="rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-slate-200 pb-4 dark:border-slate-800">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Step 3 of 4: Explain Why You Need These Items
+                Step 3 of 4: Purpose of Request &amp; Market Scoping
               </h2>
               <p className="mt-1.5 text-base text-slate-700 dark:text-slate-300">
-                State the official college purpose that will appear on your Appendix 60 Purchase Request form.
+                State the official college purpose and attach your mandatory Market Scoping document (RA 12009 Art. II) to justify your procurement.
               </p>
             </div>
             <QuietCompliancePill
               stepNumber="Step 5.1"
-              annexForm="Appendix 60 · Purpose Statement"
+              annexForm="Market Scoping (RA 12009 Art. II)"
               procedureRef="BSC – PRO -QP- 95 – 1"
               role="End-User"
             />
@@ -1844,7 +1871,115 @@ function PurchaseRequestForm({
             />
           </div>
 
-          {/* Optional Signatories & Supporting Market Scoping Attachment */}
+          {/* Mandatory Market Scoping Document Upload (RA 12009 Article II) */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Market Scoping Document (RA 12009 Article II) <span className="text-rose-700">*</span>
+              </Label>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  marketScopingFile
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                }`}
+              >
+                {marketScopingFile ? "Market Scoping Attached ✓" : "Mandatory Attachment Required"}
+              </span>
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              Under RA 12009 Article II (Strategic Procurement Planning), early market scoping and price research must be conducted before submitting a Purchase Request. Attach your market scoping worksheet, price comparison, or supplier survey.
+            </p>
+
+            <input
+              ref={marketScopingFileInputRef}
+              type="file"
+              accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.png,.jpg,.jpeg,application/pdf"
+              onChange={(e) => {
+                handleMarketScopingFile(e.target.files?.[0]);
+                e.currentTarget.value = "";
+              }}
+              className="hidden"
+              id="market-scoping-file-upload-step3"
+            />
+
+            {!marketScopingFile ? (
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsDraggingMarketScopingFile(true);
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsDraggingMarketScopingFile(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsDraggingMarketScopingFile(false);
+                  handleMarketScopingFile(event.dataTransfer.files?.[0]);
+                }}
+                className={`min-h-[160px] rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${
+                  isDraggingMarketScopingFile
+                    ? "border-[#881337] bg-rose-50/60 dark:border-rose-400 dark:bg-rose-950/30"
+                    : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
+                }`}
+              >
+                <UploadCloud className="h-9 w-9 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+                <p className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Choose a Market Scoping file or drag it here
+                </p>
+                <p className="mt-1.5 max-w-xl text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Accepted formats: .pdf, .xlsx, .xls, .docx, .doc, .csv, .png, .jpg (Max size: 10MB).
+                </p>
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => marketScopingFileInputRef.current?.click()}
+                    className="min-h-12 px-6 py-3 border-2 border-slate-300 rounded-xl font-bold bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    <Folder className="h-5 w-5 text-[#881337] dark:text-rose-400" />
+                    <span>Browse Market Scoping File</span>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="min-h-[140px] rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 p-6 dark:border-emerald-700 dark:bg-emerald-950/30 flex flex-col items-center justify-center text-center transition-all">
+                <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+                <p className="mt-3 max-w-xl truncate text-lg font-bold text-slate-900 dark:text-slate-100" title={marketScopingFile.name}>
+                  {marketScopingFile.name}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  {(marketScopingFile.size / (1024 * 1024)).toFixed(2)} MB · Verified Market Scoping Document (RA 12009 Art. II)
+                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => marketScopingFileInputRef.current?.click()}
+                    className="min-h-11 border-2 border-emerald-500 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:bg-slate-900 dark:text-emerald-300"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>Change File</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={removeMarketScopingFile}
+                    className="min-h-11 border-2 border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Remove and choose another file</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Optional Signatories */}
           <div className="grid gap-4 pt-2 sm:grid-cols-2">
             <div>
               <Label htmlFor="pr-requested-by" className="text-base font-bold text-slate-900 dark:text-slate-100">
@@ -1899,8 +2034,20 @@ function PurchaseRequestForm({
 
             <Button
               type="button"
+              disabled={purpose.trim().length < 10 || !marketScopingFile}
               onClick={handleAdvanceFromStep3}
-              className="min-h-12 bg-[#881337] text-white hover:bg-[#70102e]"
+              className={`min-h-12 text-white ${
+                purpose.trim().length < 10 || !marketScopingFile
+                  ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
+                  : "bg-[#881337] hover:bg-[#70102e]"
+              }`}
+              title={
+                !marketScopingFile
+                  ? "Market Scoping document is mandatory under RA 12009 Art. II before proceeding"
+                  : purpose.trim().length < 10
+                  ? "Purpose explanation is required"
+                  : undefined
+              }
             >
               <span>Next Step: Review &amp; Submit</span>
               <ArrowRight className="h-5 w-5" />
@@ -1936,12 +2083,17 @@ function PurchaseRequestForm({
           <AuditHistoryDrawer
             procedureCode="BSC – PRO -QP- 95 – 1 (Rev. 00)"
             mandatedStep="Step 5.1 · End-User Submission"
-            standardAttachment="Annex A (PR) & Annex B (PPMP)"
+            standardAttachment="Annex A (PR), Annex B (PPMP) & Market Scoping"
             historyEvents={[
               {
                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                 actor: `${user?.name || "End-User"} (End-User)`,
                 action: `Attached PPMP: ${uploadedFile?.name || "Approved Department PPMP"} (Verified PDF/Excel <= 10MB)`,
+              },
+              {
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                actor: `${user?.name || "End-User"} (End-User)`,
+                action: `Attached Market Scoping: ${marketScopingFile?.name || "Market Scoping Analysis"} (RA 12009 Art. II Verified)`,
               },
               {
                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -1953,7 +2105,7 @@ function PurchaseRequestForm({
 
           {/* Summary Review Card */}
           <div className="rounded-2xl border-2 border-slate-300 bg-slate-50/70 p-6 dark:border-slate-700 dark:bg-slate-800/40 space-y-6">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
                 <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Attached PPMP Budget File
@@ -1967,6 +2119,23 @@ function PurchaseRequestForm({
                 {uploadedFile && (
                   <span className="mt-1 inline-block rounded-lg bg-emerald-100 px-2.5 py-0.5 text-sm font-semibold text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
                     {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                )}
+              </div>
+
+              <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Attached Market Scoping File
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <FileCheck className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                  <span className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
+                    {marketScopingFile?.name || "No file attached"}
+                  </span>
+                </div>
+                {marketScopingFile && (
+                  <span className="mt-1 inline-block rounded-lg bg-emerald-100 px-2.5 py-0.5 text-sm font-semibold text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {(marketScopingFile.size / (1024 * 1024)).toFixed(2)} MB · RA 12009 Verified
                   </span>
                 )}
               </div>
@@ -2179,14 +2348,16 @@ function PurchaseRequestForm({
 
             <Button
               type="submit"
-              disabled={isSaving || isOverBudget}
+              disabled={isSaving || isOverBudget || !marketScopingFile}
               className={`min-h-12 px-6 py-3 text-base font-bold text-white ${
-                isOverBudget
+                isOverBudget || !marketScopingFile
                   ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
                   : "bg-[#881337] hover:bg-[#70102e]"
               }`}
               title={
-                isOverBudget
+                !marketScopingFile
+                  ? "Cannot submit: Market Scoping document is mandatory under RA 12009 Art. II"
+                  : isOverBudget
                   ? "Cannot submit: Total Estimated Cost exceeds Approved PPMP Budget Ceiling"
                   : undefined
               }
