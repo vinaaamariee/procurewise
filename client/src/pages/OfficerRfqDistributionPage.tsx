@@ -19,6 +19,7 @@ import {
   FileText,
   Globe,
   LoaderCircle,
+  Printer,
   RefreshCw,
   Search,
   Send,
@@ -456,9 +457,13 @@ export function OfficerRfqDistributionPage({
                         <td className="px-4 py-3">
                           {item.transmittal ? (
                             <div>
-                              <div className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                              <Link
+                                href={`/print/transmittal?id=${item.transmittal.id}`}
+                                className="font-mono text-[11px] text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold underline decoration-dotted block"
+                                title="Click to view/print official BAC transmittal slip"
+                              >
                                 {item.transmittal.transmittalNumber}
-                              </div>
+                              </Link>
                               <div className="text-[10px] text-slate-500">
                                 Transmitted {item.transmittal.sentAt ? new Date(item.transmittal.sentAt).toLocaleDateString("en-PH") : ""}
                               </div>
@@ -518,9 +523,18 @@ export function OfficerRfqDistributionPage({
                               </>
                             )}
                             {status === "transmitted_to_bac" && (
-                              <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
-                                Ready for BAC AOQ
-                              </Badge>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px]">
+                                  Ready for BAC AOQ
+                                </Badge>
+                                {item.transmittal && (
+                                  <Link href={`/print/transmittal?id=${item.transmittal.id}`}>
+                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-1.5 gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
+                                      <Printer className="h-3 w-3" /> Transmittal
+                                    </Button>
+                                  </Link>
+                                )}
+                              </div>
                             )}
                           </div>
                         </td>

@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, FileCheck, FilePlus2, FileText, LineChart as LineChartIcon, LoaderCircle, Printer, ScrollText, Send, SendHorizontal, Star } from "lucide-react";
+import { CheckCircle2, FileCheck, FilePlus2, FileText, Filter, LineChart as LineChartIcon, LoaderCircle, Printer, RefreshCw, ScrollText, Search, Send, SendHorizontal, Star } from "lucide-react";
 import { SupplierEvaluationPreviewModal, type SupplierEvaluationFormData } from "@/components/SupplierEvaluationDocument";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { DEFAULT_BSC_BAC_MEMBERS, OfficialBacResolutionCanvas, type BacSignatory } from "@/components/OfficialBacResolutionCanvas";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -278,6 +278,10 @@ export function TransmittalsPage() {
         eyebrow="BAC Secretariat & Bids and Awards Committee"
         title="BAC Resolutions & Transmittals"
         description="Statutory preparation of BAC Resolutions containing ABC and Mode of Procurement, with formal endorsement to End-User, BAC Members, and HoPE for signature."
+        action={{
+          label: `Transmittal Register (${transmittals.data?.length ?? 0})`,
+          onClick: () => setLocation("/officer/transmittal-register"),
+        }}
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mt-6">
@@ -881,6 +885,356 @@ export function TransmittalsPage() {
           </section>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+export function TransmittalRegisterPage() {
+  const transmittals = trpc.procurement.officer.transmittals.list.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const [, setLocation] = useLocation();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "resolution" | "rfq" | "general">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "acknowledged">("all");
+
+  const acknowledge = trpc.procurement.officer.transmittals.acknowledge.useMutation({
+    onSuccess: () => {
+      toast.success("Transmittal acknowledged.");
+      void utils.procurement.officer.transmittals.list.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const directToPoMutation = trpc.procurement.officer.transmittals.directLetterToPo.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Letter of Approval directed to PO. Notice of Award generated (${data.noticeNumber}).`,
+        {
+          action: {
+            label: "Serve Notice Now →",
+            onClick: () => setLocation("/officer/notices-serving"),
+          },
+          duration: 9000,
+        }
+      );
+      void utils.procurement.officer.transmittals.list.invalidate();
+      void utils.procurement.officer.notices.list.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const allRecords = transmittals.data ?? [];
+
+  // Summary Metrics
+  const metrics = useMemo(() => {
+    let resolutions = 0;
+    let rfqTransmittals = 0;
+    let acknowledged = 0;
+
+    for (const item of allRecords) {
+      if (item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution")) {
+        resolutions++;
+      } else if (item.transmittalNumber.startsWith("BAC-T") || item.subject.toLowerCase().includes("rfq")) {
+        rfqTransmittals++;
+      }
+      if (item.status === "acknowledged") acknowledged++;
+    }
+
+    return { total: allRecords.length, resolutions, rfqTransmittals, acknowledged };
+  }, [allRecords]);
+
+  // Filtered Records
+  const filteredRecords = useMemo(() => {
+    return allRecords.filter((item) => {
+      const isRes = item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution");
+      const isRfq = item.transmittalNumber.startsWith("BAC-T") || item.subject.toLowerCase().includes("rfq");
+
+      if (typeFilter === "resolution" && !isRes) return false;
+      if (typeFilter === "rfq" && !isRfq) return false;
+      if (typeFilter === "general" && (isRes || isRfq)) return false;
+
+      if (statusFilter !== "all" && item.status !== statusFilter) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesNo = item.transmittalNumber.toLowerCase().includes(q);
+        const matchesSubj = item.subject.toLowerCase().includes(q);
+        const matchesFrom = item.fromOffice.toLowerCase().includes(q);
+        const matchesTo = item.toOffice.toLowerCase().includes(q);
+        const matchesRemarks = item.remarks?.toLowerCase().includes(q);
+        const matchesAck = item.acknowledgedByName?.toLowerCase().includes(q);
+        if (!matchesNo && !matchesSubj && !matchesFrom && !matchesTo && !matchesRemarks && !matchesAck) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [allRecords, typeFilter, statusFilter, searchQuery]);
+
+  return (
+    <div className="mx-auto max-w-[1300px] space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          eyebrow="BAC Secretariat & Bids and Awards Committee"
+          title="BAC Resolution Endorsement & Transmittal Register"
+          description="Chronological record of official resolutions and transmittals endorsed to End-User, BAC Members, and HoPE."
+        />
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void utils.procurement.officer.transmittals.list.invalidate()}
+            className="h-8 gap-1.5 text-xs text-slate-600 dark:text-slate-300"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setLocation("/officer/transmittals")}
+            className="h-8 gap-1.5 text-xs bg-[#7b1e1e] hover:bg-[#641818] text-white"
+          >
+            <ScrollText className="h-3.5 w-3.5" />
+            Step 3: BAC Resolution
+          </Button>
+        </div>
+      </div>
+
+      {/* Metric Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Transmittals</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{metrics.total}</p>
+        </div>
+        <div className="rounded-xl border border-[#eed9a8] bg-[#fdf9ee] p-4 shadow-sm dark:border-[#54431f] dark:bg-[#1f1a10]">
+          <p className="text-xs font-medium text-[#7b5316] dark:text-[#e4c284]">Endorsed BAC Resolutions</p>
+          <p className="mt-1 text-2xl font-bold text-[#7b1e1e] dark:text-[#f87171]">{metrics.resolutions}</p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-sm dark:border-blue-900/40 dark:bg-blue-950/20">
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-300">RFQ Transmittals (AOQ)</p>
+          <p className="mt-1 text-2xl font-bold text-blue-900 dark:text-blue-200">{metrics.rfqTransmittals}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Acknowledged</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-900 dark:text-emerald-200">{metrics.acknowledged}</p>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search transmittal #, PR, subject, office, remarks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Category Chips */}
+          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setTypeFilter("all")}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                typeFilter === "all"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              All ({metrics.total})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter("resolution")}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                typeFilter === "resolution"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              Resolutions ({metrics.resolutions})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter("rfq")}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                typeFilter === "rfq"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              RFQ Transmittals ({metrics.rfqTransmittals})
+            </button>
+          </div>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger className="h-9 w-36 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="sent">Sent / Pending</SelectItem>
+              <SelectItem value="acknowledged">Acknowledged</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Transmittal Register Table / List */}
+      <section className="flat-panel overflow-hidden">
+        <div className="border-b border-[#ece8df] px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">BAC Resolution Endorsement & Transmittal Register</p>
+            <p className="text-[11px] text-[#77818d]">
+              Chronological record of official resolutions and transmittals endorsed to End-User, BAC Members, and HoPE.
+            </p>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            {filteredRecords.length} {filteredRecords.length === 1 ? "Record" : "Records"}
+          </Badge>
+        </div>
+
+        {filteredRecords.length ? (
+          <div className="divide-y divide-[#ece8df]">
+            {filteredRecords.map((item) => {
+              const isResolution = item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution");
+              const isRfqTransmittal = item.transmittalNumber.startsWith("BAC-T") || item.subject.toLowerCase().includes("rfq");
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors"
+                >
+                  <div className="space-y-1 max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold font-mono text-[#7b1e1e] dark:text-[#f87171]">{item.transmittalNumber}</p>
+                      {isResolution ? (
+                        <Badge className="bg-[#7b1e1e] text-[10px] py-0 px-1.5 text-white">
+                          BAC Resolution
+                        </Badge>
+                      ) : isRfqTransmittal ? (
+                        <Badge className="bg-blue-700 text-[10px] py-0 px-1.5 text-white">
+                          RFQ Transmittal to BAC
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+                          General Transmittal
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-[#3f4a57] dark:text-slate-200">{item.subject}</p>
+                    <p className="text-[11px] text-[#77818d] dark:text-slate-400">
+                      {item.fromOffice} → <strong className="text-slate-800 dark:text-slate-200">{item.toOffice}</strong> ·{" "}
+                      {new Date(item.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                      {item.acknowledgedByName ? ` · Acknowledged by ${item.acknowledgedByName}` : ""}
+                    </p>
+                    {item.remarks && (
+                      <p className="text-[11px] italic text-neutral-600 dark:text-[#cbd5e1] bg-neutral-50 dark:bg-[#141b22] p-2 rounded border border-neutral-200 dark:border-[#2b3744] mt-1.5 max-w-xl">
+                        {item.remarks}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone={statusTone(item.status)}>{item.status.toUpperCase()}</StatusBadge>
+                    {item.status === "sent" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const name = window.prompt("Name of acknowledging recipient");
+                          if (name) acknowledge.mutate({ transmittalId: item.id, acknowledgedByName: name });
+                        }}
+                        className="h-8 rounded-[4px] text-[11px]"
+                      >
+                        <CheckCircle2 className="mr-1 h-3 w-3 text-emerald-600" />
+                        Acknowledge
+                      </Button>
+                    )}
+                    {isResolution ? (
+                      <>
+                        {item.purchaseRequestId && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={directToPoMutation.isPending}
+                            onClick={() => {
+                              const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
+                              const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
+                              directToPoMutation.mutate({
+                                purchaseRequestId: item.purchaseRequestId!,
+                                resolutionNumber: resNum,
+                                remarks: item.remarks || undefined,
+                              });
+                            }}
+                            className="h-8 rounded-[4px] text-[11px] border-emerald-700 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                            title="Direct approved Letter of Approval to PO to serve"
+                          >
+                            <Send className="mr-1 h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                            Direct to PO
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
+                            const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
+                            setLocation(`/print/bac-resolution?prId=${item.purchaseRequestId || 0}&resNo=${resNum}`);
+                          }}
+                          className="h-8 rounded-[4px] text-[11px] border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#7b1e1e]/5 dark:border-[#f87171] dark:text-[#f87171]"
+                        >
+                          <Printer className="mr-1 h-3.5 w-3.5" />
+                          Print Resolution
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation(`/print/transmittal?id=${item.id}`)}
+                        className="h-8 rounded-[4px] text-[11px]"
+                      >
+                        <Printer className="mr-1 h-3.5 w-3.5" />
+                        Print Transmittal
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-12 text-center text-slate-500">
+            <p className="text-xs">No resolutions or transmittals match the selected filters.</p>
+            {(searchQuery || typeFilter !== "all" || statusFilter !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setTypeFilter("all");
+                  setStatusFilter("all");
+                }}
+                className="mt-2 text-xs text-[#7b1e1e]"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

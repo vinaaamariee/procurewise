@@ -1384,28 +1384,73 @@ export async function listRfqDistributions(user: User) {
 
   return rfqList.map((rfq) => {
     const pr = prs.find((p) => p.id === rfq.purchaseRequestId) || null;
-    const transmittal = transmittals.find((t) => t.purchaseRequestId === rfq.purchaseRequestId) || null;
-    const audit = audits.find((a) => a.entityId === rfq.id);
-    const details = (audit?.details as any) || {};
 
+    // All audits specific to this RFQ, newest first
+    const rfqAudits = audits.filter((a) => a.entityId === rfq.id);
+    const latestAudit = rfqAudits[0];
+    const latestDetails = (latestAudit?.details as any) || {};
+
+    // Specific audit milestones
+    const transmittedAudit = rfqAudits.find(
+      (a) => a.action === "transmitted_to_bac" || (a.details as any)?.status === "transmitted_to_bac"
+    );
+    const transmittalNumberFromAudit = (transmittedAudit?.details as any)?.transmittalNumber;
+
+    // An RFQ transmittal is specifically for quotation packages to BAC (BAC-T-...)
+    // BAC Resolution endorsements (BAC-RES-...) belong to Step 3 and MUST NOT mark RFQs as transmitted
+    const rfqTransmittal = transmittals.find((t) => {
+      if (t.transmittalNumber.startsWith("BAC-RES-")) return false;
+      if (transmittalNumberFromAudit && t.transmittalNumber === transmittalNumberFromAudit) return true;
+      if (t.purchaseRequestId === rfq.purchaseRequestId && t.transmittalNumber.startsWith("BAC-T-")) return true;
+      return false;
+    }) || null;
+
+    // Determine legitimate lifecycle distribution status
     let distributionStatus: "pending_distribution" | "distributed" | "retrieved" | "transmitted_to_bac" = "pending_distribution";
-    if (transmittal) {
+
+    if (transmittedAudit || rfqTransmittal) {
       distributionStatus = "transmitted_to_bac";
-    } else if (details.status === "retrieved") {
-      distributionStatus = "retrieved";
-    } else if (details.status === "distributed") {
-      distributionStatus = "distributed";
+    } else {
+      const retrievedAudit = rfqAudits.find(
+        (a) => a.action === "rfq_retrieved" || (a.details as any)?.status === "retrieved"
+      );
+      const distributedAudit = rfqAudits.find(
+        (a) => a.action === "rfq_distributed" || (a.details as any)?.status === "distributed"
+      );
+
+      if (retrievedAudit) {
+        distributionStatus = "retrieved";
+      } else if (distributedAudit) {
+        distributionStatus = "distributed";
+      } else if (latestDetails.status === "retrieved") {
+        distributionStatus = "retrieved";
+      } else if (latestDetails.status === "distributed") {
+        distributionStatus = "distributed";
+      } else {
+        distributionStatus = "pending_distribution";
+      }
     }
+
+    // Historical details across all distribution events for this RFQ
+    const distAudit = rfqAudits.find((a) => (a.details as any)?.canvasserName || (a.details as any)?.distributionDate);
+    const distDetails = (distAudit?.details as any) || {};
+    const retrAudit = rfqAudits.find((a) => (a.details as any)?.retrievalDate);
+    const retrDetails = (retrAudit?.details as any) || {};
+
+    const canvasserName = latestDetails.canvasserName || distDetails.canvasserName || null;
+    const distributionDate = latestDetails.distributionDate || distDetails.distributionDate || null;
+    const retrievalDate = latestDetails.retrievalDate || retrDetails.retrievalDate || null;
+    const remarks = latestDetails.remarks || distDetails.remarks || null;
 
     return {
       rfq,
       purchaseRequest: pr,
-      transmittal,
+      transmittal: distributionStatus === "transmitted_to_bac" ? rfqTransmittal : null,
       distributionStatus,
-      canvasserName: details.canvasserName || null,
-      distributionDate: details.distributionDate || null,
-      retrievalDate: details.retrievalDate || null,
-      remarks: details.remarks || null,
+      canvasserName,
+      distributionDate,
+      retrievalDate,
+      remarks,
     };
   });
 }
