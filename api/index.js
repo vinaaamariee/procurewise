@@ -5074,7 +5074,52 @@ async function getProcurementDashboard(user) {
   const preCanvassQuoteRows = preCanvassIds.length ? await db.select().from(preCanvassQuotes).where(inArray(preCanvassQuotes.preCanvassId, preCanvassIds)) : [];
   const abstractOfCanvassRows = preCanvassIds.length ? await db.select().from(abstractsOfCanvass).where(inArray(abstractsOfCanvass.preCanvassId, preCanvassIds)) : [];
   const rfqRows = isEndUser ? [] : await db.select().from(rfqs);
-  const quotationRows = isEndUser ? [] : await db.select().from(supplierQuotations);
+  let quotationRows = isEndUser ? [] : await db.select().from(supplierQuotations);
+  if (!isEndUser && rfqRows.length > 0 && preCanvassRows.length > 0) {
+    const existingQuotesByRfq = /* @__PURE__ */ new Map();
+    for (const q of quotationRows) {
+      const list = existingQuotesByRfq.get(q.rfqId) ?? [];
+      list.push(q);
+      existingQuotesByRfq.set(q.rfqId, list);
+    }
+    const preCanvassByPrId = /* @__PURE__ */ new Map();
+    for (const pc of preCanvassRows) {
+      preCanvassByPrId.set(pc.purchaseRequestId, pc);
+    }
+    const preQuotesByPcId = /* @__PURE__ */ new Map();
+    for (const pq of preCanvassQuoteRows) {
+      const list = preQuotesByPcId.get(pq.preCanvassId) ?? [];
+      list.push(pq);
+      preQuotesByPcId.set(pq.preCanvassId, list);
+    }
+    const quotesToAutoInsert = [];
+    for (const rfq of rfqRows) {
+      const existingQuotes = existingQuotesByRfq.get(rfq.id) ?? [];
+      const pc = preCanvassByPrId.get(rfq.purchaseRequestId);
+      if (pc) {
+        const preQuotes = preQuotesByPcId.get(pc.id) ?? [];
+        if (preQuotes.length > 0 && existingQuotes.length < preQuotes.length) {
+          const existingSupplierIds = new Set(existingQuotes.map((q) => q.supplierId));
+          for (const pq of preQuotes) {
+            if (!existingSupplierIds.has(pq.supplierId)) {
+              quotesToAutoInsert.push({
+                rfqId: rfq.id,
+                supplierId: pq.supplierId,
+                totalPrice: pq.totalPrice,
+                deliveryDays: pq.deliveryDays,
+                isCompliant: pq.isCompliant,
+                notes: pq.notes ? `[Pre-Canvass ${pc.preCanvassNumber}] ${pq.notes}` : `Adopted from End-User Pre-Canvass ${pc.preCanvassNumber}`
+              });
+            }
+          }
+        }
+      }
+    }
+    if (quotesToAutoInsert.length > 0) {
+      await db.insert(supplierQuotations).values(quotesToAutoInsert);
+      quotationRows = await db.select().from(supplierQuotations);
+    }
+  }
   const abstractRows = isEndUser ? [] : await db.select().from(quotationAbstracts);
   const poRows = isEndUser ? prRows.length ? await db.select().from(purchaseOrders).where(inArray(purchaseOrders.purchaseRequestId, prRows.map((pr) => pr.id))) : [] : await db.select().from(purchaseOrders);
   const poIds = poRows.map((po) => po.id);

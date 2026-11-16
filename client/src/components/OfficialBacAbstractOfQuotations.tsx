@@ -25,9 +25,6 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
-  Download,
-  Plus,
-  RefreshCw,
 } from "lucide-react";
 
 export interface OfficialBacAbstractOfQuotationsProps {
@@ -103,38 +100,6 @@ export function OfficialBacAbstractOfQuotations({
     onError: (err) => toast.error(err.message),
   });
 
-  const importQuotes = trpc.procurement.rfqs.importPreCanvassQuotes.useMutation({
-    onSuccess: (data) => {
-      toast.success(
-        `Successfully adopted ${data.importedCount} supplier quote(s) from End-User Pre-Canvass ${data.preCanvassNumber}.`
-      );
-      refresh();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const addQuotation = trpc.procurement.rfqs.addQuotation.useMutation({
-    onSuccess: () => {
-      toast.success("Supplier quotation recorded successfully.");
-      setAddQuoteModalOpen(false);
-      setQuoteSupplierId(undefined);
-      setQuoteTotalPrice("");
-      setQuoteDeliveryDays(3);
-      setQuoteIsCompliant(true);
-      setQuoteNotes("");
-      refresh();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  // Modal states for manual quotation entry
-  const [addQuoteModalOpen, setAddQuoteModalOpen] = useState(false);
-  const [quoteSupplierId, setQuoteSupplierId] = useState<number | undefined>(undefined);
-  const [quoteTotalPrice, setQuoteTotalPrice] = useState<string>("");
-  const [quoteDeliveryDays, setQuoteDeliveryDays] = useState<number>(3);
-  const [quoteIsCompliant, setQuoteIsCompliant] = useState<boolean>(true);
-  const [quoteNotes, setQuoteNotes] = useState<string>("");
-
   // Find relevant records
   const rfq = useMemo(() => dashboard.data?.rfqs.find((r) => r.id === rfqId), [dashboard.data?.rfqs, rfqId]);
   const pr = useMemo(
@@ -156,10 +121,27 @@ export function OfficialBacAbstractOfQuotations({
     () => (dashboard.data?.purchaseRequestItems ?? []).filter((i) => i.purchaseRequestId === pr?.id),
     [dashboard.data?.purchaseRequestItems, pr]
   );
-  const quotes = useMemo(
+  const rawQuotes = useMemo(
     () => (dashboard.data?.supplierQuotations ?? []).filter((q) => q.rfqId === rfqId),
     [dashboard.data?.supplierQuotations, rfqId]
   );
+  // Automatically populate quoted suppliers right from the End-User Pre-Canvass
+  const quotes = useMemo(() => {
+    if (rawQuotes.length > 0) return rawQuotes;
+    if (linkedPreCanvassQuotes.length > 0) {
+      return linkedPreCanvassQuotes.map((pq) => ({
+        id: pq.id,
+        rfqId,
+        supplierId: pq.supplierId,
+        totalPrice: pq.totalPrice,
+        deliveryDays: pq.deliveryDays,
+        isCompliant: pq.isCompliant,
+        notes: pq.notes,
+        submittedAt: pq.submittedAt,
+      }));
+    }
+    return [];
+  }, [rawQuotes, linkedPreCanvassQuotes, rfqId]);
   const abstract = useMemo(
     () => dashboard.data?.quotationAbstracts.find((a) => a.rfqId === rfqId),
     [dashboard.data?.quotationAbstracts, rfqId]
@@ -244,15 +226,10 @@ export function OfficialBacAbstractOfQuotations({
                     className={
                       quotes.length >= 3
                         ? "border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]"
-                        : linkedPreCanvassQuotes.length >= 3
-                        ? "border-amber-400 bg-amber-50 text-amber-800 text-[10px]"
                         : "text-[10px]"
                     }
                   >
                     {quotes.length}/3 Quotes Canvassed
-                    {quotes.length < 3 && linkedPreCanvassQuotes.length >= 3
-                      ? ` · ${linkedPreCanvassQuotes.length} Pre-Canvass Quotes Ready`
-                      : ""}
                   </Badge>
                 )}
               </div>
@@ -335,67 +312,32 @@ export function OfficialBacAbstractOfQuotations({
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {!isOpened && isBac && (
-                  <div className="flex items-center gap-2">
-                    {quotes.length < 3 && linkedPreCanvassQuotes.length >= 3 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={importQuotes.isPending}
-                        onClick={() => importQuotes.mutate({ rfqId })}
-                        className="h-8 rounded-[4px] bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white"
-                      >
-                        {importQuotes.isPending ? (
-                          <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Download className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        Adopt Pre-Canvass Quotes ({linkedPreCanvassQuotes.length})
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => setOpenModalOpen(true)}
-                      className="h-8 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818]"
-                    >
-                      <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-                      Open Quotations (BAC Chairperson)
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={quotes.length < 3}
+                    onClick={() => setOpenModalOpen(true)}
+                    className="h-8 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818]"
+                  >
+                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+                    Open Quotations (BAC Chairperson)
+                  </Button>
                 )}
                 {!isOpened && !isBac && isStaff && rfq.status !== "forwarded_to_bac" && (
-                  <div className="flex items-center gap-2">
-                    {quotes.length < 3 && linkedPreCanvassQuotes.length >= 3 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={importQuotes.isPending}
-                        onClick={() => importQuotes.mutate({ rfqId })}
-                        className="h-8 rounded-[4px] bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white"
-                      >
-                        {importQuotes.isPending ? (
-                          <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Download className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        Adopt Pre-Canvass Quotes ({linkedPreCanvassQuotes.length})
-                      </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={quotes.length < 3 || forwardToBac.isPending}
+                    onClick={() => forwardToBac.mutate({ rfqId })}
+                    className="h-8 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818]"
+                  >
+                    {forwardToBac.isPending ? (
+                      <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={(quotes.length < 3 && linkedPreCanvassQuotes.length < 3) || forwardToBac.isPending}
-                      onClick={() => forwardToBac.mutate({ rfqId })}
-                      className="h-8 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818]"
-                    >
-                      {forwardToBac.isPending ? (
-                        <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Send className="mr-1.5 h-3.5 w-3.5" />
-                      )}
-                      Forward to BAC Chairperson for Opening (Step 5.7)
-                    </Button>
-                  </div>
+                    Forward to BAC Chairperson for Opening (Step 5.7)
+                  </Button>
                 )}
                 {isOpened && (
                   <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-xs py-1 px-2.5">
@@ -409,7 +351,7 @@ export function OfficialBacAbstractOfQuotations({
 
           {/* Comparative Abstract of Quotations Table (Annex F) */}
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#ece8df] dark:border-[#2b3744]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#ece8df] dark:border-[#2b3744]">
               <div>
                 <h4 className="text-sm font-bold text-[#34404e] dark:text-stone-100 flex items-center gap-2">
                   <span>Abstract of Quotations / Ratings Comparative Matrix</span>
@@ -421,143 +363,16 @@ export function OfficialBacAbstractOfQuotations({
                   Official Annex F format setting forth the names of those who responded to the RFQ, their itemized price quotations, and compliance ratings.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAddQuoteModalOpen(true)}
-                  className="h-7 text-xs border-stone-300 dark:border-stone-700"
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add Quotation
-                </Button>
-                {linkedPreCanvassQuotes.length > 0 && quotes.length < linkedPreCanvassQuotes.length && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={importQuotes.isPending}
-                    onClick={() => importQuotes.mutate({ rfqId })}
-                    className="h-7 text-xs border-emerald-400 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50"
-                  >
-                    <Download className="mr-1 h-3 w-3 text-emerald-600" />
-                    Adopt Pre-Canvass Quotes
-                  </Button>
-                )}
-                <span className="text-xs font-bold text-[#7b1e1e] dark:text-[#f87171] ml-2">
+              <div className="text-right">
+                <span className="text-xs font-bold text-[#7b1e1e] dark:text-[#f87171]">
                   ABC Threshold: ₱{totalAbc.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
             {quotes.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-[#fffdfa] dark:bg-[#1a1f26] p-5 shadow-xs">
-                {linkedPreCanvassQuotes.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-amber-100 dark:border-amber-900/40">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shrink-0 mt-0.5">
-                          <CheckCircle2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h5 className="font-bold text-sm text-stone-900 dark:text-stone-100">
-                              {linkedPreCanvassQuotes.length} Supplier Quotes Recorded in End-User Pre-Canvass
-                            </h5>
-                            <Badge className="bg-emerald-600 text-white text-[10px]">
-                              Ready to Adopt
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-1 max-w-2xl leading-relaxed">
-                            During Purchase Request preparation ({linkedPreCanvass?.preCanvassNumber || `PR #${pr?.prNumber}`}), the End-User collected and recorded <strong>{linkedPreCanvassQuotes.length} preliminary quotes</strong> to justify the budget. Under Procedure 5.4–5.7, the BAC / Canvasser can adopt these quotations directly into this official RFQ Abstract with one click, or record updated/additional quotations.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={importQuotes.isPending}
-                          onClick={() => importQuotes.mutate({ rfqId })}
-                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
-                        >
-                          {importQuotes.isPending ? (
-                            <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Adopt & Import {linkedPreCanvassQuotes.length} Pre-Canvass Quotes
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setAddQuoteModalOpen(true)}
-                          className="h-8 text-xs border-stone-300"
-                        >
-                          <Plus className="mr-1 h-3 w-3" />
-                          Add Quotation Manually
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Cards displaying the 3 pre-canvass quotes */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {linkedPreCanvassQuotes.map((pq, idx) => {
-                        const supplier = supplierMap.get(pq.supplierId);
-                        return (
-                          <div
-                            key={pq.id || idx}
-                            className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#131920] p-3 text-xs shadow-2xs"
-                          >
-                            <div className="flex items-center justify-between text-[10px] text-stone-500 uppercase tracking-wider font-semibold">
-                              <span>Quote #{idx + 1}</span>
-                              <Badge variant="outline" className="border-emerald-300 bg-emerald-50/50 text-emerald-700 text-[9px] py-0">
-                                {pq.isCompliant ? "COMPLIANT" : "NON-COMPLIANT"}
-                              </Badge>
-                            </div>
-                            <div className="font-bold text-stone-900 dark:text-stone-100 mt-1 truncate">
-                              {supplier?.companyName || `Supplier #${pq.supplierId}`}
-                            </div>
-                            {pq.quotationReference && (
-                              <div className="text-[10px] text-stone-500 font-mono mt-0.5">
-                                Ref: {pq.quotationReference}
-                              </div>
-                            )}
-                            <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                              <span className="font-mono font-bold text-sm text-[#7b1e1e] dark:text-[#f87171]">
-                                ₱{Number(pq.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="text-[10px] text-stone-500 font-mono">
-                                {pq.deliveryDays} Days Delivery
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-xs text-stone-500">
-                    <FileSpreadsheet className="h-8 w-8 mx-auto text-stone-400 mb-2" />
-                    <p className="font-semibold text-stone-700 dark:text-stone-300">
-                      No supplier quotations recorded yet for this RFQ
-                    </p>
-                    <p className="mt-1">
-                      At least three (3) quotations are required under RA 12009 / RA 9184 before opening and AOQ preparation.
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => setAddQuoteModalOpen(true)}
-                      className="mt-4 h-8 bg-[#7b1e1e] hover:bg-[#641818] text-white text-xs"
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      Record Supplier Quotation
-                    </Button>
-                  </div>
-                )}
+              <div className="p-8 text-center text-xs text-stone-500 border border-dashed rounded-lg mt-3">
+                No supplier quotations recorded yet for this RFQ. At least three (3) quotations are required under RA 12009.
               </div>
             ) : (
               <div className="overflow-x-auto mt-3 border border-[#e5e0d8] dark:border-[#2d3a4b] rounded-lg">
@@ -1001,127 +816,6 @@ export function OfficialBacAbstractOfQuotations({
               >
                 {recordOpening.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 Confirm Opening of Quotations
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add / Edit Quotation Modal */}
-      <Dialog open={addQuoteModalOpen} onOpenChange={setAddQuoteModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#7b1e1e]">
-              <FileSpreadsheet className="h-5 w-5" />
-              Record Supplier Quotation
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Record or adjust price quotation, delivery period, and technical responsiveness for this RFQ pursuant to Section 5.7.1.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!quoteSupplierId) {
-                toast.error("Please select a supplier.");
-                return;
-              }
-              const numericPrice = parseFloat(quoteTotalPrice);
-              if (isNaN(numericPrice) || numericPrice <= 0) {
-                toast.error("Please enter a valid total price greater than 0.");
-                return;
-              }
-              addQuotation.mutate({
-                rfqId,
-                supplierId: quoteSupplierId,
-                totalPrice: numericPrice,
-                deliveryDays: quoteDeliveryDays,
-                isCompliant: quoteIsCompliant,
-                notes: quoteNotes.trim() || undefined,
-              });
-            }}
-            className="space-y-3.5 py-2 text-xs"
-          >
-            <div>
-              <Label className="text-xs font-semibold">Supplier / Commercial Bidder *</Label>
-              <select
-                value={quoteSupplierId ?? ""}
-                onChange={(e) => setQuoteSupplierId(Number(e.target.value) || undefined)}
-                className="mt-1 w-full h-9 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#151c24] px-3 text-xs"
-                required
-              >
-                <option value="">Select registered supplier...</option>
-                {(setup.data?.suppliers ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.companyName} {s.tin ? `(TIN: ${s.tin})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Total Price Quoted (₱) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
-                  value={quoteTotalPrice}
-                  onChange={(e) => setQuoteTotalPrice(e.target.value)}
-                  className="mt-1 h-9 text-xs font-mono"
-                  required
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Delivery Days Offered *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={quoteDeliveryDays}
-                  onChange={(e) => setQuoteDeliveryDays(parseInt(e.target.value, 10) || 1)}
-                  className="mt-1 h-9 text-xs font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="quoteIsCompliant"
-                checked={quoteIsCompliant}
-                onChange={(e) => setQuoteIsCompliant(e.target.checked)}
-                className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <Label htmlFor="quoteIsCompliant" className="text-xs cursor-pointer">
-                Quotation is technically compliant & responsive to RFQ terms
-              </Label>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Notes / Particulars (Optional)</Label>
-              <Input
-                placeholder="e.g., Quotation ref #, warranty terms, brand"
-                value={quoteNotes}
-                onChange={(e) => setQuoteNotes(e.target.value)}
-                className="mt-1 h-9 text-xs"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setAddQuoteModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={addQuotation.isPending}
-                size="sm"
-                className="bg-[#7b1e1e] hover:bg-[#641818] text-white"
-              >
-                {addQuotation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                Save Quotation
               </Button>
             </DialogFooter>
           </form>
