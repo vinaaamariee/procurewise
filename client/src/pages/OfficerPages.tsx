@@ -41,14 +41,24 @@ export function TransmittalsPage() {
   const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
 
-  // Active workspace tab
-  const [activeTab, setActiveTab] = useState<"resolution" | "transmittals" | "aoq">(() => {
+  // Active workspace tab: Step 5.3 Mode vs Step 5.8 Award vs AOQ vs Transmittal Register
+  type TransmittalWorkspaceTab = "mode_resolution" | "award_resolution" | "aoq" | "transmittals";
+
+  const [activeTab, setActiveTab] = useState<TransmittalWorkspaceTab>(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
-      if (search.get("tab") === "transmittals") return "transmittals";
-      if (search.get("tab") === "aoq") return "aoq";
+      const tabParam = search.get("tab");
+      const categoryParam = search.get("category");
+      if (tabParam === "award_resolution" || tabParam === "award" || categoryParam === "award_of_contract") {
+        return "award_resolution";
+      }
+      if (tabParam === "aoq") return "aoq";
+      if (tabParam === "transmittals") return "transmittals";
+      if (tabParam === "mode_resolution" || tabParam === "resolution" || tabParam === "mode") {
+        return "mode_resolution";
+      }
     }
-    return "resolution";
+    return "mode_resolution";
   });
   const [selectedAoqRfqId, setSelectedAoqRfqId] = useState<number | undefined>(undefined);
 
@@ -56,10 +66,23 @@ export function TransmittalsPage() {
   const [resolutionCategory, setResolutionCategory] = useState<"mode_of_procurement" | "award_of_contract">(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
-      if (search.get("category") === "award_of_contract") return "award_of_contract";
+      const tabParam = search.get("tab");
+      const categoryParam = search.get("category");
+      if (tabParam === "award_resolution" || tabParam === "award" || categoryParam === "award_of_contract") {
+        return "award_of_contract";
+      }
     }
     return "mode_of_procurement";
   });
+
+  const handleTabChange = (newTab: TransmittalWorkspaceTab) => {
+    setActiveTab(newTab);
+    if (newTab === "award_resolution") {
+      setResolutionCategory("award_of_contract");
+    } else if (newTab === "mode_resolution") {
+      setResolutionCategory("mode_of_procurement");
+    }
+  };
 
   const [selectedPrId, setSelectedPrId] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -474,9 +497,26 @@ export function TransmittalsPage() {
     toast.info("BAC Resolution reset to official BSC default template.");
   };
 
-  const handlePrintResolution = () => {
+  const handleCanvasFieldChange = (field: string, val: any) => {
+    if (field === "resolutionCategory") setResolutionCategory(val);
+    if (field === "documentType") setDocType(val);
+    if (field === "resolutionNumber") setResolutionNumber(val);
+    if (field === "prNumber") setCustomPrNumber(val);
+    if (field === "approvedBudget") setApprovedBudget(val);
+    if (field === "purposeOrItems") setPurposeOrItems(val);
+    if (field === "winningSupplierName") setWinningSupplierName(val);
+    if (field === "winningQuotationAmount") setWinningQuotationAmount(Number(val));
+    if (field === "entityName") setEntityName(val);
+    if (field === "collegePresidentName") setCollegePresidentName(val);
+    if (field === "collegePresidentDesignation") setCollegePresidentDesignation(val);
+    if (field === "dateResolved") setDateResolved(val);
+    if (field === "bacMembers") setBacMembers(val);
+  };
+
+  const handlePrintResolution = (catOverride?: "mode_of_procurement" | "award_of_contract") => {
+    const cat = catOverride || resolutionCategory;
     const params = new URLSearchParams({
-      category: resolutionCategory,
+      category: cat,
       prId: selectedPrId || "0",
       prNo: customPrNumber,
       resNo: resolutionNumber,
@@ -486,16 +526,17 @@ export function TransmittalsPage() {
       purpose: purposeOrItems,
       endUser: endUserName,
       docType: docType,
-      winningSupplier: winningSupplierName,
-      awardedAmount: String(winningQuotationAmount),
-      savings: String(savingsAmount),
+      winningSupplier: cat === "award_of_contract" ? winningSupplierName : "",
+      awardedAmount: cat === "award_of_contract" ? String(winningQuotationAmount) : "0",
+      savings: cat === "award_of_contract" ? String(savingsAmount) : "0",
       rfqNo: rfqNumber,
     });
     setLocation(`/print/bac-resolution?${params.toString()}`);
   };
 
-  const handleEndorse = (e: React.FormEvent) => {
+  const handleEndorse = (e: React.FormEvent, catOverride?: "mode_of_procurement" | "award_of_contract") => {
     e.preventDefault();
+    const effectiveCategory = catOverride || resolutionCategory;
     if (!resolutionNumber.trim()) {
       toast.error("Please enter a resolution number.");
       return;
@@ -509,7 +550,7 @@ export function TransmittalsPage() {
       return;
     }
 
-    if (resolutionCategory === "award_of_contract") {
+    if (effectiveCategory === "award_of_contract") {
       if (!winningSupplierName.trim()) {
         toast.error("Please choose a winning supplier from the supplier options above for Step 5.8 Award of Contract.");
         return;
@@ -533,9 +574,9 @@ export function TransmittalsPage() {
       purposeOrItems: purposeOrItems.trim(),
       endUserName: endUserName.trim() || undefined,
       remarks: remarks.trim() || undefined,
-      resolutionType: resolutionCategory,
-      winningSupplierName: resolutionCategory === "award_of_contract" ? winningSupplierName : undefined,
-      awardedAmount: resolutionCategory === "award_of_contract" ? winningQuotationAmount : undefined,
+      resolutionType: effectiveCategory,
+      winningSupplierName: effectiveCategory === "award_of_contract" ? winningSupplierName : undefined,
+      awardedAmount: effectiveCategory === "award_of_contract" ? winningQuotationAmount : undefined,
     });
   };
 
@@ -545,6 +586,73 @@ export function TransmittalsPage() {
     setBacMembers(updated);
   };
 
+  const renderSignatoriesEditor = () => (
+    <div className="rounded-lg border border-stone-200 dark:border-stone-700 bg-[#faf8f5] dark:bg-[#19232c] overflow-hidden w-full min-w-0">
+      <button
+        type="button"
+        onClick={() => setSignatoriesExpanded(!signatoriesExpanded)}
+        className="w-full flex items-center justify-between p-3 text-[11px] font-semibold text-neutral-800 dark:text-stone-200 hover:bg-[#f3ede3] dark:hover:bg-[#202c38] transition-colors"
+      >
+        <span className="flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
+          Edit Signatories &amp; Designations ({bacMembers.length + 1} Officials)
+        </span>
+        <span className="text-xs text-neutral-500 font-normal">
+          {signatoriesExpanded ? "Hide ▲" : "Expand ▼"}
+        </span>
+      </button>
+
+      {signatoriesExpanded && (
+        <div className="p-3 pt-1 border-t border-stone-200 dark:border-stone-700 space-y-3 bg-white dark:bg-[#151c24] w-full min-w-0">
+          <p className="text-[10px] text-neutral-500">
+            Edit the official names, ranks, and roles of the BAC Committee and Approving Authority:
+          </p>
+
+          <div className="space-y-2 w-full min-w-0">
+            <p className="text-[10px] font-bold text-[#7b1e1e] uppercase tracking-wide">
+              BAC Members &amp; Chairperson
+            </p>
+            {bacMembers.map((member, i) => (
+              <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full min-w-0">
+                <Input
+                  value={member.name}
+                  onChange={(e) => handleSignatoryUpdate(i, "name", e.target.value)}
+                  placeholder="Full Name"
+                  className="h-8 text-[11px] w-full min-w-0 box-border"
+                />
+                <Input
+                  value={member.role}
+                  onChange={(e) => handleSignatoryUpdate(i, "role", e.target.value)}
+                  placeholder="Role"
+                  className="h-8 text-[11px] w-full min-w-0 box-border"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 space-y-2 w-full min-w-0">
+            <p className="text-[10px] font-bold text-[#7b1e1e] uppercase tracking-wide">
+              Head of the Procuring Entity (HoPE)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full min-w-0">
+              <Input
+                value={collegePresidentName}
+                onChange={(e) => setCollegePresidentName(e.target.value)}
+                placeholder="President Name"
+                className="h-8 text-[11px] w-full min-w-0 box-border"
+              />
+              <Input
+                value={collegePresidentDesignation}
+                onChange={(e) => setCollegePresidentDesignation(e.target.value)}
+                placeholder="Designation"
+                className="h-8 text-[11px] w-full min-w-0 box-border"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="mx-auto max-w-[1300px]">
       <PageHeader
@@ -553,25 +661,18 @@ export function TransmittalsPage() {
         description="Statutory preparation of BAC Resolutions containing ABC and Mode of Procurement, with formal endorsement to End-User, BAC Members, and HoPE for signature."
         action={{
           label: `Transmittal Register (${transmittals.data?.length ?? 0})`,
-          onClick: () => setLocation("/officer/transmittal-register"),
+          onClick: () => handleTabChange("transmittals"),
         }}
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mt-6">
-        <TabsList className="bg-[#f0ebe1] dark:bg-[#18202a] p-1 border border-[#d8d1c4] dark:border-[#2d3a4b] rounded-lg">
+      <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as TransmittalWorkspaceTab)} className="mt-6">
+        <TabsList className="bg-[#f0ebe1] dark:bg-[#18202a] p-1 border border-[#d8d1c4] dark:border-[#2d3a4b] rounded-lg flex flex-wrap gap-1">
           <TabsTrigger
-            value="resolution"
+            value="mode_resolution"
             className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
           >
             <ScrollText className="h-4 w-4" />
-            BAC Resolution (Mode of Procurement & ABC)
-          </TabsTrigger>
-          <TabsTrigger
-            value="transmittals"
-            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
-          >
-            <SendHorizontal className="h-4 w-4" />
-            BAC Transmittals Register ({transmittals.data?.length ?? 0})
+            Step 5.3: BAC Resolution (Mode of Procurement & ABC)
           </TabsTrigger>
           <TabsTrigger
             value="aoq"
@@ -580,21 +681,35 @@ export function TransmittalsPage() {
             <FileSpreadsheet className="h-4 w-4" />
             Step 5.7.1: Opening & Abstract of Quotations (AOQ)
           </TabsTrigger>
+          <TabsTrigger
+            value="award_resolution"
+            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
+          >
+            <Award className="h-4 w-4" />
+            Step 5.8: Award of Contract Resolution (S/LCRQ to HoPE)
+          </TabsTrigger>
+          <TabsTrigger
+            value="transmittals"
+            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
+          >
+            <SendHorizontal className="h-4 w-4" />
+            BAC Transmittals Register ({transmittals.data?.length ?? 0})
+          </TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: BAC RESOLUTION */}
-        <TabsContent value="resolution" className="mt-4 space-y-6">
-          {/* Statutory Mandate Banner */}
+        {/* TAB 1: STEP 5.3: BAC RESOLUTION (MODE OF PROCUREMENT & ABC) */}
+        <TabsContent value="mode_resolution" className="mt-4 space-y-6">
           <div className="rounded-lg border border-[#eed9a8] dark:border-[#54431f] bg-[#fdf9ee] dark:bg-[#1f1a10] p-4 text-xs text-[#7b5316] dark:text-[#e4c284] flex items-start gap-3 shadow-sm">
             <ScrollText className="h-5 w-5 text-[#9a6d19] dark:text-[#f3ba4b] shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-sm text-[#64420e] dark:text-[#f8d88e]">
-                BAC Secretariat Statutory Mandate (RA 9184 & BSC Procurement Guidelines)
+                Procedure 5.3: BAC Secretariat Statutory Mandate — Recommending Mode of Procurement &amp; ABC
               </p>
               <p className="mt-1 leading-relaxed text-[#7c561a] dark:text-[#e0cb9e]">
                 The BAC Secretariat or designated staff shall prepare the <strong>BAC Resolution</strong> containing the{" "}
                 <strong>Approved Budget for the Contract (ABC)</strong> and the recommended{" "}
-                <strong>Mode of Procurement</strong> of the request. The resolution is then endorsed to the End-User and BAC Members for signature, and to the Head of the Procuring Entity (HoPE / College President) for approval.
+                <strong>Mode of Procurement</strong> (e.g., Small Value Procurement, Shopping, Direct Contracting) of the request.
+                The resolution is then formally endorsed to the End-User and BAC Members for signature, and to the Head of the Procuring Entity (HoPE / College President) for approval prior to canvassing.
               </p>
             </div>
           </div>
@@ -606,11 +721,11 @@ export function TransmittalsPage() {
                 <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 mb-4">
                   <div>
                     <h3 className="font-semibold text-sm text-[#202833] dark:text-stone-100 flex items-center gap-2">
-                      <FileCheck className="h-4 w-4 text-[#7b1e1e]" />
-                      Editable Resolution Form
+                      <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
+                      Step 5.3: Mode of Procurement Resolution Form
                     </h3>
                     <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                      All fields, recitals, and signatories are editable
+                      Statutory preparation of ABC &amp; Mode of Procurement before canvass
                     </p>
                   </div>
                   <Button
@@ -624,43 +739,7 @@ export function TransmittalsPage() {
                   </Button>
                 </div>
 
-                <form onSubmit={handleEndorse} className="space-y-4 w-full min-w-0">
-                  <Field label="Resolution Category / Statutory Step">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant={resolutionCategory === "mode_of_procurement" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setResolutionCategory("mode_of_procurement")}
-                        className={cn(
-                          "h-8 text-xs font-semibold",
-                          resolutionCategory === "mode_of_procurement"
-                            ? "bg-[#7b1e1e] text-white"
-                            : "text-stone-700 dark:text-stone-300"
-                        )}
-                      >
-                        <ScrollText className="mr-1.5 h-3.5 w-3.5" />
-                        Step 5.3: Mode of Procurement
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={resolutionCategory === "award_of_contract" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setResolutionCategory("award_of_contract")}
-                        className={cn(
-                          "h-8 text-xs font-semibold",
-                          resolutionCategory === "award_of_contract"
-                            ? "bg-[#7b1e1e] text-white"
-                            : "text-stone-700 dark:text-stone-300"
-                        )}
-                      >
-                        <Award className="mr-1.5 h-3.5 w-3.5" />
-                        Step 5.8: Award of Contract
-                      </Button>
-                    </div>
-                  </Field>
-
-                  {/* Select Purchase Request (PR) upfront so supplier options and details load for it */}
+                <form onSubmit={(e) => handleEndorse(e, "mode_of_procurement")} className="space-y-4 w-full min-w-0">
                   <Field label="Select Purchase Request (PR) to Prepare Resolution For *">
                     <Select value={selectedPrId} onValueChange={handlePrSelect}>
                       <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-white dark:bg-[#151c24] font-medium">
@@ -675,139 +754,6 @@ export function TransmittalsPage() {
                       </SelectContent>
                     </Select>
                   </Field>
-
-                  {/* Step 5.8: Supplier Selection Options According to Chosen PR */}
-                  {resolutionCategory === "award_of_contract" && (
-                    <div className="space-y-3 w-full min-w-0 bg-emerald-50/60 dark:bg-emerald-950/20 p-3.5 rounded-lg border border-emerald-300/80 dark:border-emerald-800/80">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <label className="text-xs font-bold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
-                          <Award className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-                          Step 5.8 Award: Choose Winning Supplier (S/LCRQ) *
-                        </label>
-                        {activeRfqQuotes.length > 0 ? (
-                          <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full w-fit">
-                            {activeRfqQuotes.length} Responding Quotation{activeRfqQuotes.length > 1 ? "s" : ""} on File
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-stone-500 italic">
-                            Select winning supplier from registered vendors below
-                          </span>
-                        )}
-                      </div>
-
-                      <Field label="Supplier Options for this PR (Quotes / Registered) *">
-                        <Select value={selectedSupplierKey || "none"} onValueChange={handleSelectSupplierOption}>
-                          <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border bg-white dark:bg-[#151c24] border-emerald-300 dark:border-emerald-800 font-semibold text-stone-900 dark:text-stone-100">
-                            <SelectValue placeholder="-- Choose Winning Supplier for this PR --" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            <SelectItem value="none" className="text-xs text-stone-500 italic">
-                              -- Choose Winning Supplier for this PR --
-                            </SelectItem>
-
-                            {availableSupplierOptions.some((c) => c.group === "pr_quotes") && (
-                              <SelectGroup>
-                                <SelectLabel className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 px-2 py-1 bg-emerald-50/80 dark:bg-emerald-950/50">
-                                  Responding Quotations for {customPrNumber || "Selected PR"}
-                                </SelectLabel>
-                                {availableSupplierOptions
-                                  .filter((c) => c.group === "pr_quotes")
-                                  .map((opt) => (
-                                    <SelectItem key={opt.key} value={opt.key} className="text-xs">
-                                      <div className="flex flex-col gap-0.5">
-                                        <span className="font-semibold text-stone-900 dark:text-stone-100">
-                                          {opt.label}
-                                        </span>
-                                        {opt.badge && (
-                                          <span className={`text-[10px] font-medium ${opt.isLowest ? "text-emerald-700 dark:text-emerald-400 font-bold" : "text-stone-500"}`}>
-                                            {opt.badge}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                              </SelectGroup>
-                            )}
-
-                            <SelectGroup>
-                              <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
-                                All Registered BSC Suppliers
-                              </SelectLabel>
-                              {availableSupplierOptions
-                                .filter((c) => c.group === "registered")
-                                .map((opt) => (
-                                  <SelectItem key={opt.key} value={opt.key} className="text-xs">
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                            </SelectGroup>
-
-                            <SelectGroup>
-                              <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
-                                Manual / Custom
-                              </SelectLabel>
-                              <SelectItem value="custom" className="text-xs italic text-stone-700 dark:text-stone-300">
-                                + Enter Unlisted / Custom Supplier Name Manually...
-                              </SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-
-                      {/* If custom supplier selected */}
-                      {isCustomSupplier && (
-                        <Field label="Custom Winning Supplier Business Name *">
-                          <Input
-                            value={winningSupplierName}
-                            onChange={(e) => setWinningSupplierName(e.target.value)}
-                            placeholder="Enter supplier or contractor business name"
-                            className="h-9 text-xs font-semibold text-emerald-950 dark:text-emerald-100 w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
-                            required
-                          />
-                        </Field>
-                      )}
-
-                      {/* Winning Supplier & Offered Price Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <Field label="Selected Winning Supplier *">
-                          <Input
-                            value={winningSupplierName}
-                            readOnly={!isCustomSupplier}
-                            onChange={(e) => isCustomSupplier && setWinningSupplierName(e.target.value)}
-                            placeholder="Choose from supplier options above"
-                            className={`h-9 text-xs font-semibold w-full min-w-0 box-border ${winningSupplierName ? "text-emerald-950 dark:text-emerald-100 bg-white dark:bg-[#151c24]" : "text-stone-400 bg-stone-50 dark:bg-stone-900 italic"}`}
-                            required
-                          />
-                        </Field>
-                        <Field label="Offered Contract Price (₱) *">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={winningQuotationAmount > 0 ? winningQuotationAmount : ""}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setWinningQuotationAmount(val);
-                              if (approvedBudget > val) setSavingsAmount(approvedBudget - val);
-                            }}
-                            placeholder="0.00"
-                            className="h-9 text-xs font-bold text-emerald-800 dark:text-emerald-300 font-mono w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
-                            required
-                          />
-                        </Field>
-                      </div>
-
-                      {/* Public Savings Pill */}
-                      {winningQuotationAmount > 0 && approvedBudget > winningQuotationAmount && (
-                        <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                          <span>Government Savings Generated against ABC:</span>
-                          <span className="font-bold font-mono">
-                            ₱{(approvedBudget - winningQuotationAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   <Field label="Document to Prepare & Preview">
                     <Select value={docType} onValueChange={(val: any) => setDocType(val)}>
@@ -865,7 +811,6 @@ export function TransmittalsPage() {
                     </Field>
                   </div>
 
-                  {/* Two-input row: Approved Budget (ABC) and Mode of Evaluation */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
                     <Field label="Approved Budget (ABC) (₱) *">
                       <Input
@@ -934,82 +879,18 @@ export function TransmittalsPage() {
                     />
                   </Field>
 
-                  {/* Collapsible Signatories & Officials Customizer */}
-                  <div className="rounded-lg border border-stone-200 dark:border-stone-700 bg-[#faf8f5] dark:bg-[#19232c] overflow-hidden w-full min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => setSignatoriesExpanded(!signatoriesExpanded)}
-                      className="w-full flex items-center justify-between p-3 text-[11px] font-semibold text-neutral-800 dark:text-stone-200 hover:bg-[#f3ede3] dark:hover:bg-[#202c38] transition-colors"
-                    >
-                      <span className="flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
-                        Edit Signatories & Designations ({bacMembers.length + 1} Officials)
-                      </span>
-                      <span className="text-xs text-neutral-500 font-normal">
-                        {signatoriesExpanded ? "Hide ▲" : "Expand ▼"}
-                      </span>
-                    </button>
+                  {/* Signatories customizer */}
+                  {renderSignatoriesEditor()}
 
-                    {signatoriesExpanded && (
-                      <div className="p-3 pt-1 border-t border-stone-200 dark:border-stone-700 space-y-3 bg-white dark:bg-[#151c24] w-full min-w-0">
-                        <p className="text-[10px] text-neutral-500">
-                          Edit the official names, ranks, and roles of the BAC Committee and Approving Authority:
-                        </p>
-
-                        <div className="space-y-2 w-full min-w-0">
-                          <p className="text-[10px] font-bold text-[#7b1e1e] uppercase tracking-wide">
-                            BAC Members & Chairperson
-                          </p>
-                          {bacMembers.map((member, i) => (
-                            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full min-w-0">
-                              <Input
-                                value={member.name}
-                                onChange={(e) => handleSignatoryUpdate(i, "name", e.target.value)}
-                                placeholder="Full Name"
-                                className="h-8 text-[11px] w-full min-w-0 box-border"
-                              />
-                              <Input
-                                value={member.role}
-                                onChange={(e) => handleSignatoryUpdate(i, "role", e.target.value)}
-                                placeholder="Role"
-                                className="h-8 text-[11px] w-full min-w-0 box-border"
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 space-y-2 w-full min-w-0">
-                          <p className="text-[10px] font-bold text-[#7b1e1e] uppercase tracking-wide">
-                            Head of the Procuring Entity (HoPE)
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full min-w-0">
-                            <Input
-                              value={collegePresidentName}
-                              onChange={(e) => setCollegePresidentName(e.target.value)}
-                              placeholder="President Name"
-                              className="h-8 text-[11px] w-full min-w-0 box-border"
-                            />
-                            <Input
-                              value={collegePresidentDesignation}
-                              onChange={(e) => setCollegePresidentDesignation(e.target.value)}
-                              placeholder="Designation"
-                              className="h-8 text-[11px] w-full min-w-0 box-border"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bottom Action Buttons: wrapped inside standard container at bottom of form */}
                   <div className="mt-6 pt-4 border-t border-stone-200 flex flex-wrap items-center justify-end gap-3 w-full min-w-0">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handlePrintResolution}
+                      onClick={() => handlePrintResolution("mode_of_procurement")}
                       className="w-full sm:w-auto h-9 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#7b1e1e]/5 px-3 py-2 flex items-center justify-center gap-1.5"
                     >
                       <Printer className="h-3.5 w-3.5 shrink-0" />
-                      <span>Print Official Resolution</span>
+                      <span>Print Step 5.3 Resolution</span>
                     </Button>
                     <Button
                       type="button"
@@ -1036,7 +917,7 @@ export function TransmittalsPage() {
                       ) : (
                         <Send className="h-3.5 w-3.5 shrink-0" />
                       )}
-                      <span>Endorse to End-User, BAC & HoPE</span>
+                      <span>Endorse Step 5.3 Resolution to HoPE</span>
                     </Button>
                   </div>
                 </form>
@@ -1049,7 +930,7 @@ export function TransmittalsPage() {
                 <div className="flex items-center gap-2">
                   <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
                   <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
-                    Live Official Document Canvas Preview
+                    Live Official Canvas Preview — Step 5.3: Mode of Procurement
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1065,7 +946,7 @@ export function TransmittalsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={handlePrintResolution}
+                    onClick={() => handlePrintResolution("mode_of_procurement")}
                     className="h-7 text-[11px] bg-white dark:bg-[#232c3a] text-[#7b1e1e] dark:text-[#ff9b9b] border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-[#2c3748] ml-2"
                   >
                     <Printer className="mr-1 h-3 w-3" />
@@ -1076,8 +957,420 @@ export function TransmittalsPage() {
 
               <div className="overflow-x-auto max-h-[850px] overflow-y-auto rounded-lg border border-neutral-300 dark:border-neutral-700 shadow-inner bg-neutral-200/50 dark:bg-[#10151c] p-4">
                 <OfficialBacResolutionCanvas
-                  resolutionCategory={resolutionCategory}
-                  onCategoryChange={setResolutionCategory}
+                  resolutionCategory="mode_of_procurement"
+                  documentType={docType}
+                  onDocumentTypeChange={setDocType}
+                  resolutionNumber={resolutionNumber}
+                  prNumber={customPrNumber}
+                  rfqNumber={rfqNumber}
+                  purposeOrItems={purposeOrItems}
+                  approvedBudget={approvedBudget}
+                  modeOfProcurement={modeOfProcurement}
+                  evaluationMode={evaluationMode}
+                  winningSupplierName=""
+                  winningQuotationAmount={0}
+                  savingsAmount={0}
+                  entityName={entityName}
+                  dateResolved={dateResolved}
+                  collegePresidentName={collegePresidentName}
+                  collegePresidentDesignation={collegePresidentDesignation}
+                  bacMembers={bacMembers}
+                  endUserName={endUserName}
+                  editable={isDirectCanvasEdit}
+                  onFieldChange={handleCanvasFieldChange}
+                />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* TAB 2: STEP 5.8: AWARD OF CONTRACT RESOLUTION (S/LCRQ TO HOPE) */}
+        <TabsContent value="award_resolution" className="mt-4 space-y-6">
+          <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-3 shadow-sm">
+            <Award className="h-5 w-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-sm text-emerald-950 dark:text-emerald-100">
+                Procedure 5.8: Recommendation on the Award of Contract (RA 9184 &amp; BSC Guidelines §5.8.1)
+              </p>
+              <p className="mt-1 leading-relaxed text-emerald-800 dark:text-emerald-300">
+                After opening quotations and completing the Abstract of Quotations (AOQ) under Step 5.7.1, the BAC recommends to the Head of the Procuring Entity (HoPE / College President) the award of contract in favor of the supplier or contractor with the{" "}
+                <strong>Single or Lowest Calculated and Responsive Quotation (S/LCRQ)</strong>. The HoPE approves the recommendation, authorizing the issuance of the Notice of Award (NOA).
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full min-w-0">
+            {/* Form Column (5 cols) */}
+            <div className="lg:col-span-5 min-w-0 w-full space-y-5">
+              <section className="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#171e27] p-6 shadow-sm min-w-0">
+                <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 mb-4">
+                  <div>
+                    <h3 className="font-semibold text-sm text-[#202833] dark:text-stone-100 flex items-center gap-2">
+                      <Award className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                      Step 5.8: Award of Contract Resolution Form
+                    </h3>
+                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      Statutory recommendation of S/LCRQ Award to the HoPE / College President
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetDefaults}
+                    className="h-7 text-[11px] text-neutral-600 dark:text-neutral-300 hover:text-[#7b1e1e] dark:hover:text-[#ef9a9a]"
+                  >
+                    Reset Defaults
+                  </Button>
+                </div>
+
+                <form onSubmit={(e) => handleEndorse(e, "award_of_contract")} className="space-y-4 w-full min-w-0">
+                  <Field label="Select Purchase Request (PR) to Prepare Award Resolution For *">
+                    <Select value={selectedPrId} onValueChange={handlePrSelect}>
+                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-white dark:bg-[#151c24] font-medium">
+                        <SelectValue placeholder="Choose Purchase Request to load..." className="truncate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(dashboard.data?.purchaseRequests ?? []).map((pr) => (
+                          <SelectItem key={pr.id} value={String(pr.id)} className="text-xs">
+                            {pr.prNumber} — {pr.purpose?.slice(0, 45)}...
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {/* Step 5.8: Supplier Selection Options According to Chosen PR */}
+                  <div className="space-y-3 w-full min-w-0 bg-emerald-50/60 dark:bg-emerald-950/20 p-3.5 rounded-lg border border-emerald-300/80 dark:border-emerald-800/80">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                        <Award className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                        Step 5.8 Award: Choose Winning Supplier (S/LCRQ) *
+                      </label>
+                      {activeRfqQuotes.length > 0 ? (
+                        <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full w-fit">
+                          {activeRfqQuotes.length} Responding Quotation{activeRfqQuotes.length > 1 ? "s" : ""} on File
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-stone-500 italic">
+                          Select winning supplier from registered vendors below
+                        </span>
+                      )}
+                    </div>
+
+                    <Field label="Supplier Options for this PR (Quotes / Registered) *">
+                      <Select value={selectedSupplierKey || "none"} onValueChange={handleSelectSupplierOption}>
+                        <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border bg-white dark:bg-[#151c24] border-emerald-300 dark:border-emerald-800 font-semibold text-stone-900 dark:text-stone-100">
+                          <SelectValue placeholder="-- Choose Winning Supplier for this PR --" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="none" className="text-xs text-stone-500 italic">
+                            -- Choose Winning Supplier for this PR --
+                          </SelectItem>
+
+                          {availableSupplierOptions.some((c) => c.group === "pr_quotes") && (
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 px-2 py-1 bg-emerald-50/80 dark:bg-emerald-950/50">
+                                Responding Quotations for {customPrNumber || "Selected PR"}
+                              </SelectLabel>
+                              {availableSupplierOptions
+                                .filter((c) => c.group === "pr_quotes")
+                                .map((opt) => (
+                                  <SelectItem key={opt.key} value={opt.key} className="text-xs">
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-semibold text-stone-900 dark:text-stone-100">
+                                        {opt.label}
+                                      </span>
+                                      {opt.badge && (
+                                        <span className={`text-[10px] font-medium ${opt.isLowest ? "text-emerald-700 dark:text-emerald-400 font-bold" : "text-stone-500"}`}>
+                                          {opt.badge}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </SelectGroup>
+                          )}
+
+                          <SelectGroup>
+                            <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
+                              All Registered BSC Suppliers
+                            </SelectLabel>
+                            {availableSupplierOptions
+                              .filter((c) => c.group === "registered")
+                              .map((opt) => (
+                                <SelectItem key={opt.key} value={opt.key} className="text-xs">
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+
+                          <SelectGroup>
+                            <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
+                              Manual / Custom
+                            </SelectLabel>
+                            <SelectItem value="custom" className="text-xs italic text-stone-700 dark:text-stone-300">
+                              + Enter Unlisted / Custom Supplier Name Manually...
+                            </SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {isCustomSupplier && (
+                      <Field label="Custom Winning Supplier Business Name *">
+                        <Input
+                          value={winningSupplierName}
+                          onChange={(e) => setWinningSupplierName(e.target.value)}
+                          placeholder="Enter supplier or contractor business name"
+                          className="h-9 text-xs font-semibold text-emerald-950 dark:text-emerald-100 w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                          required
+                        />
+                      </Field>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <Field label="Selected Winning Supplier *">
+                        <Input
+                          value={winningSupplierName}
+                          readOnly={!isCustomSupplier}
+                          onChange={(e) => isCustomSupplier && setWinningSupplierName(e.target.value)}
+                          placeholder="Choose from supplier options above"
+                          className={`h-9 text-xs font-semibold w-full min-w-0 box-border ${winningSupplierName ? "text-emerald-950 dark:text-emerald-100 bg-white dark:bg-[#151c24]" : "text-stone-400 bg-stone-50 dark:bg-stone-900 italic"}`}
+                          required
+                        />
+                      </Field>
+                      <Field label="Offered Contract Price (₱) *">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={winningQuotationAmount > 0 ? winningQuotationAmount : ""}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setWinningQuotationAmount(val);
+                            if (approvedBudget > val) setSavingsAmount(approvedBudget - val);
+                          }}
+                          placeholder="0.00"
+                          className="h-9 text-xs font-bold text-emerald-800 dark:text-emerald-300 font-mono w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                          required
+                        />
+                      </Field>
+                    </div>
+
+                    {winningQuotationAmount > 0 && approvedBudget > winningQuotationAmount && (
+                      <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                        <span>Government Savings Generated against ABC:</span>
+                        <span className="font-bold font-mono">
+                          ₱{(approvedBudget - winningQuotationAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Field label="Document to Prepare & Preview">
+                    <Select value={docType} onValueChange={(val: any) => setDocType(val)}>
+                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-[#fffaf0] dark:bg-[#251d1a] border-[#ecdcc0] dark:border-[#4d2d25] font-semibold text-[#7b1e1e] dark:text-[#fca5a5]">
+                        <SelectValue className="truncate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="resolution">1. BAC Resolution (Recommendation to HoPE)</SelectItem>
+                        <SelectItem value="hope_approval">2. Letter of Approval of HoPE (Approval of Resolution)</SelectItem>
+                        <SelectItem value="both">Complete Package (Both Documents)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+                    <Field label="Award Resolution Number *">
+                      <Input
+                        value={resolutionNumber}
+                        onChange={(e) => setResolutionNumber(e.target.value)}
+                        placeholder="e.g. 2601-GAS2-009"
+                        className="h-9 text-xs font-mono font-semibold w-full min-w-0 box-border"
+                        required
+                      />
+                    </Field>
+
+                    <Field label="Purchase Request No. *">
+                      <Input
+                        value={customPrNumber}
+                        onChange={(e) => setCustomPrNumber(e.target.value)}
+                        placeholder="e.g. 2026-009"
+                        className="h-9 text-xs font-mono w-full min-w-0 box-border"
+                        required
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+                    <Field label="Mode of Procurement *">
+                      <Input
+                        value={modeOfProcurement}
+                        onChange={(e) => setModeOfProcurement(e.target.value)}
+                        placeholder="e.g. Small Value Procurement"
+                        className="h-9 text-xs font-semibold w-full min-w-0 box-border"
+                        required
+                      />
+                    </Field>
+
+                    <Field label="Award Date">
+                      <Input
+                        value={dateResolved}
+                        onChange={(e) => setDateResolved(e.target.value)}
+                        placeholder="e.g. September 29, 2026"
+                        className="h-9 text-xs w-full min-w-0 box-border"
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+                    <Field label="Approved Budget (ABC) (₱) *">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        value={approvedBudget}
+                        onChange={(e) => setApprovedBudget(Number(e.target.value))}
+                        className="h-9 text-xs font-semibold text-[#7b1e1e] w-full min-w-0 box-border"
+                        required
+                      />
+                    </Field>
+
+                    <Field label="Mode of Evaluation">
+                      <Select value={evaluationMode} onValueChange={(v) => setEvaluationMode(v as typeof evaluationMode)}>
+                        <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border overflow-hidden truncate">
+                          <SelectValue className="truncate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lot_basis" className="text-xs">
+                            Lot Basis (S/LCRQ on total lot)
+                          </SelectItem>
+                          <SelectItem value="per_item" className="text-xs">
+                            Per Item Basis
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+
+                  <Field label="Entity / Agency Name">
+                    <Input
+                      value={entityName}
+                      onChange={(e) => setEntityName(e.target.value)}
+                      placeholder="e.g. Batanes State College"
+                      className="h-9 text-xs w-full min-w-0 box-border"
+                    />
+                  </Field>
+
+                  <Field label="Particulars / Items & Purpose *">
+                    <Textarea
+                      value={purposeOrItems}
+                      onChange={(e) => setPurposeOrItems(e.target.value)}
+                      rows={3}
+                      className="text-xs leading-relaxed w-full min-w-0 box-border resize-y"
+                      placeholder="Specify goods/services, meals, snacks, or supplies..."
+                      required
+                    />
+                  </Field>
+
+                  <Field label="End-User / Project In-Charge Name">
+                    <Input
+                      value={endUserName}
+                      onChange={(e) => setEndUserName(e.target.value)}
+                      placeholder="e.g. MARIE FE E. PABLEO"
+                      className="h-9 text-xs w-full min-w-0 box-border"
+                    />
+                  </Field>
+
+                  <Field label="Award Recommendation Remarks (Optional)">
+                    <Input
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="Recommendation details for HoPE approval..."
+                      className="h-9 text-xs w-full min-w-0 box-border"
+                    />
+                  </Field>
+
+                  {/* Signatories customizer */}
+                  {renderSignatoriesEditor()}
+
+                  <div className="mt-6 pt-4 border-t border-stone-200 flex flex-wrap items-center justify-end gap-3 w-full min-w-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handlePrintResolution("award_of_contract")}
+                      className="w-full sm:w-auto h-9 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#7b1e1e]/5 px-3 py-2 flex items-center justify-center gap-1.5"
+                    >
+                      <Printer className="h-3.5 w-3.5 shrink-0" />
+                      <span>Print Step 5.8 Award Resolution</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={directToPoMutation.isPending}
+                      onClick={handleDirectToPo}
+                      className="w-full sm:w-auto h-9 text-xs border-emerald-700 text-emerald-800 hover:bg-emerald-50 px-3.5 py-2 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      title="Direct approved Letter of Approval to Procurement Officer (PO) for serving"
+                    >
+                      {directToPoMutation.isPending ? (
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin shrink-0" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5 shrink-0 text-emerald-700" />
+                      )}
+                      <span>Direct Award Letter to PO</span>
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={endorseMutation.isPending}
+                      className="w-full sm:w-auto h-9 text-xs bg-emerald-800 text-white hover:bg-emerald-900 px-4 py-2 flex items-center justify-center gap-1.5"
+                    >
+                      {endorseMutation.isPending ? (
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin shrink-0" />
+                      ) : (
+                        <Award className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      <span>Recommend Award to HoPE (Step 5.8.1)</span>
+                    </Button>
+                  </div>
+                </form>
+              </section>
+            </div>
+
+            {/* Live Canvas Preview Column (7 cols) */}
+            <div className="lg:col-span-7 min-w-0 w-full space-y-4">
+              <div className="flex items-center justify-between bg-neutral-100 dark:bg-[#1a212d] p-2.5 rounded-lg border border-neutral-200 dark:border-[#2f3b4c]">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+                    Live Official Canvas Preview — Step 5.8: Award of Contract
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isDirectCanvasEdit}
+                      onChange={(e) => setIsDirectCanvasEdit(e.target.checked)}
+                      className="accent-[#7b1e1e] rounded h-3.5 w-3.5"
+                    />
+                    Direct Canvas Editing
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePrintResolution("award_of_contract")}
+                    className="h-7 text-[11px] bg-white dark:bg-[#232c3a] text-[#7b1e1e] dark:text-[#ff9b9b] border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-[#2c3748] ml-2"
+                  >
+                    <Printer className="mr-1 h-3 w-3" />
+                    Print / Save PDF
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto max-h-[850px] overflow-y-auto rounded-lg border border-neutral-300 dark:border-neutral-700 shadow-inner bg-neutral-200/50 dark:bg-[#10151c] p-4">
+                <OfficialBacResolutionCanvas
+                  resolutionCategory="award_of_contract"
                   documentType={docType}
                   onDocumentTypeChange={setDocType}
                   resolutionNumber={resolutionNumber}
@@ -1097,147 +1390,20 @@ export function TransmittalsPage() {
                   bacMembers={bacMembers}
                   endUserName={endUserName}
                   editable={isDirectCanvasEdit}
-                  onFieldChange={(field, val) => {
-                    if (field === "resolutionCategory") setResolutionCategory(val);
-                    if (field === "documentType") setDocType(val);
-                    if (field === "resolutionNumber") setResolutionNumber(val);
-                    if (field === "prNumber") setCustomPrNumber(val);
-                    if (field === "approvedBudget") setApprovedBudget(val);
-                    if (field === "purposeOrItems") setPurposeOrItems(val);
-                    if (field === "winningSupplierName") setWinningSupplierName(val);
-                    if (field === "winningQuotationAmount") setWinningQuotationAmount(Number(val));
-                    if (field === "entityName") setEntityName(val);
-                    if (field === "collegePresidentName") setCollegePresidentName(val);
-                    if (field === "collegePresidentDesignation") setCollegePresidentDesignation(val);
-                    if (field === "dateResolved") setDateResolved(val);
-                    if (field === "bacMembers") setBacMembers(val);
-                  }}
+                  onFieldChange={handleCanvasFieldChange}
                 />
               </div>
             </div>
           </div>
-
-          {/* Endorsement & Transmittal History Register */}
-          <section className="flat-panel overflow-hidden mt-6">
-            <div className="border-b border-[#ece8df] px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">BAC Resolution Endorsement & Transmittal Register</p>
-                <p className="text-[11px] text-[#77818d]">
-                  Chronological record of official resolutions and transmittals endorsed to End-User, BAC Members, and HoPE.
-                </p>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {transmittals.data?.length ?? 0} Records
-              </Badge>
-            </div>
-            {transmittals.data?.length ? (
-              <div className="divide-y divide-[#ece8df]">
-                {transmittals.data.map((item) => {
-                  const isResolution = item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution");
-                  return (
-                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold font-mono text-[#7b1e1e]">{item.transmittalNumber}</p>
-                          {isResolution && (
-                            <Badge className="bg-[#7b1e1e] text-[10px] py-0 px-1.5 text-white">
-                              BAC Resolution
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-[#3f4a57]">{item.subject}</p>
-                        <p className="text-[11px] text-[#77818d]">
-                          {item.fromOffice} → <strong>{item.toOffice}</strong> · {new Date(item.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                        </p>
-                        {item.remarks && (
-                          <p className="text-[11px] italic text-neutral-600 dark:text-[#cbd5e1] bg-neutral-50 dark:bg-[#141b22] p-1.5 rounded border border-neutral-200 dark:border-[#2b3744] mt-1 max-w-xl">
-                            {item.remarks}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge tone={statusTone(item.status)}>{item.status.toUpperCase()}</StatusBadge>
-                        {item.status === "sent" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const name = window.prompt("Name of acknowledging recipient");
-                              if (name) acknowledge.mutate({ transmittalId: item.id, acknowledgedByName: name });
-                            }}
-                            className="h-8 rounded-[4px] text-[11px]"
-                          >
-                            <CheckCircle2 className="mr-1 h-3 w-3 text-emerald-600" />
-                            Acknowledge
-                          </Button>
-                        )}
-                        {isResolution ? (
-                          <>
-                            {item.purchaseRequestId && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={directToPoMutation.isPending}
-                                onClick={() => {
-                                  const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
-                                  const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
-                                  directToPoMutation.mutate({
-                                    purchaseRequestId: item.purchaseRequestId!,
-                                    resolutionNumber: resNum,
-                                    remarks: item.remarks || undefined,
-                                  });
-                                }}
-                                className="h-8 rounded-[4px] text-[11px] border-emerald-700 text-emerald-800 hover:bg-emerald-50"
-                                title="Direct approved Letter of Approval to PO to serve"
-                              >
-                                <Send className="mr-1 h-3.5 w-3.5 text-emerald-700" />
-                                Direct to PO
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
-                                const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
-                                setLocation(`/print/bac-resolution?prId=${item.purchaseRequestId || 0}&resNo=${resNum}`);
-                              }}
-                              className="h-8 rounded-[4px] text-[11px] border-[#7b1e1e] text-[#7b1e1e]"
-                            >
-                              <Printer className="mr-1 h-3.5 w-3.5" />
-                              Print Resolution
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setLocation(`/print/transmittal?id=${item.id}`)}
-                            className="h-8 rounded-[4px] text-[11px]"
-                          >
-                            <Printer className="mr-1 h-3.5 w-3.5" />
-                            Print Transmittal
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="p-8 text-center text-[11px] text-[#77818d]">No BAC Resolutions or Transmittals recorded yet.</p>
-            )}
-          </section>
         </TabsContent>
 
-        {/* TAB 2: GENERAL BAC TRANSMITTALS */}
+        {/* TAB 4: BAC TRANSMITTALS REGISTER */}
         <TabsContent value="transmittals" className="mt-4 space-y-6">
           <section className="flat-panel p-5">
-            <h3 className="font-semibold text-sm text-[#202833] mb-4">New Document Transmittal</h3>
+            <h3 className="font-semibold text-sm text-[#202833] dark:text-stone-100 mb-4 flex items-center gap-2">
+              <SendHorizontal className="h-4 w-4 text-[#7b1e1e]" />
+              New Document Transmittal
+            </h3>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -1283,7 +1449,7 @@ export function TransmittalsPage() {
                 </div>
               </div>
               <div className="mt-5 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-[11px] text-[#566171]">
+                <label className="flex items-center gap-2 text-[11px] text-[#566171] dark:text-stone-400">
                   <input name="sendNow" type="checkbox" className="accent-[#7b1e1e]" defaultChecked />
                   Mark as sent immediately
                 </label>
@@ -1292,53 +1458,121 @@ export function TransmittalsPage() {
             </form>
           </section>
 
-          <section className="flat-panel overflow-hidden">
-            <div className="border-b border-[#ece8df] px-5 py-4">
-              <p className="text-sm font-semibold">General Transmittal Register</p>
+          {/* Endorsement & Transmittal History Register */}
+          <section className="flat-panel overflow-hidden mt-6">
+            <div className="border-b border-[#ece8df] dark:border-stone-800 px-5 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#202833] dark:text-stone-100">
+                  BAC Resolution Endorsement &amp; Transmittal Register
+                </p>
+                <p className="text-[11px] text-[#77818d] dark:text-stone-400">
+                  Chronological record of official resolutions and transmittals endorsed to End-User, BAC Members, and HoPE.
+                </p>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {transmittals.data?.length ?? 0} Records
+              </Badge>
             </div>
             {transmittals.data?.length ? (
-              <div className="divide-y divide-[#ece8df]">
-                {transmittals.data.map((item) => (
-                  <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
-                    <div>
-                      <p className="text-xs font-semibold text-[#7b1e1e]">{item.transmittalNumber}</p>
-                      <p className="mt-1 text-sm font-medium text-[#3f4a57]">
-                        {item.fromOffice} → {item.toOffice}
-                      </p>
-                      <p className="mt-1 text-[11px] text-[#77818d]">{item.subject}</p>
+              <div className="divide-y divide-[#ece8df] dark:divide-stone-800">
+                {transmittals.data.map((item) => {
+                  const isResolution = item.transmittalNumber.startsWith("BAC-RES") || item.subject.toLowerCase().includes("resolution");
+                  return (
+                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 p-5 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold font-mono text-[#7b1e1e] dark:text-[#ff9b9b]">{item.transmittalNumber}</p>
+                          {isResolution && (
+                            <Badge className="bg-[#7b1e1e] text-[10px] py-0 px-1.5 text-white">
+                              BAC Resolution
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-[#3f4a57] dark:text-stone-200">{item.subject}</p>
+                        <p className="text-[11px] text-[#77818d] dark:text-stone-400">
+                          {item.fromOffice} → <strong>{item.toOffice}</strong> · {new Date(item.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                        </p>
+                        {item.remarks && (
+                          <p className="text-[11px] italic text-neutral-600 dark:text-[#cbd5e1] bg-neutral-50 dark:bg-[#141b22] p-1.5 rounded border border-neutral-200 dark:border-[#2b3744] mt-1 max-w-xl">
+                            {item.remarks}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge tone={statusTone(item.status)}>{item.status.toUpperCase()}</StatusBadge>
+                        {item.status === "sent" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const name = window.prompt("Name of acknowledging recipient");
+                              if (name) acknowledge.mutate({ transmittalId: item.id, acknowledgedByName: name });
+                            }}
+                            className="h-8 rounded-[4px] text-[11px]"
+                          >
+                            <CheckCircle2 className="mr-1 h-3 w-3 text-emerald-600" />
+                            Acknowledge
+                          </Button>
+                        )}
+                        {isResolution ? (
+                          <>
+                            {item.purchaseRequestId && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={directToPoMutation.isPending}
+                                onClick={() => {
+                                  const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
+                                  const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
+                                  directToPoMutation.mutate({
+                                    purchaseRequestId: item.purchaseRequestId!,
+                                    resolutionNumber: resNum,
+                                    remarks: item.remarks || undefined,
+                                  });
+                                }}
+                                className="h-8 rounded-[4px] text-[11px] border-emerald-700 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                                title="Direct approved Letter of Approval to PO to serve"
+                              >
+                                <Send className="mr-1 h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                                Direct to PO
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const resMatch = item.subject.match(/BAC Resolution No\.\s*([^-\s]+)/i);
+                                const resNum = resMatch ? resMatch[1] : "2601-GAS2-009";
+                                setLocation(`/print/bac-resolution?prId=${item.purchaseRequestId || 0}&resNo=${resNum}`);
+                              }}
+                              className="h-8 rounded-[4px] text-[11px] border-[#7b1e1e] text-[#7b1e1e] dark:border-[#ef9a9a] dark:text-[#ef9a9a]"
+                            >
+                              <Printer className="mr-1 h-3.5 w-3.5" />
+                              Print Resolution
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLocation(`/print/transmittal?id=${item.id}`)}
+                            className="h-8 rounded-[4px] text-[11px]"
+                          >
+                            <Printer className="mr-1 h-3.5 w-3.5" />
+                            Print Transmittal
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge tone={statusTone(item.status)}>{item.status.toUpperCase()}</StatusBadge>
-                      {item.status === "sent" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const name = window.prompt("Name of acknowledging recipient");
-                            if (name) acknowledge.mutate({ transmittalId: item.id, acknowledgedByName: name });
-                          }}
-                          className="h-8 rounded-[4px] text-[11px]"
-                        >
-                          Acknowledge
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setLocation(`/print/transmittal?id=${item.id}`)}
-                        className="h-8 rounded-[4px] text-[11px]"
-                      >
-                        <Printer className="mr-1 h-3.5 w-3.5" />
-                        Print
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <p className="p-8 text-center text-[11px] text-[#77818d]">No BAC Transmittals have been created.</p>
+              <p className="p-8 text-center text-[11px] text-[#77818d]">No BAC Resolutions or Transmittals recorded yet.</p>
             )}
           </section>
         </TabsContent>

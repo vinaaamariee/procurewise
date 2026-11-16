@@ -682,38 +682,23 @@ export function OfficialBacResolutionCanvas({
     >
       {/* Visual edit mode and document switcher banner (Hidden during print) */}
       <div className="no-print mb-6 space-y-3 select-none print:hidden">
-        {/* Category Switcher: Step 5.3 Mode vs Step 5.8 Award */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#efe8dc] dark:bg-[#151c24] p-1 border border-[#dfd4c0] dark:border-[#2f3b4c]">
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleCategorySwitch("mode_of_procurement")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
-                localCategory === "mode_of_procurement"
-                  ? "bg-[#7b1e1e] text-white shadow-sm font-bold"
-                  : "text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50"
-              )}
-            >
-              <ScrollText className="h-3.5 w-3.5 shrink-0" />
-              Step 5.3: Mode of Procurement Resolution
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCategorySwitch("award_of_contract")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
-                localCategory === "award_of_contract"
-                  ? "bg-[#7b1e1e] text-white shadow-sm font-bold"
-                  : "text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50"
-              )}
-            >
-              <Award className="h-3.5 w-3.5 shrink-0" />
-              Step 5.8: Award of Contract Resolution (S/LCRQ to HoPE)
-            </button>
+        {/* Contextual Statutory Step Pill (Reflects Active Navbar Step) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f0eae1] dark:bg-[#18202a] px-3 py-2 border border-[#dfd4c0] dark:border-[#2f3b4c]">
+          <div className="flex items-center gap-2">
+            {localCategory === "award_of_contract" ? (
+              <span className="flex items-center gap-1.5 text-xs font-bold font-sans text-[#7b1e1e] dark:text-[#f87171]">
+                <Award className="h-4 w-4" />
+                Step 5.8: Award of Contract Resolution (S/LCRQ to HoPE)
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs font-bold font-sans text-[#7b1e1e] dark:text-[#f87171]">
+                <ScrollText className="h-4 w-4" />
+                Step 5.3: Mode of Procurement Resolution & ABC
+              </span>
+            )}
           </div>
-          <span className="text-[10px] font-sans px-2 text-neutral-600 dark:text-neutral-400">
-            {localCategory === "award_of_contract" ? "Statutory Mandate: Section 5.8.1" : "Statutory Mandate: Section 5.3"}
+          <span className="text-[11px] font-sans font-medium text-stone-600 dark:text-stone-400">
+            {localCategory === "award_of_contract" ? "Statutory Mandate: Section 5.8.1 (RA 9184 & RA 12009)" : "Statutory Mandate: Section 5.3 (RA 9184)"}
           </span>
         </div>
 

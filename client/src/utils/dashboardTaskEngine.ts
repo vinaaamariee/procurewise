@@ -446,7 +446,7 @@ export function resolvePrimaryTask(
         explanation:
           "Review the verified Purchase Request package and endorse the BAC Resolution recommending Small Value Procurement so RFQ canvassing can begin.",
         primaryCtaLabel: "Endorse BAC Resolution Now →",
-        primaryCtaUrl: "/officer/transmittals",
+        primaryCtaUrl: "/officer/transmittals?tab=mode_resolution",
         primaryCtaIcon: "check",
         secondaryCtaLabel: "Preview Attached Form Copy",
         secondaryCtaUrl: "/form-templates?form=bac_resolution",
@@ -466,7 +466,7 @@ export function resolvePrimaryTask(
         explanation:
           "The BAC evaluates the Abstract of Quotations and recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
         primaryCtaLabel: "Recommend Award to HoPE Now →",
-        primaryCtaUrl: "/officer/transmittals",
+        primaryCtaUrl: "/officer/transmittals?tab=award_resolution",
         primaryCtaIcon: "arrow",
         secondaryCtaLabel: "AOQ Tabulation Workbench",
         secondaryCtaUrl: "/rfq-management",
@@ -483,8 +483,8 @@ export function resolvePrimaryTask(
       title: "Evaluate Sealed Quotations & Recommend Award of Contract (Annex F / Step 5.8)",
       explanation:
         "The BAC evaluates quotations in the Abstract of Quotations and formally recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
-      primaryCtaLabel: "Open BAC Resolutions & Transmittals →",
-      primaryCtaUrl: "/officer/transmittals",
+      primaryCtaLabel: "Open Award of Contract Studio →",
+      primaryCtaUrl: "/officer/transmittals?tab=award_resolution",
       primaryCtaIcon: "arrow",
       secondaryCtaLabel: "BAC Transmittals Register",
       secondaryCtaUrl: "/officer/transmittal-register",

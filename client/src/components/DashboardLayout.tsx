@@ -21,6 +21,7 @@ import {
 } from "../../../shared/procurementRules";
 import {
   Archive,
+  Award,
   BookOpen,
   BookOpenText,
   Boxes,
@@ -196,7 +197,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   {
     id: "step-3-bac-resolution",
     path: "/officer/transmittals",
-    label: "Step 3: BAC Resolution",
+    label: "Step 5.3: BAC Resolution (Mode of Procurement)",
     stepNumber: "Step 5.3",
     procedureRef: "BSC-PRO-QP-95-1 §5.3",
     icon: ScrollText,
@@ -208,6 +209,44 @@ export const NAV_ITEMS: NavItemConfig[] = [
       "procurement_officer",
       "procurement_officer_i",
       "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-5-7-bac-aoq",
+    path: "/officer/transmittals?tab=aoq",
+    label: "Step 5.7.1: Opening & Abstract of Quotations (AOQ)",
+    stepNumber: "Step 5.7.1",
+    procedureRef: "BSC-PRO-QP-95-1 §5.7.1",
+    icon: FileSpreadsheet,
+    section: "procedure_steps",
+    roles: [
+      "bac",
+      "bac_secretariat",
+      "procurement_staff",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "admin",
+    ],
+  },
+  {
+    id: "step-5-8-bac-award-resolution",
+    path: "/officer/transmittals?tab=award_resolution",
+    label: "Step 5.8: Award of Contract Resolution (S/LCRQ)",
+    stepNumber: "Step 5.8",
+    procedureRef: "BSC-PRO-QP-95-1 §5.8",
+    icon: Award,
+    section: "procedure_steps",
+    roles: [
+      "bac",
+      "bac_secretariat",
+      "procurement_staff",
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "hope",
+      "administrative_approver",
       "admin",
     ],
   },
@@ -245,10 +284,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
       "bac_secretariat",
       "admin",
     ],
-    roleLabels: {
-      bac: "Step 5.7: Abstract of Quotations (AOQ)",
-      bac_secretariat: "Step 5.7: Abstract of Quotations (AOQ)",
-    },
   },
   {
     id: "steps-4-6-rfq-philgeps",
@@ -335,8 +370,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
       "admin",
     ],
     roleLabels: {
-      bac: "Steps 7–8: Compare Quotes (AOQ)",
-      bac_secretariat: "Steps 7–8: Compare Quotes (AOQ)",
       procurement_staff: "Step 11: Prepare Purchase Order",
       budget_officer: "Step 12: Certify Funds & Sign PO",
       hope: "Step 12: Sign Purchase Orders",
@@ -763,7 +796,20 @@ export default function DashboardLayout({
   // ── Accessible Sidebar Nav Item (min-h-12, text-base font-semibold) ────────
   const renderNavItem = (item: NavItemConfig) => {
     const label = getLabel(item);
-    const active = location === item.path;
+    const currentSearch = typeof window !== "undefined" ? window.location.search : "";
+    const [itemBase, itemQuery] = item.path.split("?");
+    let active = false;
+    if (itemQuery) {
+      active = location === itemBase && currentSearch.includes(itemQuery);
+    } else if (item.path === "/officer/transmittals") {
+      active =
+        location === "/officer/transmittals" &&
+        (!currentSearch ||
+          currentSearch.includes("tab=mode_resolution") ||
+          !currentSearch.includes("tab="));
+    } else {
+      active = location === item.path;
+    }
     const Icon = item.icon;
 
     return (
