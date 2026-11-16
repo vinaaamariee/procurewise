@@ -446,7 +446,7 @@ export function resolvePrimaryTask(
         explanation:
           "Review the verified Purchase Request package and endorse the BAC Resolution recommending Small Value Procurement so RFQ canvassing can begin.",
         primaryCtaLabel: "Endorse BAC Resolution Now →",
-        primaryCtaUrl: "/officer/transmittals?tab=mode_resolution",
+        primaryCtaUrl: "/officer/transmittals",
         primaryCtaIcon: "check",
         secondaryCtaLabel: "Preview Attached Form Copy",
         secondaryCtaUrl: "/form-templates?form=bac_resolution",
@@ -466,10 +466,10 @@ export function resolvePrimaryTask(
         explanation:
           "The BAC evaluates the Abstract of Quotations and recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
         primaryCtaLabel: "Recommend Award to HoPE Now →",
-        primaryCtaUrl: "/officer/transmittals?tab=award_resolution",
+        primaryCtaUrl: "/officer/award-resolution",
         primaryCtaIcon: "arrow",
         secondaryCtaLabel: "AOQ Tabulation Workbench",
-        secondaryCtaUrl: "/rfq-management",
+        secondaryCtaUrl: "/officer/abstract-of-quotations",
         secondaryCtaIcon: "eye",
         pendingTaskCount: canvassingList.length,
         targetRequestId: topCanvass.id,
@@ -484,7 +484,7 @@ export function resolvePrimaryTask(
       explanation:
         "The BAC evaluates quotations in the Abstract of Quotations and formally recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
       primaryCtaLabel: "Open Award of Contract Studio →",
-      primaryCtaUrl: "/officer/transmittals?tab=award_resolution",
+      primaryCtaUrl: "/officer/award-resolution",
       primaryCtaIcon: "arrow",
       secondaryCtaLabel: "BAC Transmittals Register",
       secondaryCtaUrl: "/officer/transmittal-register",

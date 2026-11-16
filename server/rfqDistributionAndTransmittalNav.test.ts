@@ -35,7 +35,8 @@ describe("BAC Transmittal Register Navigation & RFQ Distribution Lifecycle", () 
   });
 
   it("routes /officer/transmittal-register to TransmittalRegisterPage in App.tsx", () => {
-    expect(appRoutesContent).toContain('import { ForecastPage, SupplierEvaluationsPage, TransmittalsPage, TransmittalRegisterPage } from "./pages/OfficerPages"');
+    expect(appRoutesContent).toContain("TransmittalRegisterPage");
+    expect(appRoutesContent).toContain('from "./pages/OfficerPages"');
     expect(appRoutesContent).toContain('<Route path={"/officer/transmittal-register"}>{protectedPage(<TransmittalRegisterPage />)}</Route>');
   });
 

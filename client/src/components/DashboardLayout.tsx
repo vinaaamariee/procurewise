@@ -214,7 +214,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   },
   {
     id: "step-5-7-bac-aoq",
-    path: "/officer/transmittals?tab=aoq",
+    path: "/officer/abstract-of-quotations",
     label: "Step 5.7.1: Opening & Abstract of Quotations (AOQ)",
     stepNumber: "Step 5.7.1",
     procedureRef: "BSC-PRO-QP-95-1 §5.7.1",
@@ -232,7 +232,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   },
   {
     id: "step-5-8-bac-award-resolution",
-    path: "/officer/transmittals?tab=award_resolution",
+    path: "/officer/award-resolution",
     label: "Step 5.8: Award of Contract Resolution (S/LCRQ)",
     stepNumber: "Step 5.8",
     procedureRef: "BSC-PRO-QP-95-1 §5.8",
@@ -803,10 +803,14 @@ export default function DashboardLayout({
       active = location === itemBase && currentSearch.includes(itemQuery);
     } else if (item.path === "/officer/transmittals") {
       active =
-        location === "/officer/transmittals" &&
-        (!currentSearch ||
-          currentSearch.includes("tab=mode_resolution") ||
-          !currentSearch.includes("tab="));
+        location === "/officer/transmittals" ||
+        location === "/officer/bac-resolution";
+    } else if (item.path === "/officer/abstract-of-quotations") {
+      active =
+        location === "/officer/abstract-of-quotations" ||
+        location === "/officer/aoq";
+    } else if (item.path === "/officer/award-resolution") {
+      active = location === "/officer/award-resolution";
     } else {
       active = location === item.path;
     }

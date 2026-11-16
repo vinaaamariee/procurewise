@@ -10,7 +10,14 @@ import Dashboard from "./pages/Dashboard";
 import Access from "./pages/Access";
 import DocumentsPage from "./pages/Documents";
 import NotificationsPage from "./pages/Notifications";
-import { ForecastPage, SupplierEvaluationsPage, TransmittalsPage, TransmittalRegisterPage } from "./pages/OfficerPages";
+import {
+  ForecastPage,
+  SupplierEvaluationsPage,
+  TransmittalsPage,
+  TransmittalRegisterPage,
+  BacAwardResolutionPage,
+  BacAbstractOfQuotationsPage,
+} from "./pages/OfficerPages";
 import { NoticeWorkflowPage } from "./pages/NoticeWorkflowPage";
 import { PrintBacResolutionPage, PrintNoticePage, PrintPreCanvassAbstractPage, PrintPurchaseOrderPage, PrintTransmittalPage } from "./pages/PrintPages";
 import PublicTrackingPage from "./pages/PublicTracking";
@@ -64,6 +71,10 @@ function Router() {
       <Route path={"/notifications"}>{protectedPage(<NotificationsPage />)}</Route>
       <Route path={"/officer/notices"}>{protectedPage(<NoticeWorkflowPage />)}</Route>
       <Route path={"/officer/transmittals"}>{protectedPage(<TransmittalsPage />)}</Route>
+      <Route path={"/officer/bac-resolution"}>{protectedPage(<TransmittalsPage />)}</Route>
+      <Route path={"/officer/abstract-of-quotations"}>{protectedPage(<BacAbstractOfQuotationsPage />)}</Route>
+      <Route path={"/officer/aoq"}>{protectedPage(<BacAbstractOfQuotationsPage />)}</Route>
+      <Route path={"/officer/award-resolution"}>{protectedPage(<BacAwardResolutionPage />)}</Route>
       <Route path={"/officer/transmittal-register"}>{protectedPage(<TransmittalRegisterPage />)}</Route>
       <Route path={"/officer/forecast"}>{protectedPage(<ForecastPage />)}</Route>
       <Route path={"/supplier-evaluations"}>{protectedPage(<SupplierEvaluationsPage />)}</Route>

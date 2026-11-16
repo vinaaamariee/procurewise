@@ -643,7 +643,7 @@ export function OfficialBacAbstractOfQuotations({
                     </Button>
                   </Link>
                   <Link
-                    href={`/officer/transmittals?tab=award_resolution&prId=${pr.id}&resNo=BAC-RES-AWARD-2026-${pr.prNumber.replace(/^PR-/, "")}&winningSupplier=${encodeURIComponent(supplierMap.get(winningQuote.supplierId)?.companyName || "")}&awardedAmount=${winningQuote.totalPrice}&rfqNo=${rfq?.rfqNumber || ""}&savings=${savings}`}
+                    href={`/officer/award-resolution?prId=${pr.id}&resNo=BAC-RES-AWARD-2026-${pr.prNumber.replace(/^PR-/, "")}&winningSupplier=${encodeURIComponent(supplierMap.get(winningQuote.supplierId)?.companyName || "")}&awardedAmount=${winningQuote.totalPrice}&rfqNo=${rfq?.rfqNumber || ""}&savings=${savings}`}
                   >
                     <Button
                       type="button"
