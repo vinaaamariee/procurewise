@@ -55,8 +55,223 @@ export function PrintTransmittalPage() {
 }
 
 export function PrintPreCanvassAbstractPage() {
-  const preCanvassId = useId("preCanvassId"); const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false }); const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false }); const abstract = dashboard.data?.abstractsOfCanvass.find((record) => record.preCanvassId === preCanvassId); const quotes = dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === preCanvassId) ?? [];
-  return <PrintShell title="ABSTRACT OF QUOTATION">{dashboard.isLoading ? <Loading /> : !abstract ? <NotFound /> : <div className="pt-7"><div className="flex items-start justify-between gap-4 border-b border-[#d8d1c4] pb-4 text-[11px] leading-5 text-[#3f4a57]"><div><p className="font-bold text-[#7b1e1e]">Annex F</p><p className="mt-2">( x ) Furnishing/delivery of supplies, materials or equipment</p><p>(   ) Furnishing labor, services, etc.</p><p>(   ) Rental or use of transportation facilities, equipment, quarters, rooms, lot or space, etc.</p></div><div className="text-right"><p>Bids opened at {abstract.openingLocation}</p><p>{new Date(abstract.openingDate).toLocaleDateString("en-PH")}</p><p className="mt-2">To be furnished at the <strong>{setup.data?.settings?.entityName || "[Agency / Institution Name]"}</strong></p></div></div><p className="mt-5 text-center text-xs font-bold text-[#3f4a57]">NAME OF ARTICLES OR SERVICES TO BE FURNISHED, RENDERED OR FACILITIES TO BE RENTED</p><div className="mt-4 grid gap-3 text-[11px] sm:grid-cols-3"><p><strong>Abstract No.:</strong> {abstract.abstractNumber}</p><p><strong>Category:</strong> {abstract.procurementCategory}</p><p><strong>Status:</strong> {abstract.status.toUpperCase()}</p></div><table className="mt-4 w-full border-collapse text-xs"><thead><tr className="bg-[#f9f1e0] text-left text-[#7b1e1e]"><th className="border border-[#ddd6ca] p-2">Supplier quotation comparison</th><th className="border border-[#ddd6ca] p-2">Total quotation</th><th className="border border-[#ddd6ca] p-2">Delivery</th><th className="border border-[#ddd6ca] p-2">Compliance</th></tr></thead><tbody>{quotes.map((quote) => <tr key={quote.id}><td className="border border-[#ddd6ca] p-2">{setup.data?.suppliers.find((supplier) => supplier.id === quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`}</td><td className="border border-[#ddd6ca] p-2">₱{Number(quote.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="border border-[#ddd6ca] p-2">{quote.deliveryDays} day(s)</td><td className="border border-[#ddd6ca] p-2">{quote.isCompliant ? "Compliant" : "Non-compliant"}</td></tr>)}</tbody></table><section className="mt-7 border-t border-[#d8d1c4] pt-5"><p className="text-xs font-bold text-[#7b1e1e]">CERTIFICATION / RECOMMENDATION</p><p className="mt-3 text-sm leading-7 text-[#3f4a57]">Recommended supplier: <strong>{setup.data?.suppliers.find((supplier) => supplier.id === abstract.recommendedSupplierId)?.companyName || `Supplier #${abstract.recommendedSupplierId}`}</strong></p><p className="mt-2 text-sm leading-7 text-[#3f4a57]">{abstract.recommendationReason}</p></section><div className="mt-16 grid grid-cols-2 gap-12 text-center text-xs text-[#566171]"><div className="border-t border-[#9f998f] pt-2">Prepared by Procurement / BAC</div><div className="border-t border-[#9f998f] pt-2">Recommended / approved by</div></div></div>}</PrintShell>;
+  const preCanvassId = useId("preCanvassId");
+  const rfqId = useId("rfqId");
+  const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
+  const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
+
+  if (rfqId) {
+    const rfq = dashboard.data?.rfqs.find((record) => record.id === rfqId);
+    const abstract = dashboard.data?.quotationAbstracts.find((record) => record.rfqId === rfqId);
+    const quotes = dashboard.data?.supplierQuotations.filter((quote) => quote.rfqId === rfqId) ?? [];
+    const pr = dashboard.data?.purchaseRequests.find((p) => p.id === rfq?.purchaseRequestId);
+    const items = dashboard.data?.purchaseRequestItems.filter((i) => i.purchaseRequestId === pr?.id) ?? [];
+    const openingAudit = dashboard.data?.auditEvents.find(
+      (a) => a.entityType === "rfq" && a.entityId === rfqId && a.action === "quotations_opened_by_bac_chairperson"
+    );
+    const openingDetails = openingAudit?.details as any;
+
+    const openingLocation = openingDetails?.openingLocation || "BAC Conference Room, Batanes State College";
+    const openingDate = openingDetails?.openingDate ? new Date(openingDetails.openingDate) : new Date();
+    const abstractNumber = `AOQ-${new Date().getFullYear()}-${String(rfqId).padStart(4, "0")}`;
+
+    return (
+      <PrintShell title="ABSTRACT OF QUOTATION / RATINGS (ANNEX F)">
+        {dashboard.isLoading ? (
+          <Loading />
+        ) : !rfq ? (
+          <NotFound />
+        ) : (
+          <div className="pt-7">
+            <div className="flex items-start justify-between gap-4 border-b border-[#d8d1c4] pb-4 text-[11px] leading-5 text-[#3f4a57]">
+              <div>
+                <p className="font-bold text-[#7b1e1e]">Annex F (R.A. 12009 / R.A. 9184 Standard)</p>
+                <p className="mt-2 font-semibold">Section 5.7.1 Abstract of Quotations / Ratings</p>
+                <p>( x ) Furnishing/delivery of supplies, materials or equipment</p>
+                <p>(   ) Furnishing labor, services, etc.</p>
+              </div>
+              <div className="text-right">
+                <p>Bids opened at: <strong>{openingLocation}</strong></p>
+                <p>Date of Opening: {openingDate.toLocaleDateString("en-PH")}</p>
+                <p>Presiding Official: <strong>{openingDetails?.chairpersonName || "DOREEN C. CASTILLO (BAC Chairperson)"}</strong></p>
+                <p className="mt-2">
+                  Procuring Entity: <strong>{setup.data?.settings?.entityName || "Batanes State College"}</strong>
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-5 text-center text-xs font-bold text-[#3f4a57] uppercase tracking-wide">
+              Comparative Matrix Setting Forth Responding Commercial Bidders & Price Quotations
+            </p>
+
+            <div className="mt-4 grid gap-3 text-[11px] sm:grid-cols-4">
+              <p><strong>Abstract No.:</strong> {abstractNumber}</p>
+              <p><strong>Linked RFQ:</strong> {rfq.rfqNumber}</p>
+              <p><strong>Linked PR:</strong> {pr?.prNumber || `PR #${rfq.purchaseRequestId}`}</p>
+              <p><strong>Status:</strong> {abstract?.status.toUpperCase() || "RECORDED"}</p>
+            </div>
+
+            {items.length > 0 && (
+              <div className="mt-4 border border-[#ddd6ca] rounded p-3 text-[11px] bg-neutral-50/50">
+                <p className="font-bold text-[#7b1e1e] mb-1">Approved Budget for the Contract (ABC) Particulars:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {items.map((it, idx) => (
+                    <li key={idx}>
+                      {it.description} — {it.quantity} {it.unit} @ ₱{Number(it.estimatedUnitCost).toLocaleString("en-PH", { minimumFractionDigits: 2 })} (Est. Total: ₱{(Number(it.quantity) * Number(it.estimatedUnitCost)).toLocaleString("en-PH", { minimumFractionDigits: 2 })})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <table className="mt-5 w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-[#f9f1e0] text-left text-[#7b1e1e]">
+                  <th className="border border-[#ddd6ca] p-2">Responding Supplier / Bidder</th>
+                  <th className="border border-[#ddd6ca] p-2 text-right">Total Price Quotation</th>
+                  <th className="border border-[#ddd6ca] p-2 text-center">Delivery Days</th>
+                  <th className="border border-[#ddd6ca] p-2 text-center">Responsiveness / Compliance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotes.map((quote) => {
+                  const supplier = setup.data?.suppliers.find((s) => s.id === quote.supplierId);
+                  const isRecommended = abstract?.recommendedSupplierId === quote.supplierId;
+                  return (
+                    <tr key={quote.id} className={isRecommended ? "bg-emerald-50/50 font-semibold" : ""}>
+                      <td className="border border-[#ddd6ca] p-2">
+                        <div>{supplier?.companyName || `Supplier #${quote.supplierId}`}</div>
+                        <div className="text-[10px] text-[#707c8a]">TIN: {supplier?.tin || "Registered"}</div>
+                        {isRecommended && (
+                          <span className="text-[9px] uppercase tracking-wide text-emerald-800 font-bold block mt-0.5">
+                            ★ Single or Lowest Calculated and Responsive Quotation (S/LCRQ)
+                          </span>
+                        )}
+                      </td>
+                      <td className="border border-[#ddd6ca] p-2 text-right font-mono">
+                        ₱{Number(quote.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="border border-[#ddd6ca] p-2 text-center">{quote.deliveryDays} day(s)</td>
+                      <td className="border border-[#ddd6ca] p-2 text-center">
+                        <span className={quote.isCompliant ? "text-emerald-800 font-bold" : "text-red-700"}>
+                          {quote.isCompliant ? "Compliant & Responsive" : "Non-compliant"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <section className="mt-7 border-t border-[#d8d1c4] pt-5">
+              <p className="text-xs font-bold text-[#7b1e1e]">BAC CERTIFICATION & AWARD RECOMMENDATION (STEP 5.8)</p>
+              <p className="mt-3 text-sm leading-7 text-[#3f4a57]">
+                We hereby certify that the above Abstract of Quotations is a true and correct record of bids opened on the date and place indicated. Award of contract is recommended in favor of{" "}
+                <strong>
+                  {setup.data?.suppliers.find((supplier) => supplier.id === abstract?.recommendedSupplierId)?.companyName ||
+                    `Supplier #${abstract?.recommendedSupplierId || quotes[0]?.supplierId}`}
+                </strong>{" "}
+                having submitted the Single or Lowest Calculated and Responsive Quotation (S/LCRQ).
+              </p>
+              {abstract?.recommendationReason && (
+                <p className="mt-2 text-xs italic text-[#65717e]">
+                  Award rationale: {abstract.recommendationReason}
+                </p>
+              )}
+            </section>
+
+            <div className="mt-16 grid grid-cols-2 gap-12 text-center text-xs text-[#566171]">
+              <div className="border-t border-[#9f998f] pt-2">
+                <p className="font-bold text-black uppercase">DOREEN C. CASTILLO</p>
+                <p>BAC Chairperson</p>
+              </div>
+              <div className="border-t border-[#9f998f] pt-2">
+                <p className="font-bold text-black uppercase">PHILIP ULYSSES T. CASTILLO</p>
+                <p>BAC Vice Chairperson</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </PrintShell>
+    );
+  }
+
+  const abstract = dashboard.data?.abstractsOfCanvass.find((record) => record.preCanvassId === preCanvassId);
+  const quotes = dashboard.data?.preCanvassQuotes.filter((quote) => quote.preCanvassId === preCanvassId) ?? [];
+  return (
+    <PrintShell title="ABSTRACT OF QUOTATION">
+      {dashboard.isLoading ? (
+        <Loading />
+      ) : !abstract ? (
+        <NotFound />
+      ) : (
+        <div className="pt-7">
+          <div className="flex items-start justify-between gap-4 border-b border-[#d8d1c4] pb-4 text-[11px] leading-5 text-[#3f4a57]">
+            <div>
+              <p className="font-bold text-[#7b1e1e]">Annex F</p>
+              <p className="mt-2">( x ) Furnishing/delivery of supplies, materials or equipment</p>
+              <p>(   ) Furnishing labor, services, etc.</p>
+              <p>(   ) Rental or use of transportation facilities, equipment, quarters, rooms, lot or space, etc.</p>
+            </div>
+            <div className="text-right">
+              <p>Bids opened at {abstract.openingLocation}</p>
+              <p>{new Date(abstract.openingDate).toLocaleDateString("en-PH")}</p>
+              <p className="mt-2">
+                To be furnished at the <strong>{setup.data?.settings?.entityName || "[Agency / Institution Name]"}</strong>
+              </p>
+            </div>
+          </div>
+          <p className="mt-5 text-center text-xs font-bold text-[#3f4a57]">
+            NAME OF ARTICLES OR SERVICES TO BE FURNISHED, RENDERED OR FACILITIES TO BE RENTED
+          </p>
+          <div className="mt-4 grid gap-3 text-[11px] sm:grid-cols-3">
+            <p><strong>Abstract No.:</strong> {abstract.abstractNumber}</p>
+            <p><strong>Category:</strong> {abstract.procurementCategory}</p>
+            <p><strong>Status:</strong> {abstract.status.toUpperCase()}</p>
+          </div>
+          <table className="mt-4 w-full border-collapse text-xs">
+            <thead>
+              <tr className="bg-[#f9f1e0] text-left text-[#7b1e1e]">
+                <th className="border border-[#ddd6ca] p-2">Supplier quotation comparison</th>
+                <th className="border border-[#ddd6ca] p-2">Total quotation</th>
+                <th className="border border-[#ddd6ca] p-2">Delivery</th>
+                <th className="border border-[#ddd6ca] p-2">Compliance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotes.map((quote) => (
+                <tr key={quote.id}>
+                  <td className="border border-[#ddd6ca] p-2">
+                    {setup.data?.suppliers.find((supplier) => supplier.id === quote.supplierId)?.companyName || `Supplier #${quote.supplierId}`}
+                  </td>
+                  <td className="border border-[#ddd6ca] p-2">
+                    ₱{Number(quote.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="border border-[#ddd6ca] p-2">{quote.deliveryDays} day(s)</td>
+                  <td className="border border-[#ddd6ca] p-2">{quote.isCompliant ? "Compliant" : "Non-compliant"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <section className="mt-7 border-t border-[#d8d1c4] pt-5">
+            <p className="text-xs font-bold text-[#7b1e1e]">CERTIFICATION / RECOMMENDATION</p>
+            <p className="mt-3 text-sm leading-7 text-[#3f4a57]">
+              Recommended supplier:{" "}
+              <strong>
+                {setup.data?.suppliers.find((supplier) => supplier.id === abstract.recommendedSupplierId)?.companyName ||
+                  `Supplier #${abstract.recommendedSupplierId}`}
+              </strong>
+            </p>
+            <p className="mt-2 text-sm leading-7 text-[#3f4a57]">{abstract.recommendationReason}</p>
+          </section>
+          <div className="mt-16 grid grid-cols-2 gap-12 text-center text-xs text-[#566171]">
+            <div className="border-t border-[#9f998f] pt-2">Prepared by Procurement / BAC</div>
+            <div className="border-t border-[#9f998f] pt-2">Recommended / approved by</div>
+          </div>
+        </div>
+      )}
+    </PrintShell>
+  );
 }
 
 export function PrintBacResolutionPage() {

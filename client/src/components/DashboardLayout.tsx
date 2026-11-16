@@ -241,8 +241,14 @@ export const NAV_ITEMS: NavItemConfig[] = [
       "procurement_officer",
       "procurement_officer_i",
       "procurement_officer_ii",
+      "bac",
+      "bac_secretariat",
       "admin",
     ],
+    roleLabels: {
+      bac: "Step 5.7: Abstract of Quotations (AOQ)",
+      bac_secretariat: "Step 5.7: Abstract of Quotations (AOQ)",
+    },
   },
   {
     id: "steps-4-6-rfq-philgeps",

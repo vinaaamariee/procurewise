@@ -3133,16 +3133,186 @@ export async function addSupplierQuotation(input: { rfqId: number; supplierId: n
   await writeAuditEvent({ entityType: "rfq", entityId: input.rfqId, action: "supplier_quotation_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
 
-export async function createQuotationAbstract(rfqId: number, user: User) {
+export async function createQuotationAbstract(
+  inputOrRfqId:
+    | number
+    | {
+        rfqId: number;
+        openingLocation?: string;
+        openingDate?: Date | string;
+        chairpersonName?: string;
+        recommendedSupplierId?: number;
+        recommendationReason?: string;
+      },
+  user: User
+) {
   const db = await requireDb();
+  const rfqId = typeof inputOrRfqId === "number" ? inputOrRfqId : inputOrRfqId.rfqId;
   const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
   if (quotes.length < 3) throw new Error("At least three supplier quotations are required before an Abstract of Quotation can be generated.");
   const compliant = quotes.filter((quote) => quote.isCompliant === 1).sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
-  const recommended = compliant[0];
-  if (!recommended) throw new Error("No compliant supplier quotation is available for recommendation.");
-  await db.insert(quotationAbstracts).values({ rfqId, recommendedSupplierId: recommended.supplierId, recommendationReason: "Lowest compliant quotation selected from the mandatory three-supplier canvass.", status: "recommended", preparedById: user.id });
+  const defaultRecommended = compliant[0];
+  if (!defaultRecommended) throw new Error("No compliant supplier quotation is available for recommendation.");
+
+  const recommendedSupplierId =
+    typeof inputOrRfqId === "object" && inputOrRfqId.recommendedSupplierId
+      ? inputOrRfqId.recommendedSupplierId
+      : defaultRecommended.supplierId;
+
+  const recommendationReason =
+    typeof inputOrRfqId === "object" && inputOrRfqId.recommendationReason
+      ? inputOrRfqId.recommendationReason
+      : "Lowest compliant quotation selected from the mandatory three-supplier canvass setting forth names and price quotations pursuant to Section 5.7.1.";
+
+  const openingLocation =
+    typeof inputOrRfqId === "object" && inputOrRfqId.openingLocation
+      ? inputOrRfqId.openingLocation
+      : "BAC Conference Room, Batanes State College";
+  const chairpersonName =
+    typeof inputOrRfqId === "object" && inputOrRfqId.chairpersonName
+      ? inputOrRfqId.chairpersonName
+      : "DOREEN C. CASTILLO";
+
+  const [existing] = await db.select().from(quotationAbstracts).where(eq(quotationAbstracts.rfqId, rfqId)).limit(1);
+  if (existing) {
+    await db
+      .update(quotationAbstracts)
+      .set({
+        recommendedSupplierId,
+        recommendationReason,
+        status: "recommended",
+        preparedById: user.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(quotationAbstracts.id, existing.id));
+  } else {
+    await db.insert(quotationAbstracts).values({
+      rfqId,
+      recommendedSupplierId,
+      recommendationReason,
+      status: "recommended",
+      preparedById: user.id,
+    });
+  }
   await db.update(rfqs).set({ status: "abstracted" }).where(eq(rfqs.id, rfqId));
-  await writeAuditEvent({ entityType: "rfq", entityId: rfqId, action: "quotation_abstract_generated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { recommendedSupplierId: recommended.supplierId } });
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: rfqId,
+    action: "quotation_abstract_generated",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      recommendedSupplierId,
+      section: "5.7.1",
+      openingLocation,
+      chairpersonName,
+      openedAt: new Date().toISOString(),
+    },
+  });
+  const [created] = await db.select().from(quotationAbstracts).where(eq(quotationAbstracts.rfqId, rfqId)).limit(1);
+  return created;
+}
+
+export async function forwardRfqToBacForAoq(
+  input: { rfqId: number; remarks?: string },
+  user: User
+) {
+  const db = await requireDb();
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (quotes.length < 3) {
+    throw new Error(`Mandatory canvass requirement: At least three (3) supplier quotations are required before forwarding to BAC (currently ${quotes.length}/3).`);
+  }
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, rfq.purchaseRequestId)).limit(1);
+
+  await db.update(rfqs).set({ status: "forwarded_to_bac" }).where(eq(rfqs.id, input.rfqId));
+
+  const transmittalNumber = `BAC-T-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(bacTransmittals).values({
+    transmittalNumber,
+    purchaseRequestId: rfq.purchaseRequestId,
+    fromOffice: "Procurement Unit",
+    toOffice: "Bids and Awards Committee Chairperson",
+    subject: `Transmittal of Quotation Envelopes for PR ${pr?.prNumber || rfq.rfqNumber} (Section 5.7.1)`,
+    remarks: input.remarks?.trim() || "After deadline for submission of quotations, forwarded to BAC Chairperson for opening and preparation of Abstract of Quotations pursuant to Section 5.7.1.",
+    status: "sent",
+    preparedById: user.id,
+    sentAt: new Date(),
+  });
+
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "forwarded_to_bac_for_aoq",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      section: "5.7.1",
+      rfqNumber: rfq.rfqNumber,
+      transmittalNumber,
+      quotationsCount: quotes.length,
+    },
+  });
+
+  await notifyRoles(["bac", "bac_secretariat"], {
+    kind: "action_required",
+    title: `Quotations Forwarded to BAC Chairperson (Section 5.7.1)`,
+    body: `Quotation envelopes for RFQ ${rfq.rfqNumber} (PR ${pr?.prNumber ?? ""}) forwarded to BAC Chairperson for opening and preparation of Abstract of Quotations.`,
+    entityType: "rfq",
+    entityId: input.rfqId,
+  });
+
+  return { success: true, rfqId: input.rfqId, status: "forwarded_to_bac", transmittalNumber };
+}
+
+export async function recordRfqQuotationOpening(
+  input: {
+    rfqId: number;
+    chairpersonName?: string;
+    openingLocation?: string;
+    openingDate?: Date | string;
+    attendees?: string[];
+    remarks?: string;
+  },
+  user: User
+) {
+  const db = await requireDb();
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (quotes.length < 3) throw new Error("At least three (3) supplier quotations are required for opening.");
+
+  const chairperson = input.chairpersonName?.trim() || "DOREEN C. CASTILLO";
+  const location = input.openingLocation?.trim() || "BAC Conference Room, Batanes State College";
+  const openedDate = input.openingDate ? new Date(input.openingDate) : new Date();
+
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "quotations_opened_by_bac_chairperson",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      section: "5.7.1",
+      chairpersonName: chairperson,
+      openingLocation: location,
+      openingDate: openedDate.toISOString(),
+      attendees: input.attendees || ["DOREEN C. CASTILLO", "PHILIP ULYSSES T. CASTILLO", "RHOUPHELINE AYA A. CADIZ", "FORTUNATO PHILIP A. CABUGAO", "EMILYN D. ALUETA", "MARIE FE E. PABLEO"],
+      remarks: input.remarks || "Quotation envelopes opened by BAC Chairperson pursuant to Section 5.7.1.",
+      quotationsCount: quotes.length,
+    },
+  });
+
+  const abstract = await createQuotationAbstract({
+    rfqId: input.rfqId,
+    openingLocation: location,
+    openingDate: openedDate,
+    chairpersonName: chairperson,
+    recommendationReason: input.remarks || "Lowest calculated and responsive quotation determined upon opening by BAC Chairperson pursuant to Section 5.7.1.",
+  }, user);
+
+  return { success: true, rfqId: input.rfqId, abstract };
 }
 
 export async function approveQuotationAbstract(rfqId: number, user: User) {

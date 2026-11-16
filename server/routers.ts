@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementCatalogItem, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, directLetterOfApprovalToPo, endorseBacResolution, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listAdminTestRecordPackages, listBacTransmittals, listDeliveryMonitoring, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listOfficerPrVerifications, listOfficerPurchaseOrders, listPendingSupplierEvaluationApprovals, listPhilgepsPostings, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listRfqDistributions, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordInspectionMilestone, recordPhilgepsPosting, recordPreCanvassResubmission, recordPurchaseRequestToPmr, releasePurchaseOrder, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, returnPurchaseRequestForRevision, saveBestValuePolicy, serveLetterOfNotice, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signPurchaseOrderContract, signSupplierEvaluation, submitPreCanvass, transmitRfqToBac, updateProcurementSettings, updateRfqDistribution, updateSupplierEvaluation, updateUserProcurementRole, updateUserOffice, updateMyOffice, verifyPurchaseRequestPackage } from "./db";
+import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementCatalogItem, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, directLetterOfApprovalToPo, endorseBacResolution, forwardRfqToBacForAoq, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, listAdminTestRecordPackages, listBacTransmittals, listDeliveryMonitoring, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listOfficerPrVerifications, listOfficerPurchaseOrders, listPendingSupplierEvaluationApprovals, listPhilgepsPostings, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listRfqDistributions, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordInspectionMilestone, recordPhilgepsPosting, recordPreCanvassResubmission, recordPurchaseRequestToPmr, recordRfqQuotationOpening, releasePurchaseOrder, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, returnPurchaseRequestForRevision, saveBestValuePolicy, serveLetterOfNotice, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signPurchaseOrderContract, signSupplierEvaluation, submitPreCanvass, transmitRfqToBac, updateProcurementSettings, updateRfqDistribution, updateSupplierEvaluation, updateUserProcurementRole, updateUserOffice, updateMyOffice, verifyPurchaseRequestPackage } from "./db";
 import { activateFormTemplate, assignPurchaseRequestOfficer, assignRfqNumber, getActiveFormTemplate, getEndUserPerformanceAnalytics, getHistoricalPriceAnalytics, getHistoricalPmrSummary, getPmrStatus, getPurchaseRequestHistory, listAuditTrails, listFormTemplates, listHistoricalPmrRecords, rejectPreCanvass, rejectPurchaseRequest, rejectRfq, restoreFormTemplateVersion, resubmitPurchaseRequest, returnPurchaseRequestForCorrection, saveFormTemplateDraft } from "./db";
 import { getSupabaseRealtimePublicConfig, publishProcurementRealtimeUpdate } from "./supabaseRealtime";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole, type PersistedUserRole } from "../shared/procurementRules";
@@ -298,7 +298,7 @@ export const appRouter = router({
         return result;
       }),
       createAbstract: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin", "bac", "bac_secretariat"]);
         const result = await createAbstractOfCanvass(input.preCanvassId, ctx.user);
         await notifyRoles(["administrative_approver"], { kind: "action_required", title: "Official Abstract awaiting BAC/HoPE decision", body: "Procurement Staff/BAC final canvass validation is complete and the official Abstract of Quotations is ready for BAC/HoPE review.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
@@ -306,7 +306,7 @@ export const appRouter = router({
         return result;
       }),
       decideAbstract: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive(), decision: z.enum(["approved", "rejected"]), remarks: z.string().max(1000).optional() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
         const result = await decideAbstractOfCanvass(input, ctx.user);
         await notifyRoles(["procurement_officer"], { kind: "status_change", title: `Official Abstract ${input.decision}`, body: input.remarks || "BAC/HoPE recorded a decision on the official Abstract of Quotations.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
@@ -329,7 +329,7 @@ export const appRouter = router({
         return resubmitPurchaseOrder(input.purchaseOrderId, ctx.user);
       }),
       calculateMcdm: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive() })).mutation(({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "bac", "bac_secretariat", "admin"]);
         return createMcdmRecommendation(input.preCanvassId, ctx.user);
       }),
       createRfqFromMcdm: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive() })).mutation(({ ctx, input }) => {
@@ -361,13 +361,49 @@ export const appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]);
         return addSupplierQuotation(input, ctx.user);
       }),
-      generateAbstract: protectedProcedure.input(z.object({ rfqId: z.number().int().positive() })).mutation(({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin"]);
-        return createQuotationAbstract(input.rfqId, ctx.user);
+      generateAbstract: protectedProcedure.input(z.object({
+        rfqId: z.number().int().positive(),
+        openingLocation: z.string().optional(),
+        openingDate: z.coerce.date().optional(),
+        chairpersonName: z.string().optional(),
+        recommendedSupplierId: z.number().int().positive().optional(),
+        recommendationReason: z.string().optional(),
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["bac", "bac_secretariat", "procurement_staff", "administrative_approver", "admin"]);
+        const result = await createQuotationAbstract(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
       }),
-      approveAbstract: protectedProcedure.input(z.object({ rfqId: z.number().int().positive() })).mutation(({ ctx, input }) => {
+      approveAbstract: protectedProcedure.input(z.object({
+        rfqId: z.number().int().positive(),
+        remarks: z.string().optional(),
+      })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
-        return approveQuotationAbstract(input.rfqId, ctx.user);
+        const result = await approveQuotationAbstract(input.rfqId, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
+      }),
+      forwardToBac: protectedProcedure.input(z.object({
+        rfqId: z.number().int().positive(),
+        remarks: z.string().optional(),
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "procurement_officer", "admin"]);
+        const result = await forwardRfqToBacForAoq(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
+      }),
+      recordOpening: protectedProcedure.input(z.object({
+        rfqId: z.number().int().positive(),
+        chairpersonName: z.string().optional(),
+        openingLocation: z.string().optional(),
+        openingDate: z.coerce.date().optional(),
+        attendees: z.array(z.string()).optional(),
+        remarks: z.string().optional(),
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["bac", "bac_secretariat", "admin"]);
+        const result = await recordRfqQuotationOpening(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
       }),
       createPurchaseOrder: protectedProcedure.input(z.object({
         rfqId: z.number().int().positive().optional(),

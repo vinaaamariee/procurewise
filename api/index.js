@@ -3002,26 +3002,58 @@ async function listRfqDistributions(user) {
   const audits = await db.select().from(auditTrails).where(eq(auditTrails.entityType, "rfq_distribution")).orderBy(desc(auditTrails.createdAt));
   return rfqList.map((rfq) => {
     const pr = prs.find((p) => p.id === rfq.purchaseRequestId) || null;
-    const transmittal = transmittals.find((t2) => t2.purchaseRequestId === rfq.purchaseRequestId) || null;
-    const audit = audits.find((a) => a.entityId === rfq.id);
-    const details = audit?.details || {};
+    const rfqAudits = audits.filter((a) => a.entityId === rfq.id);
+    const latestAudit = rfqAudits[0];
+    const latestDetails = latestAudit?.details || {};
+    const transmittedAudit = rfqAudits.find(
+      (a) => a.action === "transmitted_to_bac" || a.details?.status === "transmitted_to_bac"
+    );
+    const transmittalNumberFromAudit = transmittedAudit?.details?.transmittalNumber;
+    const rfqTransmittal = transmittals.find((t2) => {
+      if (t2.transmittalNumber.startsWith("BAC-RES-")) return false;
+      if (transmittalNumberFromAudit && t2.transmittalNumber === transmittalNumberFromAudit) return true;
+      if (t2.purchaseRequestId === rfq.purchaseRequestId && t2.transmittalNumber.startsWith("BAC-T-")) return true;
+      return false;
+    }) || null;
     let distributionStatus = "pending_distribution";
-    if (transmittal) {
+    if (transmittedAudit || rfqTransmittal) {
       distributionStatus = "transmitted_to_bac";
-    } else if (details.status === "retrieved") {
-      distributionStatus = "retrieved";
-    } else if (details.status === "distributed") {
-      distributionStatus = "distributed";
+    } else {
+      const retrievedAudit = rfqAudits.find(
+        (a) => a.action === "rfq_retrieved" || a.details?.status === "retrieved"
+      );
+      const distributedAudit = rfqAudits.find(
+        (a) => a.action === "rfq_distributed" || a.details?.status === "distributed"
+      );
+      if (retrievedAudit) {
+        distributionStatus = "retrieved";
+      } else if (distributedAudit) {
+        distributionStatus = "distributed";
+      } else if (latestDetails.status === "retrieved") {
+        distributionStatus = "retrieved";
+      } else if (latestDetails.status === "distributed") {
+        distributionStatus = "distributed";
+      } else {
+        distributionStatus = "pending_distribution";
+      }
     }
+    const distAudit = rfqAudits.find((a) => a.details?.canvasserName || a.details?.distributionDate);
+    const distDetails = distAudit?.details || {};
+    const retrAudit = rfqAudits.find((a) => a.details?.retrievalDate);
+    const retrDetails = retrAudit?.details || {};
+    const canvasserName = latestDetails.canvasserName || distDetails.canvasserName || null;
+    const distributionDate = latestDetails.distributionDate || distDetails.distributionDate || null;
+    const retrievalDate = latestDetails.retrievalDate || retrDetails.retrievalDate || null;
+    const remarks = latestDetails.remarks || distDetails.remarks || null;
     return {
       rfq,
       purchaseRequest: pr,
-      transmittal,
+      transmittal: distributionStatus === "transmitted_to_bac" ? rfqTransmittal : null,
       distributionStatus,
-      canvasserName: details.canvasserName || null,
-      distributionDate: details.distributionDate || null,
-      retrievalDate: details.retrievalDate || null,
-      remarks: details.remarks || null
+      canvasserName,
+      distributionDate,
+      retrievalDate,
+      remarks
     };
   });
 }
@@ -4360,16 +4392,131 @@ async function addSupplierQuotation(input, user) {
   await db.insert(supplierQuotations).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
   await writeAuditEvent({ entityType: "rfq", entityId: input.rfqId, action: "supplier_quotation_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
-async function createQuotationAbstract(rfqId, user) {
+async function createQuotationAbstract(inputOrRfqId, user) {
   const db = await requireDb();
+  const rfqId = typeof inputOrRfqId === "number" ? inputOrRfqId : inputOrRfqId.rfqId;
   const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
   if (quotes.length < 3) throw new Error("At least three supplier quotations are required before an Abstract of Quotation can be generated.");
   const compliant = quotes.filter((quote) => quote.isCompliant === 1).sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
-  const recommended = compliant[0];
-  if (!recommended) throw new Error("No compliant supplier quotation is available for recommendation.");
-  await db.insert(quotationAbstracts).values({ rfqId, recommendedSupplierId: recommended.supplierId, recommendationReason: "Lowest compliant quotation selected from the mandatory three-supplier canvass.", status: "recommended", preparedById: user.id });
+  const defaultRecommended = compliant[0];
+  if (!defaultRecommended) throw new Error("No compliant supplier quotation is available for recommendation.");
+  const recommendedSupplierId = typeof inputOrRfqId === "object" && inputOrRfqId.recommendedSupplierId ? inputOrRfqId.recommendedSupplierId : defaultRecommended.supplierId;
+  const recommendationReason = typeof inputOrRfqId === "object" && inputOrRfqId.recommendationReason ? inputOrRfqId.recommendationReason : "Lowest compliant quotation selected from the mandatory three-supplier canvass setting forth names and price quotations pursuant to Section 5.7.1.";
+  const openingLocation = typeof inputOrRfqId === "object" && inputOrRfqId.openingLocation ? inputOrRfqId.openingLocation : "BAC Conference Room, Batanes State College";
+  const chairpersonName = typeof inputOrRfqId === "object" && inputOrRfqId.chairpersonName ? inputOrRfqId.chairpersonName : "DOREEN C. CASTILLO";
+  const [existing] = await db.select().from(quotationAbstracts).where(eq(quotationAbstracts.rfqId, rfqId)).limit(1);
+  if (existing) {
+    await db.update(quotationAbstracts).set({
+      recommendedSupplierId,
+      recommendationReason,
+      status: "recommended",
+      preparedById: user.id,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(quotationAbstracts.id, existing.id));
+  } else {
+    await db.insert(quotationAbstracts).values({
+      rfqId,
+      recommendedSupplierId,
+      recommendationReason,
+      status: "recommended",
+      preparedById: user.id
+    });
+  }
   await db.update(rfqs).set({ status: "abstracted" }).where(eq(rfqs.id, rfqId));
-  await writeAuditEvent({ entityType: "rfq", entityId: rfqId, action: "quotation_abstract_generated", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { recommendedSupplierId: recommended.supplierId } });
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: rfqId,
+    action: "quotation_abstract_generated",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      recommendedSupplierId,
+      section: "5.7.1",
+      openingLocation,
+      chairpersonName,
+      openedAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+  const [created] = await db.select().from(quotationAbstracts).where(eq(quotationAbstracts.rfqId, rfqId)).limit(1);
+  return created;
+}
+async function forwardRfqToBacForAoq(input, user) {
+  const db = await requireDb();
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (quotes.length < 3) {
+    throw new Error(`Mandatory canvass requirement: At least three (3) supplier quotations are required before forwarding to BAC (currently ${quotes.length}/3).`);
+  }
+  const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, rfq.purchaseRequestId)).limit(1);
+  await db.update(rfqs).set({ status: "forwarded_to_bac" }).where(eq(rfqs.id, input.rfqId));
+  const transmittalNumber = `BAC-T-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
+  await db.insert(bacTransmittals).values({
+    transmittalNumber,
+    purchaseRequestId: rfq.purchaseRequestId,
+    fromOffice: "Procurement Unit",
+    toOffice: "Bids and Awards Committee Chairperson",
+    subject: `Transmittal of Quotation Envelopes for PR ${pr?.prNumber || rfq.rfqNumber} (Section 5.7.1)`,
+    remarks: input.remarks?.trim() || "After deadline for submission of quotations, forwarded to BAC Chairperson for opening and preparation of Abstract of Quotations pursuant to Section 5.7.1.",
+    status: "sent",
+    preparedById: user.id,
+    sentAt: /* @__PURE__ */ new Date()
+  });
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "forwarded_to_bac_for_aoq",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      section: "5.7.1",
+      rfqNumber: rfq.rfqNumber,
+      transmittalNumber,
+      quotationsCount: quotes.length
+    }
+  });
+  await notifyRoles(["bac", "bac_secretariat"], {
+    kind: "action_required",
+    title: `Quotations Forwarded to BAC Chairperson (Section 5.7.1)`,
+    body: `Quotation envelopes for RFQ ${rfq.rfqNumber} (PR ${pr?.prNumber ?? ""}) forwarded to BAC Chairperson for opening and preparation of Abstract of Quotations.`,
+    entityType: "rfq",
+    entityId: input.rfqId
+  });
+  return { success: true, rfqId: input.rfqId, status: "forwarded_to_bac", transmittalNumber };
+}
+async function recordRfqQuotationOpening(input, user) {
+  const db = await requireDb();
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (quotes.length < 3) throw new Error("At least three (3) supplier quotations are required for opening.");
+  const chairperson = input.chairpersonName?.trim() || "DOREEN C. CASTILLO";
+  const location = input.openingLocation?.trim() || "BAC Conference Room, Batanes State College";
+  const openedDate = input.openingDate ? new Date(input.openingDate) : /* @__PURE__ */ new Date();
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "quotations_opened_by_bac_chairperson",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      section: "5.7.1",
+      chairpersonName: chairperson,
+      openingLocation: location,
+      openingDate: openedDate.toISOString(),
+      attendees: input.attendees || ["DOREEN C. CASTILLO", "PHILIP ULYSSES T. CASTILLO", "RHOUPHELINE AYA A. CADIZ", "FORTUNATO PHILIP A. CABUGAO", "EMILYN D. ALUETA", "MARIE FE E. PABLEO"],
+      remarks: input.remarks || "Quotation envelopes opened by BAC Chairperson pursuant to Section 5.7.1.",
+      quotationsCount: quotes.length
+    }
+  });
+  const abstract = await createQuotationAbstract({
+    rfqId: input.rfqId,
+    openingLocation: location,
+    openingDate: openedDate,
+    chairpersonName: chairperson,
+    recommendationReason: input.remarks || "Lowest calculated and responsive quotation determined upon opening by BAC Chairperson pursuant to Section 5.7.1."
+  }, user);
+  return { success: true, rfqId: input.rfqId, abstract };
 }
 async function approveQuotationAbstract(rfqId, user) {
   const db = await requireDb();
@@ -7041,7 +7188,7 @@ var appRouter = router({
         return result;
       }),
       createAbstract: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin", "bac", "bac_secretariat"]);
         const result = await createAbstractOfCanvass(input.preCanvassId, ctx.user);
         await notifyRoles(["administrative_approver"], { kind: "action_required", title: "Official Abstract awaiting BAC/HoPE decision", body: "Procurement Staff/BAC final canvass validation is complete and the official Abstract of Quotations is ready for BAC/HoPE review.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
@@ -7049,7 +7196,7 @@ var appRouter = router({
         return result;
       }),
       decideAbstract: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive(), decision: z2.enum(["approved", "rejected"]), remarks: z2.string().max(1e3).optional() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
         const result = await decideAbstractOfCanvass(input, ctx.user);
         await notifyRoles(["procurement_officer"], { kind: "status_change", title: `Official Abstract ${input.decision}`, body: input.remarks || "BAC/HoPE recorded a decision on the official Abstract of Quotations.", entityType: "pre_canvass", entityId: input.preCanvassId });
         void publishProcurementRealtimeUpdate("pre_canvass");
@@ -7072,7 +7219,7 @@ var appRouter = router({
         return resubmitPurchaseOrder(input.purchaseOrderId, ctx.user);
       }),
       calculateMcdm: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive() })).mutation(({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "bac", "bac_secretariat", "admin"]);
         return createMcdmRecommendation(input.preCanvassId, ctx.user);
       }),
       createRfqFromMcdm: protectedProcedure.input(z2.object({ preCanvassId: z2.number().int().positive() })).mutation(({ ctx, input }) => {
@@ -7104,13 +7251,49 @@ var appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]);
         return addSupplierQuotation(input, ctx.user);
       }),
-      generateAbstract: protectedProcedure.input(z2.object({ rfqId: z2.number().int().positive() })).mutation(({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "administrative_approver", "admin"]);
-        return createQuotationAbstract(input.rfqId, ctx.user);
+      generateAbstract: protectedProcedure.input(z2.object({
+        rfqId: z2.number().int().positive(),
+        openingLocation: z2.string().optional(),
+        openingDate: z2.coerce.date().optional(),
+        chairpersonName: z2.string().optional(),
+        recommendedSupplierId: z2.number().int().positive().optional(),
+        recommendationReason: z2.string().optional()
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["bac", "bac_secretariat", "procurement_staff", "administrative_approver", "admin"]);
+        const result = await createQuotationAbstract(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
       }),
-      approveAbstract: protectedProcedure.input(z2.object({ rfqId: z2.number().int().positive() })).mutation(({ ctx, input }) => {
+      approveAbstract: protectedProcedure.input(z2.object({
+        rfqId: z2.number().int().positive(),
+        remarks: z2.string().optional()
+      })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
-        return approveQuotationAbstract(input.rfqId, ctx.user);
+        const result = await approveQuotationAbstract(input.rfqId, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
+      }),
+      forwardToBac: protectedProcedure.input(z2.object({
+        rfqId: z2.number().int().positive(),
+        remarks: z2.string().optional()
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "procurement_officer", "admin"]);
+        const result = await forwardRfqToBacForAoq(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
+      }),
+      recordOpening: protectedProcedure.input(z2.object({
+        rfqId: z2.number().int().positive(),
+        chairpersonName: z2.string().optional(),
+        openingLocation: z2.string().optional(),
+        openingDate: z2.coerce.date().optional(),
+        attendees: z2.array(z2.string()).optional(),
+        remarks: z2.string().optional()
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["bac", "bac_secretariat", "admin"]);
+        const result = await recordRfqQuotationOpening(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
       }),
       createPurchaseOrder: protectedProcedure.input(z2.object({
         rfqId: z2.number().int().positive().optional(),

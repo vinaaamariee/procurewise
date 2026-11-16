@@ -12,12 +12,13 @@ export function getNotificationDestination(entityType: string, assignedRole: str
     case "rfq":
     case "rfq_distribution":
       if (isOfficer) return "/officer/rfq-distribution";
+      if (role === "bac" || role === "bac_secretariat") return "/rfq-management";
       return role === "procurement_staff" ? "/rfq-management" : "/rfq";
     case "pre_canvass":
       return role === "end_user" ? "/rfq" : "/rfq-management";
     case "abstract_of_canvass":
     case "quotation_abstract":
-      return "/purchase-orders";
+      return role === "bac" || role === "bac_secretariat" ? "/rfq-management" : "/purchase-orders";
     case "bac_transmittal":
       return "/officer/transmittals";
     case "letter_of_notice":
