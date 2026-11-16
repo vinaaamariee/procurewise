@@ -376,11 +376,17 @@ export const appRouter = router({
       }),
       approveAbstract: protectedProcedure.input(z.object({
         rfqId: z.number().int().positive(),
+        resolutionNumber: z.string().optional(),
+        winningSupplierId: z.number().int().positive().optional(),
+        winningSupplierName: z.string().optional(),
+        awardedAmount: z.number().positive().optional(),
         remarks: z.string().optional(),
       })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
-        const result = await approveQuotationAbstract(input.rfqId, ctx.user);
+        const result = await approveQuotationAbstract(input.rfqId, ctx.user, input);
         void publishProcurementRealtimeUpdate("rfq");
+        void publishProcurementRealtimeUpdate("purchase_request");
+        void publishProcurementRealtimeUpdate("bac_transmittal");
         return result;
       }),
       forwardToBac: protectedProcedure.input(z.object({
@@ -816,6 +822,11 @@ export const appRouter = router({
           purposeOrItems: z.string().min(3).max(4000),
           endUserName: z.string().max(180).optional(),
           remarks: z.string().max(3000).optional(),
+          resolutionType: z.enum(["mode_of_procurement", "award_of_contract"]).optional(),
+          winningSupplierId: z.number().int().positive().optional(),
+          winningSupplierName: z.string().optional(),
+          awardedAmount: z.number().positive().optional(),
+          rfqId: z.number().int().positive().optional(),
         })).mutation(({ ctx, input }) => {
           assertRole(ctx.user.role, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "supply_officer", "procurement_staff", "bac", "bac_secretariat", "administrative_approver", "hope", "budget_officer", "end_user", "admin"]);
           return endorseBacResolution(input, ctx.user);

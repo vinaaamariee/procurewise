@@ -383,7 +383,7 @@ export function resolvePrimaryTask(
       explanation:
         "Generate the official Purchase Order (Annex H) from the approved Abstract of Quotations so the Budget Officer and College President can sign it.",
       primaryCtaLabel: "Prepare Purchase Order Now →",
-      primaryCtaUrl: "/po",
+      primaryCtaUrl: "/purchase-orders",
       primaryCtaIcon: "arrow",
       secondaryCtaLabel: "Preview Attached Form Copy",
       secondaryCtaUrl: "/pmr-archiving",
@@ -404,10 +404,10 @@ export function resolvePrimaryTask(
         explanation:
           "Serve the signed Letter of Notice to the winning supplier and record their acknowledgment signature before Purchase Order preparation.",
         primaryCtaLabel: "Serve Letter of Notice Now →",
-        primaryCtaUrl: "/officer-releasing",
+        primaryCtaUrl: "/officer/releasing",
         primaryCtaIcon: "arrow",
         secondaryCtaLabel: "Preview Attached Form Copy",
-        secondaryCtaUrl: "/letter-of-notice",
+        secondaryCtaUrl: "/officer/notices",
         secondaryCtaIcon: "eye",
         pendingTaskCount: awardedPendingPoList.length + poReleasedList.length,
         targetRequestId: topAward.id,
@@ -456,23 +456,40 @@ export function resolvePrimaryTask(
       };
     }
 
+    if (canvassingList.length > 0) {
+      const topCanvass = canvassingList[0];
+      return {
+        roleLabel,
+        urgencyLabel: "Needs Your Attention Today · Step 5.8",
+        stepNumber: "Step 5.8",
+        title: `Recommend Award of Contract to HoPE for Request #${topCanvass.prNumber}`,
+        explanation:
+          "The BAC evaluates the Abstract of Quotations and recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
+        primaryCtaLabel: "Recommend Award to HoPE Now →",
+        primaryCtaUrl: "/officer/transmittals",
+        primaryCtaIcon: "arrow",
+        secondaryCtaLabel: "AOQ Tabulation Workbench",
+        secondaryCtaUrl: "/rfq-management",
+        secondaryCtaIcon: "eye",
+        pendingTaskCount: canvassingList.length,
+        targetRequestId: topCanvass.id,
+      };
+    }
+
     return {
       roleLabel,
-      urgencyLabel: "Needs Your Attention Today · Step 5.7",
-      stepNumber: "Step 5.7",
-      title:
-        canvassingList.length > 0
-          ? `Tabulate Abstract of Quotations (AOQ) for Request #${canvassingList[0].prNumber}`
-          : "Evaluate Sealed Quotations & Tabulate Abstract of Quotations (Annex F)",
+      urgencyLabel: "Needs Your Attention Today · Step 5.8",
+      stepNumber: "Step 5.8",
+      title: "Evaluate Sealed Quotations & Recommend Award of Contract (Annex F / Step 5.8)",
       explanation:
-        "Open the three received supplier price quotations, compare prices against the Approved Budget for the Contract (ABC), and sign the Abstract of Quotations (Annex F).",
-      primaryCtaLabel: "Open AOQ Tabulation Workbench →",
-      primaryCtaUrl: "/rfq-management",
+        "The BAC evaluates quotations in the Abstract of Quotations and formally recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (Section 5.8.1).",
+      primaryCtaLabel: "Open BAC Resolutions & Transmittals →",
+      primaryCtaUrl: "/officer/transmittals",
       primaryCtaIcon: "arrow",
       secondaryCtaLabel: "BAC Transmittals Register",
       secondaryCtaUrl: "/officer/transmittal-register",
       secondaryCtaIcon: "eye",
-      pendingTaskCount: canvassingList.length,
+      pendingTaskCount: 0,
     };
   }
 
@@ -511,10 +528,10 @@ export function resolvePrimaryTask(
     explanation:
       "The BAC and Budget Officer have completed evaluation and funds certification. Your executive signature authorizes the Notice of Award (Annex G) and Purchase Order (Annex H).",
     primaryCtaLabel: "Approve & Sign Award Now →",
-    primaryCtaUrl: "/po",
+    primaryCtaUrl: "/purchase-orders",
     primaryCtaIcon: "check",
     secondaryCtaLabel: "Preview Attached Form Copy",
-    secondaryCtaUrl: "/letter-of-notice",
+    secondaryCtaUrl: "/officer/notices",
     secondaryCtaIcon: "eye",
     pendingTaskCount: awardedPendingPoList.length + pendingBacList.length,
     targetRequestId: hopeTarget?.id,

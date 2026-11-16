@@ -278,11 +278,16 @@ export function PrintBacResolutionPage() {
   const [, setLocation] = useLocation();
   const search = new URLSearchParams(useSearch());
   const prId = Number(search.get("prId") || 0);
-  const resNo = search.get("resNo") || "2601-GAS2-009";
+  const category = (search.get("category") as "mode_of_procurement" | "award_of_contract") || "mode_of_procurement";
+  const resNo = search.get("resNo") || (category === "award_of_contract" ? "BAC-RES-AWARD-2026-001" : "2601-GAS2-009");
   const mode = search.get("mode") || "Small Value Procurement";
   const evalMode = (search.get("evalMode") as "lot_basis" | "per_item") || "lot_basis";
   const customAbc = search.get("abc");
   const customPurpose = search.get("purpose");
+  const winningSupplier = search.get("winningSupplier") || undefined;
+  const awardedAmount = search.get("awardedAmount") ? Number(search.get("awardedAmount")) : undefined;
+  const savings = search.get("savings") ? Number(search.get("savings")) : undefined;
+  const rfqNo = search.get("rfqNo") || undefined;
 
   const initialDocType = (search.get("docType") as "resolution" | "hope_approval" | "both") || "resolution";
   const [docType, setDocType] = useState<"resolution" | "hope_approval" | "both">(initialDocType);
@@ -325,14 +330,21 @@ export function PrintBacResolutionPage() {
             ? "Print HoPE Approval Letter"
             : docType === "both"
             ? "Print Full Package (Both Documents)"
+            : category === "award_of_contract"
+            ? "Print Award Resolution (5.8)"
             : "Print Official BAC Resolution"}
         </Button>
       </div>
       <OfficialBacResolutionCanvas
         documentType={docType}
         onDocumentTypeChange={setDocType}
+        resolutionCategory={category}
         resolutionNumber={resNo}
         prNumber={prNumber}
+        rfqNumber={rfqNo}
+        winningSupplierName={winningSupplier}
+        winningQuotationAmount={awardedAmount}
+        savingsAmount={savings}
         purposeOrItems={purposeOrItems}
         approvedBudget={approvedBudget}
         modeOfProcurement={mode}

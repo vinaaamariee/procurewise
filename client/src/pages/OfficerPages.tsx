@@ -9,14 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, FileCheck, FilePlus2, FileText, Filter, LineChart as LineChartIcon, LoaderCircle, Printer, RefreshCw, ScrollText, Search, Send, SendHorizontal, Star } from "lucide-react";
+import { Award, CheckCircle2, FileCheck, FilePlus2, FileSpreadsheet, FileText, Filter, LineChart as LineChartIcon, LoaderCircle, Printer, RefreshCw, ScrollText, Search, Send, SendHorizontal, Star } from "lucide-react";
 import { SupplierEvaluationPreviewModal, type SupplierEvaluationFormData } from "@/components/SupplierEvaluationDocument";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { DEFAULT_BSC_BAC_MEMBERS, OfficialBacResolutionCanvas, type BacSignatory } from "@/components/OfficialBacResolutionCanvas";
+import { OfficialBacAbstractOfQuotations } from "@/components/OfficialBacAbstractOfQuotations";
 import { useEffect, useMemo, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const statusTone = (status: string) => status === "issued" || status === "sent" || status === "acknowledged" ? "approved" : status === "cancelled" ? "returned" : "draft";
 const money = (value: string | number) => `₱${Number(value).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -41,21 +42,79 @@ export function TransmittalsPage() {
   const [, setLocation] = useLocation();
 
   // Active workspace tab
-  const [activeTab, setActiveTab] = useState<"resolution" | "transmittals">(() => {
+  const [activeTab, setActiveTab] = useState<"resolution" | "transmittals" | "aoq">(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
       if (search.get("tab") === "transmittals") return "transmittals";
+      if (search.get("tab") === "aoq") return "aoq";
     }
     return "resolution";
   });
+  const [selectedAoqRfqId, setSelectedAoqRfqId] = useState<number | undefined>(undefined);
 
   // BAC Resolution State
-  const [selectedPrId, setSelectedPrId] = useState<string>("");
+  const [resolutionCategory, setResolutionCategory] = useState<"mode_of_procurement" | "award_of_contract">(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      if (search.get("category") === "award_of_contract") return "award_of_contract";
+    }
+    return "mode_of_procurement";
+  });
+
+  const [selectedPrId, setSelectedPrId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      return search.get("prId") || "";
+    }
+    return "";
+  });
+
   const [customPrNumber, setCustomPrNumber] = useState<string>("2026-009");
-  const [resolutionNumber, setResolutionNumber] = useState<string>("2601-GAS2-009");
+  const [resolutionNumber, setResolutionNumber] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      return search.get("resNo") || "2601-GAS2-009";
+    }
+    return "2601-GAS2-009";
+  });
+
   const [modeOfProcurement, setModeOfProcurement] = useState<string>("Small Value Procurement");
   const [evaluationMode, setEvaluationMode] = useState<"lot_basis" | "per_item">("lot_basis");
   const [approvedBudget, setApprovedBudget] = useState<number>(53600);
+  const [winningSupplierName, setWinningSupplierName] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      return search.get("winningSupplier") || "Basco General Merchandise";
+    }
+    return "Basco General Merchandise";
+  });
+
+  const [winningQuotationAmount, setWinningQuotationAmount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      const val = Number(search.get("awardedAmount"));
+      return val > 0 ? val : 48500;
+    }
+    return 48500;
+  });
+
+  const [savingsAmount, setSavingsAmount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      const val = Number(search.get("savings"));
+      return val > 0 ? val : 5100;
+    }
+    return 5100;
+  });
+
+  const [rfqNumber, setRfqNumber] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      return search.get("rfqNo") || "";
+    }
+    return "";
+  });
+
   const [purposeOrItems, setPurposeOrItems] = useState<string>(
     "AM snacks (Burger and Canned Juice/Soda), Packed Meals (Pork,Chicken,Veggie,Rice,Dessert,and Drinking Water),and PM Snacks (Special spaghetti and Canned Juice/ Soda)--Snacks and meals for the evaluation and interview of applicants for private sector representative (PSR)."
   );
@@ -97,8 +156,26 @@ export function TransmittalsPage() {
       }
       if (pr.requestedSignatoryName) setEndUserName(pr.requestedSignatoryName);
       else if (pr.requesterDesignation) setEndUserName(pr.requesterDesignation);
+
+      // Check if there is an active RFQ & Abstract for this PR
+      const linkedRfq = (dashboard.data?.rfqs ?? []).find((r) => r.purchaseRequestId === pr.id);
+      if (linkedRfq) {
+        setRfqNumber(linkedRfq.rfqNumber);
+        const quotes = (dashboard.data?.supplierQuotations ?? []).filter((q) => q.rfqId === linkedRfq.id);
+        const compliantQuotes = quotes.filter((q) => q.isCompliant === 1 || q.isCompliant === (true as any));
+        const sorted = [...compliantQuotes].sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
+        const lowest = sorted[0];
+        if (lowest) {
+          const supplier = (setup.data?.suppliers ?? []).find((s) => s.id === lowest.supplierId);
+          if (supplier) setWinningSupplierName(supplier.companyName);
+          const winPrice = Number(lowest.totalPrice);
+          setWinningQuotationAmount(winPrice);
+          const abc = Number(pr.totalEstimate) || approvedBudget;
+          setSavingsAmount(Math.max(0, abc - winPrice));
+        }
+      }
     }
-  }, [prDetailQuery.data]);
+  }, [prDetailQuery.data, dashboard.data?.rfqs, dashboard.data?.supplierQuotations, setup.data?.suppliers, approvedBudget]);
 
   // General Transmittal State
   const [transmittalPrId, setTransmittalPrId] = useState("");
@@ -226,6 +303,7 @@ export function TransmittalsPage() {
 
   const handlePrintResolution = () => {
     const params = new URLSearchParams({
+      category: resolutionCategory,
       prId: selectedPrId || "0",
       prNo: customPrNumber,
       resNo: resolutionNumber,
@@ -235,6 +313,10 @@ export function TransmittalsPage() {
       purpose: purposeOrItems,
       endUser: endUserName,
       docType: docType,
+      winningSupplier: winningSupplierName,
+      awardedAmount: String(winningQuotationAmount),
+      savings: String(savingsAmount),
+      rfqNo: rfqNumber,
     });
     setLocation(`/print/bac-resolution?${params.toString()}`);
   };
@@ -263,6 +345,9 @@ export function TransmittalsPage() {
       purposeOrItems: purposeOrItems.trim(),
       endUserName: endUserName.trim() || undefined,
       remarks: remarks.trim() || undefined,
+      resolutionType: resolutionCategory,
+      winningSupplierName: resolutionCategory === "award_of_contract" ? winningSupplierName : undefined,
+      awardedAmount: resolutionCategory === "award_of_contract" ? winningQuotationAmount : undefined,
     });
   };
 
@@ -299,6 +384,13 @@ export function TransmittalsPage() {
           >
             <SendHorizontal className="h-4 w-4" />
             BAC Transmittals Register ({transmittals.data?.length ?? 0})
+          </TabsTrigger>
+          <TabsTrigger
+            value="aoq"
+            className="flex items-center gap-2 data-[state=active]:bg-[#7b1e1e] data-[state=active]:text-white dark:data-[state=active]:bg-[#7b1e1e] dark:data-[state=active]:text-white text-stone-700 dark:text-stone-300 font-medium text-xs px-4 py-2"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Step 5.7.1: Opening & Abstract of Quotations (AOQ)
           </TabsTrigger>
         </TabsList>
 
@@ -345,6 +437,67 @@ export function TransmittalsPage() {
                 </div>
 
                 <form onSubmit={handleEndorse} className="space-y-4 w-full min-w-0">
+                  <Field label="Resolution Category / Statutory Step">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={resolutionCategory === "mode_of_procurement" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setResolutionCategory("mode_of_procurement")}
+                        className={cn(
+                          "h-8 text-xs font-semibold",
+                          resolutionCategory === "mode_of_procurement"
+                            ? "bg-[#7b1e1e] text-white"
+                            : "text-stone-700 dark:text-stone-300"
+                        )}
+                      >
+                        <ScrollText className="mr-1.5 h-3.5 w-3.5" />
+                        Step 5.3: Mode of Procurement
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={resolutionCategory === "award_of_contract" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setResolutionCategory("award_of_contract")}
+                        className={cn(
+                          "h-8 text-xs font-semibold",
+                          resolutionCategory === "award_of_contract"
+                            ? "bg-[#7b1e1e] text-white"
+                            : "text-stone-700 dark:text-stone-300"
+                        )}
+                      >
+                        <Award className="mr-1.5 h-3.5 w-3.5" />
+                        Step 5.8: Award of Contract
+                      </Button>
+                    </div>
+                  </Field>
+
+                  {resolutionCategory === "award_of_contract" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0 bg-emerald-50/60 dark:bg-emerald-950/20 p-3 rounded-lg border border-emerald-300/70 dark:border-emerald-800/60">
+                      <Field label="Winning Supplier (S/LCRQ) *">
+                        <Input
+                          value={winningSupplierName}
+                          onChange={(e) => setWinningSupplierName(e.target.value)}
+                          placeholder="Supplier with Single/Lowest Calculated Bid"
+                          className="h-9 text-xs font-semibold text-emerald-950 dark:text-emerald-100 w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                          required
+                        />
+                      </Field>
+                      <Field label="Offered Contract Price (₱) *">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={winningQuotationAmount}
+                          onChange={(e) => setWinningQuotationAmount(Number(e.target.value))}
+                          placeholder="48500.00"
+                          className="h-9 text-xs font-semibold text-emerald-800 dark:text-emerald-300 font-mono w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                          required
+                        />
+                      </Field>
+                    </div>
+                  )}
+
                   <Field label="Document to Prepare & Preview">
                     <Select value={docType} onValueChange={(val: any) => setDocType(val)}>
                       <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-[#fffaf0] dark:bg-[#251d1a] border-[#ecdcc0] dark:border-[#4d2d25] font-semibold text-[#7b1e1e] dark:text-[#fca5a5]">
@@ -627,14 +780,20 @@ export function TransmittalsPage() {
 
               <div className="overflow-x-auto max-h-[850px] overflow-y-auto rounded-lg border border-neutral-300 dark:border-neutral-700 shadow-inner bg-neutral-200/50 dark:bg-[#10151c] p-4">
                 <OfficialBacResolutionCanvas
+                  resolutionCategory={resolutionCategory}
+                  onCategoryChange={setResolutionCategory}
                   documentType={docType}
                   onDocumentTypeChange={setDocType}
                   resolutionNumber={resolutionNumber}
                   prNumber={customPrNumber}
+                  rfqNumber={rfqNumber}
                   purposeOrItems={purposeOrItems}
                   approvedBudget={approvedBudget}
                   modeOfProcurement={modeOfProcurement}
                   evaluationMode={evaluationMode}
+                  winningSupplierName={winningSupplierName}
+                  winningQuotationAmount={winningQuotationAmount}
+                  savingsAmount={savingsAmount}
                   entityName={entityName}
                   dateResolved={dateResolved}
                   collegePresidentName={collegePresidentName}
@@ -643,11 +802,14 @@ export function TransmittalsPage() {
                   endUserName={endUserName}
                   editable={isDirectCanvasEdit}
                   onFieldChange={(field, val) => {
+                    if (field === "resolutionCategory") setResolutionCategory(val);
                     if (field === "documentType") setDocType(val);
                     if (field === "resolutionNumber") setResolutionNumber(val);
                     if (field === "prNumber") setCustomPrNumber(val);
                     if (field === "approvedBudget") setApprovedBudget(val);
                     if (field === "purposeOrItems") setPurposeOrItems(val);
+                    if (field === "winningSupplierName") setWinningSupplierName(val);
+                    if (field === "winningQuotationAmount") setWinningQuotationAmount(Number(val));
                     if (field === "entityName") setEntityName(val);
                     if (field === "collegePresidentName") setCollegePresidentName(val);
                     if (field === "collegePresidentDesignation") setCollegePresidentDesignation(val);
@@ -883,6 +1045,69 @@ export function TransmittalsPage() {
               <p className="p-8 text-center text-[11px] text-[#77818d]">No BAC Transmittals have been created.</p>
             )}
           </section>
+        </TabsContent>
+
+        {/* TAB 3: STEP 5.7.1 BAC OPENING & ABSTRACT OF QUOTATIONS */}
+        <TabsContent value="aoq" className="mt-4 space-y-6">
+          {dashboard.data?.rfqs?.length ? (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white dark:bg-[#171e27] border border-stone-200 dark:border-stone-800 rounded-xl shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-[#7b1e1e]/10 text-[#7b1e1e]">
+                    <FileSpreadsheet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                      Step 5.7.1: BAC Opening & Abstract of Quotations Workbench
+                    </h4>
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                      Pursuant to Section 5.7.1, quotations are opened by BAC Chairperson Doreen C. Castillo and tabulated into the official Abstract of Quotations.
+                    </p>
+                  </div>
+                </div>
+                {dashboard.data.rfqs.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[11px] text-stone-600 dark:text-stone-400 whitespace-nowrap">Select RFQ:</Label>
+                    <Select
+                      value={String(selectedAoqRfqId ?? dashboard.data.rfqs[0]?.id ?? "")}
+                      onValueChange={(val) => setSelectedAoqRfqId(Number(val))}
+                    >
+                      <SelectTrigger className="h-8 text-xs min-w-[220px]">
+                        <SelectValue placeholder="Choose RFQ..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dashboard.data.rfqs.map((r) => {
+                          const quotes = (dashboard.data?.supplierQuotations ?? []).filter((q) => q.rfqId === r.id).length;
+                          const hasAb = (dashboard.data?.quotationAbstracts ?? []).some((a) => a.rfqId === r.id);
+                          return (
+                            <SelectItem key={r.id} value={String(r.id)} className="text-xs">
+                              {r.rfqNumber} (PR #{r.purchaseRequestId}) — {quotes}/3 Quotes {hasAb ? "• AOQ Ready" : ""}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <OfficialBacAbstractOfQuotations
+                rfqId={selectedAoqRfqId ?? dashboard.data.rfqs[0].id}
+                onSuccess={() => void utils.procurement.dashboard.invalidate()}
+              />
+            </div>
+          ) : (
+            <div className="flat-panel p-8 text-center text-xs text-[#72808c]">
+              <FileSpreadsheet className="h-8 w-8 mx-auto text-stone-400 mb-2" />
+              <p className="font-semibold text-stone-700 dark:text-stone-300">No active RFQs available</p>
+              <p className="mt-1">Create an RFQ from an approved Purchase Request in RFQ Management first.</p>
+              <Link href="/rfq-management">
+                <Button size="sm" variant="outline" className="mt-4 text-xs border-[#7b1e1e] text-[#7b1e1e]">
+                  Go to RFQ Management →
+                </Button>
+              </Link>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

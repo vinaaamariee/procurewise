@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OfficialPurchaseOrderCanvas, type PurchaseOrderItem } from "@/components/OfficialPurchaseOrderCanvas";
+import { OfficialBacAbstractOfQuotations } from "@/components/OfficialBacAbstractOfQuotations";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { buildPpmpCsv, downloadCsv } from "@/lib/procurementExports";
 import { downloadPpmpPdf, downloadPurchaseOrderPdf } from "@/lib/procurementPdf";
@@ -158,8 +159,10 @@ function PlanForm({ setup, isSaving, onCancel, onCreate }: { setup?: { offices: 
 export function RfqPage() {
   const { user } = useAuth();
   const role = user ? normalizeProcurementRole(user.role) : "end_user";
-  const canSupply = role === "procurement_officer" || role === "procurement_staff" || role === "admin";
+  const isBac = role === "bac" || role === "bac_secretariat";
+  const canSupply = role === "procurement_officer" || role === "procurement_staff" || isBac || role === "admin";
   const [mode, setMode] = useState<"rfq" | "quotation" | null>(null);
+  const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
   const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
@@ -349,62 +352,78 @@ export function RfqPage() {
                     </StatusBadge>
                   </td>
                   <td className="px-4 py-3">
-                    {canSupply && !hasAbstract ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setMode("quotation")}
-                          className="h-7 rounded-[4px] text-[11px]"
-                        >
-                          <Plus className="mr-1 h-3 w-3" />
-                          Add quotation
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={quotations < 3 || generateAbstract.isPending}
-                          onClick={() => generateAbstract.mutate({ rfqId: rfq.id })}
-                          className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[11px] font-medium text-white hover:bg-[#641818]"
-                          title={
-                            quotations >= 3
-                              ? "Forward to BAC for preparation and validation of Abstract of Quotations (AOQ)"
-                              : `Mandatory canvass requirement: at least 3 supplier quotations required (currently ${quotations}/3)`
-                          }
-                        >
-                          {generateAbstract.isPending ? (
-                            <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />
-                          ) : (
-                            <Send className="mr-1 h-3 w-3" />
-                          )}
-                          Forward to BAC for AOQ
-                        </Button>
-                        <Link href="/officer/rfq-distribution">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-[10px] text-[#7b8490] hover:text-[#7b1e1e]"
-                            title="Formal Document Transmittal to BAC"
-                          >
-                            Transmittal →
-                          </Button>
-                        </Link>
-                      </div>
-                    ) : hasAbstract ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge tone="approved">FORWARDED TO BAC / AOQ READY</StatusBadge>
-                        <Link href="/purchase-orders">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={selectedRfqId === rfq.id ? "default" : "outline"}
+                        onClick={() => setSelectedRfqId(selectedRfqId === rfq.id ? null : rfq.id)}
+                        className={cn(
+                          "h-7 rounded-[4px] text-[11px]",
+                          selectedRfqId === rfq.id
+                            ? "bg-[#7b1e1e] text-white"
+                            : "text-[#7b1e1e] border-[#7b1e1e]/40 hover:bg-[#7b1e1e]/5"
+                        )}
+                        title="View Official Section 5.7.1 Opening & Abstract of Quotations"
+                      >
+                        <FileSpreadsheet className="mr-1 h-3 w-3" />
+                        {selectedRfqId === rfq.id ? "Close AOQ" : "Section 5.7.1 AOQ"}
+                      </Button>
+
+                      {canSupply && !hasAbstract ? (
+                        <>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 rounded-[4px] text-[10px] border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                            onClick={() => setMode("quotation")}
+                            className="h-7 rounded-[4px] text-[11px]"
                           >
-                            View AOQ & PO →
+                            <Plus className="mr-1 h-3 w-3" />
+                            Add quotation
                           </Button>
-                        </Link>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-[#7b8490]">Role-gated</span>
-                    )}
+                          <Button
+                            size="sm"
+                            disabled={quotations < 3 || generateAbstract.isPending}
+                            onClick={() => generateAbstract.mutate({ rfqId: rfq.id })}
+                            className="h-7 rounded-[4px] bg-[#7b1e1e] px-2.5 text-[11px] font-medium text-white hover:bg-[#641818]"
+                            title={
+                              quotations >= 3
+                                ? "Forward to BAC for preparation and validation of Abstract of Quotations (AOQ)"
+                                : `Mandatory canvass requirement: at least 3 supplier quotations required (currently ${quotations}/3)`
+                            }
+                          >
+                            {generateAbstract.isPending ? (
+                              <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="mr-1 h-3 w-3" />
+                            )}
+                            Forward to BAC for AOQ
+                          </Button>
+                          <Link href="/officer/rfq-distribution">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-[10px] text-[#7b8490] hover:text-[#7b1e1e]"
+                              title="Formal Document Transmittal to BAC"
+                            >
+                              Transmittal →
+                            </Button>
+                          </Link>
+                        </>
+                      ) : hasAbstract ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusBadge tone="approved">FORWARDED TO BAC / AOQ READY</StatusBadge>
+                          <Link href="/purchase-orders">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-[4px] text-[10px] border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
+                            >
+                              View AOQ & PO →
+                            </Button>
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               );
@@ -419,6 +438,43 @@ export function RfqPage() {
         />
       )}
     </div>
+
+    {/* Section 5.7.1 Official BAC Abstract of Quotations Workbench */}
+    {dashboard.data?.rfqs?.length ? (
+      <div className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-[#1f2937] dark:text-stone-100 flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4 text-[#7b1e1e]" />
+            Section 5.7.1: Opening of Quotations & Abstract of Quotations Workbench
+          </h3>
+          {dashboard.data.rfqs.length > 1 && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-[#65717e]">Active RFQ:</span>
+              <Select
+                value={String(selectedRfqId || dashboard.data.rfqs[0].id)}
+                onValueChange={(val) => setSelectedRfqId(Number(val))}
+              >
+                <SelectTrigger className="h-7 text-xs w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboard.data.rfqs.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)} className="text-xs">
+                      {r.rfqNumber} (PR #{r.purchaseRequestId})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        <OfficialBacAbstractOfQuotations
+          rfqId={selectedRfqId || dashboard.data.rfqs[0].id}
+          onSuccess={refresh}
+        />
+      </div>
+    ) : null}
+
     {dashboard.data?.rfqs.length ? <QuotationComparison rfqs={dashboard.data.rfqs} quotations={dashboard.data.supplierQuotations} supplierMap={supplierMap} /> : null}
     {canSupply && dashboard.data?.rfqs.length ? <Button variant="outline" onClick={() => setMode("quotation")} className="mt-4 h-9 rounded-[4px] text-xs"><Plus className="mr-1.5 h-3.5 w-3.5" />Record supplier quotation</Button> : null}
   </div>;
@@ -610,6 +666,7 @@ export function PurchaseOrderPage() {
   const [, setLocation] = useLocation();
   const isStaffRole = user?.role === "procurement_staff" || role === "procurement_staff" || role === "procurement_officer";
   const [activeTab, setActiveTab] = useState<string>(isStaffRole ? "create_po" : "po_registry");
+  const [expandedAbstractRfqId, setExpandedAbstractRfqId] = useState<number | null>(null);
 
   // Purchase Order Preparation Studio State (Appendix 61)
   const [prepPrId, setPrepPrId] = useState<string>("");
@@ -1530,6 +1587,25 @@ export function PurchaseOrderPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#f0ece5]">
+                      <Button
+                        size="sm"
+                        variant={expandedAbstractRfqId === abstract.rfqId ? "default" : "outline"}
+                        onClick={() =>
+                          setExpandedAbstractRfqId(
+                            expandedAbstractRfqId === abstract.rfqId ? null : abstract.rfqId
+                          )
+                        }
+                        className={cn(
+                          "h-7 rounded-[4px] text-[10px]",
+                          expandedAbstractRfqId === abstract.rfqId
+                            ? "bg-[#7b1e1e] text-white"
+                            : "text-[#7b1e1e] border-[#7b1e1e]/40 hover:bg-[#7b1e1e]/5"
+                        )}
+                        title="View Section 5.7.1 Multi-Bidder Price Quotations & Compliance Abstract"
+                      >
+                        <FileSpreadsheet className="mr-1 h-3 w-3" />
+                        {expandedAbstractRfqId === abstract.rfqId ? "Hide Matrix" : "Section 5.7.1 Matrix"}
+                      </Button>
                       <Link href="/form-templates?form=abstract_of_quotations">
                         <Button
                           size="sm"
@@ -1577,6 +1653,11 @@ export function PurchaseOrderPage() {
                         </Button>
                       )}
                     </div>
+                    {expandedAbstractRfqId === abstract.rfqId && (
+                      <div className="mt-4 pt-4 border-t border-[#f0ece5]">
+                        <OfficialBacAbstractOfQuotations rfqId={abstract.rfqId} onSuccess={refresh} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

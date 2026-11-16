@@ -2862,15 +2862,18 @@ async function createBacTransmittal(input, user) {
 }
 async function endorseBacResolution(input, user) {
   const db = await requireDb();
-  const transmittalNumber = `BAC-RES-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
-  const subject = `BAC Resolution No. ${input.resolutionNumber} - Endorsement for Signature (${input.modeOfProcurement})`;
+  const isAward = input.resolutionType === "award_of_contract";
+  const transmittalNumber = isAward ? `BAC-RES-AWARD-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}` : `BAC-RES-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
+  const supplierStr = input.winningSupplierName ? ` in favor of ${input.winningSupplierName}` : "";
+  const awardStr = input.awardedAmount ? ` (\u20B1${Number(input.awardedAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })})` : "";
+  const subject = isAward ? `BAC Resolution No. ${input.resolutionNumber} - Recommendation on the Award of Contract${supplierStr}${awardStr} (Step 5.8)` : `BAC Resolution No. ${input.resolutionNumber} - Endorsement for Signature (${input.modeOfProcurement})`;
   const formattedAbc = `\u20B1${Number(input.approvedBudget).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
-  const remarks = `BAC Secretariat prepared Resolution recommending Alternative Mode of Procurement under ${input.modeOfProcurement} with Approved Budget for the Contract (ABC) of ${formattedAbc} for ${input.purchaseRequestId ? `PR #${input.purchaseRequestId}` : "requisition"}. Endorsed to End-User, BAC Members, and HoPE for review and signature pursuant to RA 9184.${input.remarks ? ` Remarks: ${input.remarks}` : ""}`;
+  const remarks = isAward ? `Pursuant to Section 5.8.1 of the procurement rules, the Bids and Awards Committee (BAC) recommends to the Head of the Procuring Entity (HoPE) the award of contract${supplierStr} as the Single or Lowest Calculated and Responsive Quotation (S/LCRQ) in the contract amount of ${awardStr || formattedAbc}.${input.remarks ? ` Remarks: ${input.remarks}` : ""}` : `BAC Secretariat prepared Resolution recommending Alternative Mode of Procurement under ${input.modeOfProcurement} with Approved Budget for the Contract (ABC) of ${formattedAbc} for ${input.purchaseRequestId ? `PR #${input.purchaseRequestId}` : "requisition"}. Endorsed to End-User, BAC Members, and HoPE for review and signature pursuant to RA 9184.${input.remarks ? ` Remarks: ${input.remarks}` : ""}`;
   await db.insert(bacTransmittals).values({
     transmittalNumber,
     purchaseRequestId: input.purchaseRequestId ?? null,
     fromOffice: "Bids and Awards Committee Secretariat",
-    toOffice: "End-User, BAC Members, & HoPE (College President)",
+    toOffice: "Head of the Procuring Entity (HoPE / College President)",
     subject,
     remarks,
     status: "sent",
@@ -2879,23 +2882,30 @@ async function endorseBacResolution(input, user) {
   });
   const [transmittal] = await db.select().from(bacTransmittals).where(eq(bacTransmittals.transmittalNumber, transmittalNumber)).limit(1);
   if (!transmittal) throw new Error("Resolution endorsement could not be recorded.");
+  if (isAward && input.purchaseRequestId) {
+    await db.update(purchaseRequests).set({ status: "approved" }).where(eq(purchaseRequests.id, input.purchaseRequestId));
+  }
   await writeAuditEvent({
     entityType: "bac_transmittal",
     entityId: transmittal.id,
-    action: "endorsed_for_signature",
+    action: isAward ? "award_recommended_to_hope" : "endorsed_for_signature",
     performedById: user.id,
     performedByRole: normalizeProcurementRole(user.role),
     details: {
       resolutionNumber: input.resolutionNumber,
       modeOfProcurement: input.modeOfProcurement,
       approvedBudget: input.approvedBudget,
-      purchaseRequestId: input.purchaseRequestId
+      purchaseRequestId: input.purchaseRequestId,
+      resolutionType: input.resolutionType,
+      winningSupplierName: input.winningSupplierName,
+      awardedAmount: input.awardedAmount,
+      step: isAward ? "5.8.1" : "5.3"
     }
   });
-  await notifyRoles(["bac", "hope", "end_user", "admin"], {
+  await notifyRoles(["bac", "hope", "end_user", "admin", "procurement_officer", "procurement_staff"], {
     kind: "action_required",
-    title: "BAC Resolution Endorsed for Signature",
-    body: `BAC Secretariat endorsed Resolution No. ${input.resolutionNumber} (${input.modeOfProcurement}, ABC: ${formattedAbc}) to End-User, BAC Members, and HoPE for signature.`,
+    title: isAward ? "Award of Contract Recommended to HoPE (Step 5.8)" : "BAC Resolution Endorsed for Signature",
+    body: isAward ? `BAC endorsed Resolution No. ${input.resolutionNumber} recommending award of contract${supplierStr}${awardStr} to the HoPE for executive approval (Section 5.8.1).` : `BAC Secretariat endorsed Resolution No. ${input.resolutionNumber} (${input.modeOfProcurement}, ABC: ${formattedAbc}) to End-User, BAC Members, and HoPE for signature.`,
     entityType: "bac_transmittal",
     entityId: transmittal.id
   });
@@ -4518,13 +4528,71 @@ async function recordRfqQuotationOpening(input, user) {
   }, user);
   return { success: true, rfqId: input.rfqId, abstract };
 }
-async function approveQuotationAbstract(rfqId, user) {
+async function approveQuotationAbstract(rfqId, user, options) {
   const db = await requireDb();
   const [abstract] = await db.select().from(quotationAbstracts).where(eq(quotationAbstracts.rfqId, rfqId)).limit(1);
   if (!abstract || abstract.status !== "recommended") throw new Error("A recommended quotation abstract is required before approval.");
   await db.update(quotationAbstracts).set({ status: "approved", approvedById: user.id }).where(eq(quotationAbstracts.id, abstract.id));
   await db.update(rfqs).set({ status: "approved" }).where(eq(rfqs.id, rfqId));
-  await writeAuditEvent({ entityType: "quotation_abstract", entityId: abstract.id, action: "approved", performedById: user.id, performedByRole: normalizeProcurementRole(user.role) });
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId)).limit(1);
+  let supplierName = options?.winningSupplierName;
+  if (!supplierName && abstract.recommendedSupplierId) {
+    const [sup] = await db.select().from(suppliers).where(eq(suppliers.id, abstract.recommendedSupplierId)).limit(1);
+    if (sup) supplierName = sup.companyName;
+  }
+  if (rfq?.purchaseRequestId) {
+    await db.update(purchaseRequests).set({ status: "approved" }).where(eq(purchaseRequests.id, rfq.purchaseRequestId));
+    const resNo = options?.resolutionNumber || `2601-GAS2-${rfq.rfqNumber.replace(/^RFQ-/, "")}`;
+    const transmittalNumber = `BAC-AWARD-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
+    const awardFormatted = options?.awardedAmount ? `\u20B1${Number(options.awardedAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}` : "";
+    await db.insert(bacTransmittals).values({
+      transmittalNumber,
+      purchaseRequestId: rfq.purchaseRequestId,
+      fromOffice: "Bids and Awards Committee",
+      toOffice: "Head of the Procuring Entity (HoPE / College President)",
+      subject: `Step 5.8: Recommendation on the Award of Contract - RFQ #${rfq.rfqNumber} (${supplierName || "S/LCRQ"})`,
+      remarks: `Pursuant to Section 5.8.1, the BAC recommends to the HoPE the award of contract in favor of ${supplierName || "the lowest bidder"} with the Single or Lowest Calculated and Responsive Quotation (S/LCRQ)${awardFormatted ? ` in the amount of ${awardFormatted}` : ""}.${options?.remarks ? ` Remarks: ${options.remarks}` : ""}`,
+      status: "sent",
+      preparedById: user.id,
+      sentAt: /* @__PURE__ */ new Date()
+    });
+    const [existingNotice] = await db.select().from(lettersOfNotice).where(and(eq(lettersOfNotice.purchaseRequestId, rfq.purchaseRequestId), eq(lettersOfNotice.noticeType, "award"))).limit(1);
+    if (!existingNotice) {
+      const noticeNumber = `NOA-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
+      await db.insert(lettersOfNotice).values({
+        noticeNumber,
+        noticeType: "award",
+        purchaseRequestId: rfq.purchaseRequestId,
+        supplierId: options?.winningSupplierId || abstract.recommendedSupplierId || null,
+        subject: `Notice of Award - BAC Res. No. ${resNo}`,
+        body: `Pursuant to Section 5.8.1 of the procurement guidelines, the BAC has recommended the award of contract in your favor as the Single or Lowest Calculated and Responsive Quotation (S/LCRQ). Awaiting executive confirmation by the Head of the Procuring Entity (HoPE).`,
+        status: "pending_hope_approval",
+        issuedById: user.id
+      });
+    }
+  }
+  await writeAuditEvent({
+    entityType: "quotation_abstract",
+    entityId: abstract.id,
+    action: "award_recommended_to_hope",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: {
+      step: "5.8.1",
+      rfqId,
+      recommendedSupplierId: abstract.recommendedSupplierId,
+      winningSupplierName: supplierName,
+      awardedAmount: options?.awardedAmount,
+      resolutionNumber: options?.resolutionNumber
+    }
+  });
+  await notifyRoles(["hope", "administrative_approver", "procurement_officer", "procurement_staff", "admin"], {
+    kind: "action_required",
+    title: "Award of Contract Recommended to HoPE (Step 5.8)",
+    body: `BAC has approved the Abstract of Quotations and recommends award of contract to ${supplierName || "winning supplier"} (S/LCRQ) under Section 5.8.1. Ready for HoPE executive approval and PO preparation.`,
+    entityType: "quotation_abstract",
+    entityId: abstract.id
+  });
   return { ...abstract, status: "approved", approvedById: user.id };
 }
 async function createPurchaseOrder(input, user, options, customDetails) {
@@ -7266,11 +7334,17 @@ var appRouter = router({
       }),
       approveAbstract: protectedProcedure.input(z2.object({
         rfqId: z2.number().int().positive(),
+        resolutionNumber: z2.string().optional(),
+        winningSupplierId: z2.number().int().positive().optional(),
+        winningSupplierName: z2.string().optional(),
+        awardedAmount: z2.number().positive().optional(),
         remarks: z2.string().optional()
       })).mutation(async ({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["administrative_approver", "bac", "bac_secretariat", "hope", "admin"]);
-        const result = await approveQuotationAbstract(input.rfqId, ctx.user);
+        const result = await approveQuotationAbstract(input.rfqId, ctx.user, input);
         void publishProcurementRealtimeUpdate("rfq");
+        void publishProcurementRealtimeUpdate("purchase_request");
+        void publishProcurementRealtimeUpdate("bac_transmittal");
         return result;
       }),
       forwardToBac: protectedProcedure.input(z2.object({
@@ -7706,7 +7780,12 @@ var appRouter = router({
           evaluationMode: z2.enum(["lot_basis", "per_item"]).default("lot_basis"),
           purposeOrItems: z2.string().min(3).max(4e3),
           endUserName: z2.string().max(180).optional(),
-          remarks: z2.string().max(3e3).optional()
+          remarks: z2.string().max(3e3).optional(),
+          resolutionType: z2.enum(["mode_of_procurement", "award_of_contract"]).optional(),
+          winningSupplierId: z2.number().int().positive().optional(),
+          winningSupplierName: z2.string().optional(),
+          awardedAmount: z2.number().positive().optional(),
+          rfqId: z2.number().int().positive().optional()
         })).mutation(({ ctx, input }) => {
           assertRole(ctx.user.role, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "supply_officer", "procurement_staff", "bac", "bac_secretariat", "administrative_approver", "hope", "budget_officer", "end_user", "admin"]);
           return endorseBacResolution(input, ctx.user);

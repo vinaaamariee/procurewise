@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ScrollText, FileSignature, Layers } from "lucide-react";
+import { ScrollText, FileSignature, Layers, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface BacSignatory {
@@ -9,15 +9,21 @@ export interface BacSignatory {
 }
 
 export type BacResolutionDocType = "resolution" | "hope_approval" | "both";
+export type BacResolutionCategory = "mode_of_procurement" | "award_of_contract";
 
 export interface OfficialBacResolutionProps {
+  resolutionCategory?: BacResolutionCategory;
   documentType?: BacResolutionDocType;
   resolutionNumber?: string;
   prNumber?: string;
+  rfqNumber?: string;
   purposeOrItems?: string;
   approvedBudget?: number | string;
   modeOfProcurement?: string;
   evaluationMode?: "lot_basis" | "per_item";
+  winningSupplierName?: string;
+  winningQuotationAmount?: number | string;
+  savingsAmount?: number | string;
   dateResolved?: string;
   dateApproved?: string;
   entityName?: string;
@@ -29,6 +35,7 @@ export interface OfficialBacResolutionProps {
   editable?: boolean;
   onFieldChange?: (field: string, value: any) => void;
   onDocumentTypeChange?: (type: BacResolutionDocType) => void;
+  onCategoryChange?: (category: BacResolutionCategory) => void;
 }
 
 export const DEFAULT_BSC_BAC_MEMBERS: BacSignatory[] = [
@@ -41,13 +48,18 @@ export const DEFAULT_BSC_BAC_MEMBERS: BacSignatory[] = [
 ];
 
 export function OfficialBacResolutionCanvas({
+  resolutionCategory = "mode_of_procurement",
   documentType = "resolution",
   resolutionNumber = "2601-GAS2-009",
   prNumber = "2026-009",
+  rfqNumber,
   purposeOrItems = "AM snacks (Burger and Canned Juice/Soda), Packed Meals (Pork,Chicken,Veggie,Rice,Dessert,and Drinking Water),and PM Snacks (Special spaghetti and Canned Juice/ Soda)--Snacks and meals for the evaluation and interview of applicants for private sector representative (PSR).",
   approvedBudget = 53600,
   modeOfProcurement = "Small Value Procurement",
   evaluationMode = "lot_basis",
+  winningSupplierName,
+  winningQuotationAmount,
+  savingsAmount,
   dateResolved,
   dateApproved,
   entityName = "Batanes State College",
@@ -58,7 +70,10 @@ export function OfficialBacResolutionCanvas({
   editable = true,
   onFieldChange,
   onDocumentTypeChange,
+  onCategoryChange,
 }: OfficialBacResolutionProps) {
+  // Category state ("mode_of_procurement" | "award_of_contract")
+  const [localCategory, setLocalCategory] = useState<BacResolutionCategory>(resolutionCategory || "mode_of_procurement");
   // Document Type state ("resolution" | "hope_approval" | "both")
   const [activeDocType, setActiveDocType] = useState<BacResolutionDocType>(documentType || "resolution");
 
@@ -66,10 +81,14 @@ export function OfficialBacResolutionCanvas({
   const [localEntityName, setLocalEntityName] = useState(entityName);
   const [localResolutionNumber, setLocalResolutionNumber] = useState(resolutionNumber);
   const [localPrNumber, setLocalPrNumber] = useState(prNumber);
+  const [localRfqNumber, setLocalRfqNumber] = useState(rfqNumber || "");
   const [localPurposeOrItems, setLocalPurposeOrItems] = useState(purposeOrItems);
   const [localApprovedBudget, setLocalApprovedBudget] = useState(approvedBudget);
   const [localModeOfProcurement, setLocalModeOfProcurement] = useState(modeOfProcurement);
   const [localEvaluationMode, setLocalEvaluationMode] = useState(evaluationMode);
+  const [localWinningSupplier, setLocalWinningSupplier] = useState(winningSupplierName || "Basco General Merchandise");
+  const [localWinningAmount, setLocalWinningAmount] = useState<number | string>(winningQuotationAmount ?? 48500);
+  const [localSavings, setLocalSavings] = useState<number | string>(savingsAmount ?? 5100);
   const [localDateResolved, setLocalDateResolved] = useState(
     dateResolved || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
   );
@@ -80,15 +99,22 @@ export function OfficialBacResolutionCanvas({
 
   // Sync props to state if props update from outside
   useEffect(() => {
+    if (resolutionCategory) setLocalCategory(resolutionCategory);
+  }, [resolutionCategory]);
+  useEffect(() => {
     if (documentType) setActiveDocType(documentType);
   }, [documentType]);
   useEffect(() => { setLocalEntityName(entityName); }, [entityName]);
   useEffect(() => { setLocalResolutionNumber(resolutionNumber); }, [resolutionNumber]);
   useEffect(() => { setLocalPrNumber(prNumber); }, [prNumber]);
+  useEffect(() => { if (rfqNumber) setLocalRfqNumber(rfqNumber); }, [rfqNumber]);
   useEffect(() => { setLocalPurposeOrItems(purposeOrItems); }, [purposeOrItems]);
   useEffect(() => { setLocalApprovedBudget(approvedBudget); }, [approvedBudget]);
   useEffect(() => { setLocalModeOfProcurement(modeOfProcurement); }, [modeOfProcurement]);
   useEffect(() => { setLocalEvaluationMode(evaluationMode); }, [evaluationMode]);
+  useEffect(() => { if (winningSupplierName) setLocalWinningSupplier(winningSupplierName); }, [winningSupplierName]);
+  useEffect(() => { if (winningQuotationAmount !== undefined) setLocalWinningAmount(winningQuotationAmount); }, [winningQuotationAmount]);
+  useEffect(() => { if (savingsAmount !== undefined) setLocalSavings(savingsAmount); }, [savingsAmount]);
   useEffect(() => { setLocalPresidentName(collegePresidentName); }, [collegePresidentName]);
   useEffect(() => { setLocalPresidentDesignation(collegePresidentDesignation); }, [collegePresidentDesignation]);
   useEffect(() => {
@@ -101,6 +127,12 @@ export function OfficialBacResolutionCanvas({
     setLocalMembers(updated);
   }, [bacMembers, endUserName]);
 
+  const handleCategorySwitch = (cat: BacResolutionCategory) => {
+    setLocalCategory(cat);
+    onCategoryChange?.(cat);
+    onFieldChange?.("resolutionCategory", cat);
+  };
+
   const handleDocTypeChange = (type: BacResolutionDocType) => {
     setActiveDocType(type);
     onDocumentTypeChange?.(type);
@@ -110,6 +142,14 @@ export function OfficialBacResolutionCanvas({
   const formattedBudget = typeof localApprovedBudget === "number"
     ? localApprovedBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : Number(localApprovedBudget || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const formattedWinningAmount = typeof localWinningAmount === "number"
+    ? localWinningAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : Number(localWinningAmount || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const formattedSavings = typeof localSavings === "number"
+    ? localSavings.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : Number(localSavings || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const editableClass = editable
     ? "cursor-text hover:bg-amber-50/70 focus:bg-amber-50 dark:hover:bg-amber-950/40 dark:focus:bg-amber-950/60 focus:ring-1 focus:ring-[#7b1e1e] focus:outline-none rounded px-0.5 transition-colors print:bg-transparent print:ring-0 print:px-0"
@@ -189,158 +229,227 @@ export function OfficialBacResolutionCanvas({
   );
 
   // Common Recitals (WHEREAS clauses)
-  const renderRecitals = () => (
-    <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
-      <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, Section 48 Rule XVI of the Revised Implementing Rules and Regulations of RA 9184 allows Alternative Mode of Procurement subject to prior approval of the HOPE thru Annual Procurement Plan (APP) and only to promote economy and efficiency;
-      </p>
+  const renderRecitals = () => {
+    if (localCategory === "award_of_contract") {
+      return (
+        <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
+          <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+            <span className="font-bold tracking-wide">WHEREAS</span>, the {localEntityName}, through its Bids and Awards Committee (BAC), conducted quotation canvassing under Alternative Mode of Procurement (<span className="font-semibold underline">{localModeOfProcurement}</span>) pursuant to Section 53.9 of the Revised Implementing Rules and Regulations of Republic Act No. 9184 and Republic Act No. 12009;
+          </p>
 
-      <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, Section 53.9 allows Small Value Procurement provided that the procurement does not fall under shopping in Section 52 of this IRR and the amount involved does not exceed the thresholds prescribed in Annex &ldquo;H&rdquo; of this IRR;
-      </p>
+          <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+            <span className="font-bold tracking-wide">WHEREAS</span>, Section 5.7.1 of the procurement guidelines provides that after the deadline for submission of quotations, the same shall be forwarded to the BAC Chairperson for opening, and an Abstract of Quotations/Ratings is prepared setting forth the names of those who responded to the Request for Quotation (RFQ) and their corresponding price quotations;
+          </p>
 
-      <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, Section 5.7.1 of the procurement rules provides that after the deadline for submission of quotations, the same shall be forwarded to the BAC Chairperson for opening. An Abstract of Quotations/Canvass/Ratings shall be prepared, setting forth the names of those who responded to the RFQ and their corresponding price quotations;
-      </p>
+          <div className="pl-4 border-l-2 border-[#7b1e1e]/40 py-1 space-y-1.5 my-2">
+            <p>
+              <span className="font-bold tracking-wide">WHEREAS</span>, Request for Quotation (RFQ No.{" "}
+              <span className={`font-bold font-mono underline ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+                {localRfqNumber || localPrNumber}
+              </span>{" "}
+              / PR No.{" "}
+              <span className={`font-bold font-mono underline ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+                {localPrNumber}
+              </span>) involves the procurement of:
+            </p>
+            <p className={`italic font-sans text-[11px] bg-neutral-50 dark:bg-[#141b22] p-2 rounded border border-neutral-200 dark:border-[#2b3744] text-neutral-800 dark:text-[#cbd5e1] ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+              &ldquo;{localPurposeOrItems}&rdquo;
+            </p>
+            <p>
+              with an Approved Budget for the Contract (ABC) of{" "}
+              <span className="font-bold underline">PhP {formattedBudget}</span>;
+            </p>
+          </div>
 
-      <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, Annex &ldquo;H&rdquo; of the Consolidated Guidelines for the Alternative Methods of Procurement prescribed under Section V, Paragraph D.8.b.ii that the BAC shall prepare and send the RFQs/RFPs to at least three (3) suppliers, contractors or consultants of known qualifications where receipt of at least one (1) quotation is sufficient to proceed with the evaluation thereof;
-      </p>
+          <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+            <span className="font-bold tracking-wide">WHEREAS</span>, in response to the RFQ distributed to qualified suppliers of known technical and financial capability, sealed commercial price quotations were duly received, logged, and opened in the presence of the BAC;
+          </p>
 
-      <div className="pl-4 border-l-2 border-[#7b1e1e]/40 py-1 space-y-1.5 my-2">
-        <p>
-          <span className="font-bold tracking-wide">WHEREAS</span>, Purchase Request No.{" "}
-          <span
-            className={`font-bold font-mono underline ${editableClass}`}
-            contentEditable={editable}
-            suppressContentEditableWarning
-            onBlur={(e) => {
-              const val = e.currentTarget.innerText.trim();
-              setLocalPrNumber(val);
-              onFieldChange?.("prNumber", val);
-            }}
-          >
-            {localPrNumber}
-          </span>{" "}
-          involves the procurement of:
-        </p>
-        <p
-          className={`italic font-sans text-[11px] bg-neutral-50 dark:bg-[#141b22] p-2 rounded border border-neutral-200 dark:border-[#2b3744] text-neutral-800 dark:text-[#cbd5e1] ${editableClass}`}
-          contentEditable={editable}
-          suppressContentEditableWarning
-          onBlur={(e) => {
-            const val = e.currentTarget.innerText.trim();
-            setLocalPurposeOrItems(val);
-            onFieldChange?.("purposeOrItems", val);
-          }}
-        >
-          &ldquo;{localPurposeOrItems}&rdquo;
-        </p>
-        <p>
-          with the approved budget of{" "}
-          <span className="font-bold underline">
-            PhP{" "}
+          <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+            <span className="font-bold tracking-wide">WHEREAS</span>, upon detailed evaluation of quotations and determination of eligibility and technical compliance, the quotation submitted by{" "}
             <span
-              className={editableClass}
+              className={`font-bold text-[#7b1e1e] underline ${editableClass}`}
               contentEditable={editable}
               suppressContentEditableWarning
               onBlur={(e) => {
-                const raw = e.currentTarget.innerText.replace(/[^0.0-9.]/g, "");
-                const num = Number(raw) || 0;
-                setLocalApprovedBudget(num);
-                onFieldChange?.("approvedBudget", num);
+                const val = e.currentTarget.innerText.trim();
+                setLocalWinningSupplier(val);
+                onFieldChange?.("winningSupplierName", val);
               }}
             >
-              {formattedBudget}
-            </span>
-          </span>;
-        </p>
-      </div>
+              {localWinningSupplier}
+            </span>{" "}
+            in the total contract amount of{" "}
+            <span className="font-bold underline">PhP {formattedWinningAmount}</span> was determined and validated to be the{" "}
+            <span className="font-bold">Single or Lowest Calculated and Responsive Quotation (S/LCRQ)</span>, complying with all required technical specifications, delivery schedule, and terms of reference, and generating government savings of{" "}
+            <span className="font-bold text-emerald-800 underline">PhP {formattedSavings}</span>;
+          </p>
+        </div>
+      );
+    }
 
-      <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
-        <span className="font-bold tracking-wide">WHEREAS</span>, the default mode of evaluation shall be on a{" "}
-        <span className="font-semibold underline">
-          {localEvaluationMode === "lot_basis" ? "lot basis" : "per item basis"}
-        </span>{" "}
-        which means that the determination of the Single or Lowest Calculated and Responsive Quotation (S/LCRQ) is the total amount of offered unit price multiplied by the required quantity;
-      </p>
-    </div>
-  );
-
-  // Render Document 1: BAC Resolution
-  const renderBacResolution = () => (
-    <div className="resolution-document-page">
-      {renderHeader(`BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`)}
-
-      {renderRecitals()}
-
-      {/* NOW THEREFORE for BAC Resolution */}
+    return (
       <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
-        <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
-          <span className="font-bold tracking-wide">NOW THEREFORE</span>, we, the members of the Bids and Awards Committee hereby <span className="font-bold">RESOLVE</span> as it is hereby <span className="font-bold">RESOLVED</span> to recommend to the College President to adopt Alternative Mode of Procurement under <span className="font-bold underline">{localModeOfProcurement}</span> for the said transaction;
+        <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+          <span className="font-bold tracking-wide">WHEREAS</span>, Section 48 Rule XVI of the Revised Implementing Rules and Regulations of RA 9184 allows Alternative Mode of Procurement subject to prior approval of the HOPE thru Annual Procurement Plan (APP) and only to promote economy and efficiency;
         </p>
 
-        <p className="pt-1 font-semibold">
-          RESOLVED FINALLY, at the {localEntityName}, this{" "}
-          <span
-            className={`underline ${editableClass}`}
+        <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+          <span className="font-bold tracking-wide">WHEREAS</span>, Section 53.9 allows Small Value Procurement provided that the procurement does not fall under shopping in Section 52 of this IRR and the amount involved does not exceed the thresholds prescribed in Annex &ldquo;H&rdquo; of this IRR;
+        </p>
+
+        <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+          <span className="font-bold tracking-wide">WHEREAS</span>, Section 5.7.1 of the procurement rules provides that after the deadline for submission of quotations, the same shall be forwarded to the BAC Chairperson for opening. An Abstract of Quotations/Canvass/Ratings shall be prepared, setting forth the names of those who responded to the RFQ and their corresponding price quotations;
+        </p>
+
+        <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+          <span className="font-bold tracking-wide">WHEREAS</span>, Annex &ldquo;H&rdquo; of the Consolidated Guidelines for the Alternative Methods of Procurement prescribed under Section V, Paragraph D.8.b.ii that the BAC shall prepare and send the RFQs/RFPs to at least three (3) suppliers, contractors or consultants of known qualifications where receipt of at least one (1) quotation is sufficient to proceed with the evaluation thereof;
+        </p>
+
+        <div className="pl-4 border-l-2 border-[#7b1e1e]/40 py-1 space-y-1.5 my-2">
+          <p>
+            <span className="font-bold tracking-wide">WHEREAS</span>, Purchase Request No.{" "}
+            <span
+              className={`font-bold font-mono underline ${editableClass}`}
+              contentEditable={editable}
+              suppressContentEditableWarning
+              onBlur={(e) => {
+                const val = e.currentTarget.innerText.trim();
+                setLocalPrNumber(val);
+                onFieldChange?.("prNumber", val);
+              }}
+            >
+              {localPrNumber}
+            </span>{" "}
+            involves the procurement of:
+          </p>
+          <p
+            className={`italic font-sans text-[11px] bg-neutral-50 dark:bg-[#141b22] p-2 rounded border border-neutral-200 dark:border-[#2b3744] text-neutral-800 dark:text-[#cbd5e1] ${editableClass}`}
             contentEditable={editable}
             suppressContentEditableWarning
             onBlur={(e) => {
               const val = e.currentTarget.innerText.trim();
-              setLocalDateResolved(val);
-              onFieldChange?.("dateResolved", val);
+              setLocalPurposeOrItems(val);
+              onFieldChange?.("purposeOrItems", val);
             }}
           >
-            {localDateResolved}
-          </span>.
-        </p>
-      </div>
-
-      {/* Signatories Section: 6 BAC Members */}
-      <div className="mt-8 pt-4 border-t border-neutral-300">
-        <p className="text-xs font-bold uppercase tracking-wider text-neutral-700 mb-6">
-          Recommending Approval:
-        </p>
-
-        {/* Row 1: 3 BAC Members */}
-        <div className="grid grid-cols-3 gap-6 text-center">
-          {row1.map((member, i) => (
-            <div key={i} className="flex flex-col items-center">
-              <div className="w-full border-b border-black pb-1">
-                <span
-                  className={`font-bold text-[11px] uppercase tracking-tight block ${editableClass}`}
-                  contentEditable={editable}
-                  suppressContentEditableWarning
-                  onBlur={(e) => handleMemberChange(i, "name", e.currentTarget.innerText.trim())}
-                >
-                  {member.name}
-                </span>
-              </div>
+            &ldquo;{localPurposeOrItems}&rdquo;
+          </p>
+          <p>
+            with the approved budget of{" "}
+            <span className="font-bold underline">
+              PhP{" "}
               <span
-                className={`text-[10px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
+                className={editableClass}
                 contentEditable={editable}
                 suppressContentEditableWarning
-                onBlur={(e) => handleMemberChange(i, "role", e.currentTarget.innerText.trim())}
+                onBlur={(e) => {
+                  const raw = e.currentTarget.innerText.replace(/[^0.0-9.]/g, "");
+                  const num = Number(raw) || 0;
+                  setLocalApprovedBudget(num);
+                  onFieldChange?.("approvedBudget", num);
+                }}
               >
-                {member.role}
+                {formattedBudget}
               </span>
-            </div>
-          ))}
+            </span>;
+          </p>
         </div>
 
-        {/* Row 2: End-User, Vice Chair, Chair */}
-        <div className="grid grid-cols-3 gap-6 text-center mt-8">
-          {row2.map((member, i) => {
-            const actualIndex = i + 3;
-            return (
-              <div key={actualIndex} className="flex flex-col items-center">
+        <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+          <span className="font-bold tracking-wide">WHEREAS</span>, the default mode of evaluation shall be on a{" "}
+          <span className="font-semibold underline">
+            {localEvaluationMode === "lot_basis" ? "lot basis" : "per item basis"}
+          </span>{" "}
+          which means that the determination of the Single or Lowest Calculated and Responsive Quotation (S/LCRQ) is the total amount of offered unit price multiplied by the required quantity;
+        </p>
+      </div>
+    );
+  };
+
+  // Render Document 1: BAC Resolution
+  const renderBacResolution = () => {
+    const resTitle = localCategory === "award_of_contract"
+      ? `BAC Resolution Recommending the Award of Contract in Favor of ${localWinningSupplier} as the Single or Lowest Calculated and Responsive Quotation (S/LCRQ)`
+      : `BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`;
+
+    return (
+      <div className="resolution-document-page">
+        {renderHeader(resTitle)}
+
+        {renderRecitals()}
+
+        {/* NOW THEREFORE for BAC Resolution */}
+        {localCategory === "award_of_contract" ? (
+          <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
+            <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+              <span className="font-bold tracking-wide">NOW THEREFORE</span>, we, the members of the Bids and Awards Committee hereby <span className="font-bold">RESOLVE</span> as it is hereby <span className="font-bold">RESOLVED</span>:
+            </p>
+            <ol className="list-decimal pl-6 space-y-1.5 font-medium">
+              <li>
+                To <span className="font-bold">DECLARE</span> <span className="font-bold underline">{localWinningSupplier}</span> as the supplier/contractor with the <span className="font-bold">Single or Lowest Calculated and Responsive Quotation (S/LCRQ)</span> for the said procurement; and
+              </li>
+              <li>
+                To <span className="font-bold">RECOMMEND TO THE HEAD OF THE PROCURING ENTITY (HoPE / College President)</span> the <span className="font-bold text-[#7b1e1e]">AWARD OF CONTRACT</span> in favor of <span className="font-bold underline">{localWinningSupplier}</span> in the aggregate sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span> pursuant to Section 5.8.1 of the procurement guidelines.
+              </li>
+            </ol>
+
+            <p className="pt-2 font-semibold">
+              RESOLVED FINALLY, at the {localEntityName}, this{" "}
+              <span
+                className={`underline ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalDateResolved(val);
+                  onFieldChange?.("dateResolved", val);
+                }}
+              >
+                {localDateResolved}
+              </span>.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
+            <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+              <span className="font-bold tracking-wide">NOW THEREFORE</span>, we, the members of the Bids and Awards Committee hereby <span className="font-bold">RESOLVE</span> as it is hereby <span className="font-bold">RESOLVED</span> to recommend to the College President to adopt Alternative Mode of Procurement under <span className="font-bold underline">{localModeOfProcurement}</span> for the said transaction;
+            </p>
+
+            <p className="pt-1 font-semibold">
+              RESOLVED FINALLY, at the {localEntityName}, this{" "}
+              <span
+                className={`underline ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalDateResolved(val);
+                  onFieldChange?.("dateResolved", val);
+                }}
+              >
+                {localDateResolved}
+              </span>.
+            </p>
+          </div>
+        )}
+
+        {/* Signatories Section: 6 BAC Members */}
+        <div className="mt-8 pt-4 border-t border-neutral-300">
+          <p className="text-xs font-bold uppercase tracking-wider text-neutral-700 mb-6">
+            Recommending Approval:
+          </p>
+
+          {/* Row 1: 3 BAC Members */}
+          <div className="grid grid-cols-3 gap-6 text-center">
+            {row1.map((member, i) => (
+              <div key={i} className="flex flex-col items-center">
                 <div className="w-full border-b border-black pb-1">
                   <span
                     className={`font-bold text-[11px] uppercase tracking-tight block ${editableClass}`}
                     contentEditable={editable}
                     suppressContentEditableWarning
-                    onBlur={(e) => handleMemberChange(actualIndex, "name", e.currentTarget.innerText.trim())}
+                    onBlur={(e) => handleMemberChange(i, "name", e.currentTarget.innerText.trim())}
                   >
                     {member.name}
                   </span>
@@ -349,24 +458,177 @@ export function OfficialBacResolutionCanvas({
                   className={`text-[10px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
                   contentEditable={editable}
                   suppressContentEditableWarning
-                  onBlur={(e) => handleMemberChange(actualIndex, "role", e.currentTarget.innerText.trim())}
+                  onBlur={(e) => handleMemberChange(i, "role", e.currentTarget.innerText.trim())}
                 >
                   {member.role}
                 </span>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* Approved by Section (HoPE) */}
-        <div className="mt-10 pt-4 flex flex-col items-center sm:items-start">
-          <p className="text-xs font-bold uppercase tracking-wider text-neutral-700 mb-6">
-            Approved:
-          </p>
-          <div className="text-center min-w-[260px]">
+          {/* Row 2: End-User, Vice Chair, Chair */}
+          <div className="grid grid-cols-3 gap-6 text-center mt-8">
+            {row2.map((member, i) => {
+              const actualIndex = i + 3;
+              return (
+                <div key={actualIndex} className="flex flex-col items-center">
+                  <div className="w-full border-b border-black pb-1">
+                    <span
+                      className={`font-bold text-[11px] uppercase tracking-tight block ${editableClass}`}
+                      contentEditable={editable}
+                      suppressContentEditableWarning
+                      onBlur={(e) => handleMemberChange(actualIndex, "name", e.currentTarget.innerText.trim())}
+                    >
+                      {member.name}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
+                    contentEditable={editable}
+                    suppressContentEditableWarning
+                    onBlur={(e) => handleMemberChange(actualIndex, "role", e.currentTarget.innerText.trim())}
+                  >
+                    {member.role}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Approved by Section (HoPE) */}
+          <div className="mt-10 pt-4 flex flex-col items-center sm:items-start">
+            <p className="text-xs font-bold uppercase tracking-wider text-neutral-700 mb-6">
+              Approved:
+            </p>
+            <div className="text-center min-w-[260px]">
+              <div className="border-b border-black pb-1">
+                <span
+                  className={`font-bold text-xs uppercase tracking-tight block ${editableClass}`}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    const val = e.currentTarget.innerText.trim();
+                    setLocalPresidentName(val);
+                    onFieldChange?.("collegePresidentName", val);
+                  }}
+                >
+                  {localPresidentName}
+                </span>
+              </div>
+              <span
+                className={`text-[10.5px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalPresidentDesignation(val);
+                  onFieldChange?.("collegePresidentDesignation", val);
+                }}
+              >
+                {localPresidentDesignation}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Document 2: Letter of Approval of HoPE (Approval of BAC Resolution)
+  const renderHopeApproval = () => {
+    const hopeTitle = localCategory === "award_of_contract"
+      ? `Approval of BAC Resolution Recommending Award of Contract in Favor of ${localWinningSupplier}`
+      : `Approval of BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`;
+
+    return (
+      <div className="hope-approval-document-page">
+        {renderHeader(hopeTitle)}
+
+        {renderRecitals()}
+
+        {/* NOW THEREFORE for HoPE Approval */}
+        {localCategory === "award_of_contract" ? (
+          <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
+            <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+              <span className="font-bold tracking-wide">NOW THEREFORE</span>, I,{" "}
+              <span
+                className={`font-bold ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalPresidentName(val);
+                  onFieldChange?.("collegePresidentName", val);
+                }}
+              >
+                {localPresidentName}
+              </span>,{" "}
+              Head of the Procuring Entity (HoPE) by virtue of the authority vested in me by the Board of Trustees of this Institution and after taking into consideration the merits and legal bases of the recommendation of the members of the Bids and Awards Committee (BAC) pursuant to Section 5.8 of the procurement rules, do hereby <span className="font-bold text-[#7b1e1e]">APPROVE</span> the foregoing recommendation and <span className="font-bold text-[#7b1e1e]">APPROVE THE AWARD OF CONTRACT</span> in favor of <span className="font-bold underline">{localWinningSupplier}</span> in the total contract sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span>;
+            </p>
+
+            <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
+              <span className="font-bold tracking-wide">FURTHERMORE</span>, the Procurement Officer is hereby directed to issue the corresponding <span className="font-bold">Notice of Award (NOA)</span> and coordinate with the winning supplier for the drafting and execution of the Purchase Order (Appendix 61) / Contract pursuant to Steps 5.9 through 5.11 of the procurement manual.
+            </p>
+
+            <p className="pt-2 font-semibold">
+              APPROVED FINALLY, at the {localEntityName}, this{" "}
+              <span
+                className={`underline ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalDateApproved(val);
+                  onFieldChange?.("dateApproved", val);
+                }}
+              >
+                {localDateApproved}
+              </span>.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
+            <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
+              <span className="font-bold tracking-wide">NOW THEREFORE</span>, I,{" "}
+              <span
+                className={`font-bold ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalPresidentName(val);
+                  onFieldChange?.("collegePresidentName", val);
+                }}
+              >
+                {localPresidentName}
+              </span>{" "}
+              Head of the Procuring Entity (HOPE) by virtue of the authority vested in me by the Board of Trustees of this Institution and after taking into consideration the merits and legal bases of the recommendation of the members of the Bids and Awards Committee (BAC) do hereby <span className="font-bold">APPROVE</span> the foregoing recommendation and adoption of Alternative Mode of Procurement under <span className="font-bold underline">{localModeOfProcurement}</span>;
+            </p>
+
+            <p className="pt-2 font-semibold">
+              APPROVED FINALLY, at the {localEntityName}, this{" "}
+              <span
+                className={`underline ${editableClass}`}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                  const val = e.currentTarget.innerText.trim();
+                  setLocalDateApproved(val);
+                  onFieldChange?.("dateApproved", val);
+                }}
+              >
+                {localDateApproved}
+              </span>.
+            </p>
+          </div>
+        )}
+
+        {/* Single Prominent HoPE Signatory */}
+        <div className="mt-16 pt-4 flex flex-col items-start">
+          <div className="text-center min-w-[280px]">
             <div className="border-b border-black pb-1">
               <span
-                className={`font-bold text-xs uppercase tracking-tight block ${editableClass}`}
+                className={`font-bold text-xs uppercase tracking-wide block ${editableClass}`}
                 contentEditable={editable}
                 suppressContentEditableWarning
                 onBlur={(e) => {
@@ -379,7 +641,7 @@ export function OfficialBacResolutionCanvas({
               </span>
             </div>
             <span
-              className={`text-[10.5px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
+              className={`text-[11px] text-neutral-700 block mt-1 font-semibold ${editableClass}`}
               contentEditable={editable}
               suppressContentEditableWarning
               onBlur={(e) => {
@@ -393,85 +655,8 @@ export function OfficialBacResolutionCanvas({
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  // Render Document 2: Letter of Approval of HoPE (Approval of BAC Resolution)
-  const renderHopeApproval = () => (
-    <div className="hope-approval-document-page">
-      {renderHeader(`Approval of BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`)}
-
-      {renderRecitals()}
-
-      {/* NOW THEREFORE for HoPE Approval */}
-      <div className="mt-4 space-y-3.5 text-justify text-[11.5px] leading-[1.6]">
-        <p className={`pt-1 ${editableClass}`} contentEditable={editable} suppressContentEditableWarning>
-          <span className="font-bold tracking-wide">NOW THEREFORE</span>, I,{" "}
-          <span
-            className={`font-bold ${editableClass}`}
-            contentEditable={editable}
-            suppressContentEditableWarning
-            onBlur={(e) => {
-              const val = e.currentTarget.innerText.trim();
-              setLocalPresidentName(val);
-              onFieldChange?.("collegePresidentName", val);
-            }}
-          >
-            {localPresidentName}
-          </span>{" "}
-          Head of the Procuring Entity (HOPE) by virtue of the authority vested in me by the Board of Trustees of this Institution and after taking into consideration the merits and legal bases of the recommendation of the members of the Bids and Awards Committee (BAC) do hereby <span className="font-bold">APPROVE</span> the foregoing recommendation and adoption of Alternative Mode of Procurement under <span className="font-bold underline">{localModeOfProcurement}</span>;
-        </p>
-
-        <p className="pt-2 font-semibold">
-          APPROVED FINALLY, at the {localEntityName}, this{" "}
-          <span
-            className={`underline ${editableClass}`}
-            contentEditable={editable}
-            suppressContentEditableWarning
-            onBlur={(e) => {
-              const val = e.currentTarget.innerText.trim();
-              setLocalDateApproved(val);
-              onFieldChange?.("dateApproved", val);
-            }}
-          >
-            {localDateApproved}
-          </span>
-        </p>
-      </div>
-
-      {/* Single Prominent HoPE Signatory */}
-      <div className="mt-16 pt-4 flex flex-col items-start">
-        <div className="text-center min-w-[280px]">
-          <div className="border-b border-black pb-1">
-            <span
-              className={`font-bold text-xs uppercase tracking-wide block ${editableClass}`}
-              contentEditable={editable}
-              suppressContentEditableWarning
-              onBlur={(e) => {
-                const val = e.currentTarget.innerText.trim();
-                setLocalPresidentName(val);
-                onFieldChange?.("collegePresidentName", val);
-              }}
-            >
-              {localPresidentName}
-            </span>
-          </div>
-          <span
-            className={`text-[11px] text-neutral-800 block mt-1 font-semibold ${editableClass}`}
-            contentEditable={editable}
-            suppressContentEditableWarning
-            onBlur={(e) => {
-              const val = e.currentTarget.innerText.trim();
-              setLocalPresidentDesignation(val);
-              onFieldChange?.("collegePresidentDesignation", val);
-            }}
-          >
-            {localPresidentDesignation}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <article
@@ -479,7 +664,42 @@ export function OfficialBacResolutionCanvas({
       className="official-bac-resolution bg-white text-black p-6 sm:p-10 font-serif leading-relaxed text-xs shadow-sm border border-[#d8d3c5] max-w-[850px] mx-auto print:border-0 print:shadow-none print:p-0 print:m-0 relative"
     >
       {/* Visual edit mode and document switcher banner (Hidden during print) */}
-      <div className="no-print mb-6 space-y-2 select-none print:hidden">
+      <div className="no-print mb-6 space-y-3 select-none print:hidden">
+        {/* Category Switcher: Step 5.3 Mode vs Step 5.8 Award */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#efe8dc] dark:bg-[#151c24] p-1 border border-[#dfd4c0] dark:border-[#2f3b4c]">
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleCategorySwitch("mode_of_procurement")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
+                localCategory === "mode_of_procurement"
+                  ? "bg-[#7b1e1e] text-white shadow-sm font-bold"
+                  : "text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50"
+              )}
+            >
+              <ScrollText className="h-3.5 w-3.5 shrink-0" />
+              Step 5.3: Mode of Procurement Resolution
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCategorySwitch("award_of_contract")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer font-sans",
+                localCategory === "award_of_contract"
+                  ? "bg-[#7b1e1e] text-white shadow-sm font-bold"
+                  : "text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:bg-white/50"
+              )}
+            >
+              <Award className="h-3.5 w-3.5 shrink-0" />
+              Step 5.8: Award of Contract Resolution (S/LCRQ to HoPE)
+            </button>
+          </div>
+          <span className="text-[10px] font-sans px-2 text-neutral-600 dark:text-neutral-400">
+            {localCategory === "award_of_contract" ? "Statutory Mandate: Section 5.8.1" : "Statutory Mandate: Section 5.3"}
+          </span>
+        </div>
+
         {/* Document Selection Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f6f2e9] dark:bg-[#19222c] p-1.5 border border-[#e8ded0] dark:border-[#2b3746]">
           <div className="flex flex-wrap items-center gap-1">

@@ -525,29 +525,67 @@ export function OfficialBacAbstractOfQuotations({
             )}
           </div>
 
-          {/* Government Savings Summary Pill */}
+          {/* Procedure 5.8: Recommendation on the Award of Contract Panel */}
           {winningQuote && (
-            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-full bg-emerald-600 text-white p-1.5 shrink-0">
-                  <Award className="h-4 w-4" />
+            <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-50/90 dark:bg-emerald-950/30 p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200 dark:border-emerald-800 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-emerald-700 text-white p-2 shrink-0">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-emerald-950 dark:text-emerald-100">
+                        Procedure 5.8: Recommendation on the Award of Contract
+                      </h4>
+                      {abstract?.status === "approved" ? (
+                        <Badge className="bg-emerald-700 text-white text-[10px] px-2 py-0.5">
+                          Award Endorsed to HoPE (Step 5.8.1)
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-emerald-700 text-emerald-800 dark:text-emerald-300 text-[10px] px-2 py-0.5">
+                          Awaiting BAC Endorsement
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
+                      <strong>Section 5.8.1:</strong> The BAC recommends to the HoPE the award of contract in favor of the supplier or contractor with the Single or Lowest Calculated and Responsive Quotation.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-emerald-950 dark:text-emerald-200 text-sm">
-                    Recommended Awardee: {supplierMap.get(winningQuote.supplierId)?.companyName}
-                  </p>
-                  <p className="text-emerald-800 dark:text-emerald-300 text-[11px] mt-0.5">
-                    Offered contract price of <strong>₱{Number(winningQuote.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</strong> evaluated as Lowest Calculated and Responsive Quotation (LCRQ).
+                <div className="text-right sm:border-l sm:border-emerald-200 dark:sm:border-emerald-800 sm:pl-4 shrink-0">
+                  <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">
+                    Public Savings Generated
+                  </span>
+                  <p className="text-lg font-extrabold text-emerald-800 dark:text-emerald-200 font-mono">
+                    ₱{savings.toLocaleString("en-PH", { minimumFractionDigits: 2 })} ({savingsPct.toFixed(1)}%)
                   </p>
                 </div>
               </div>
-              <div className="text-right sm:border-l sm:border-emerald-200 dark:sm:border-emerald-800/60 sm:pl-4">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">
-                  Public Savings Generated
-                </span>
-                <p className="text-base font-bold text-emerald-700 dark:text-emerald-300 font-mono">
-                  ₱{savings.toLocaleString("en-PH", { minimumFractionDigits: 2 })} ({savingsPct.toFixed(1)}%)
-                </p>
+
+              {/* Winner details grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/80 dark:bg-[#16202a] p-3 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                <div>
+                  <span className="text-[10px] uppercase text-stone-500 font-semibold block">Winning Supplier (S/LCRQ)</span>
+                  <p className="font-bold text-stone-900 dark:text-stone-100 text-sm mt-0.5">
+                    {supplierMap.get(winningQuote.supplierId)?.companyName}
+                  </p>
+                  <p className="text-[10px] text-stone-500">TIN: {supplierMap.get(winningQuote.supplierId)?.tin || "On file"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase text-stone-500 font-semibold block">Offered Contract Price</span>
+                  <p className="font-bold text-emerald-800 dark:text-emerald-300 text-sm mt-0.5 font-mono">
+                    ₱{Number(winningQuote.totalPrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Delivery: {winningQuote.deliveryDays} calendar days</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase text-stone-500 font-semibold block">Approved Budget (ABC)</span>
+                  <p className="font-bold text-stone-700 dark:text-stone-300 text-sm mt-0.5 font-mono">
+                    ₱{totalAbc.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Evaluation: Lot Basis (S/LCRQ)</p>
+                </div>
               </div>
             </div>
           )}
@@ -585,24 +623,40 @@ export function OfficialBacAbstractOfQuotations({
                   className="h-8 text-xs border-[#7b1e1e] text-[#7b1e1e] hover:bg-[#fffaf0]"
                 >
                   <Printer className="mr-1.5 h-3.5 w-3.5" />
-                  Print Official Annex F (AOQ)
+                  Print Annex F (AOQ)
                 </Button>
               </Link>
-              {pr && (
-                <Link
-                  href={`/officer/transmittals?tab=resolution&prId=${pr.id}&resNo=2601-GAS2-${pr.prNumber.replace(/^PR-/, "")}`}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs border-amber-600 text-amber-800 hover:bg-amber-50"
-                    title="Draft BAC Resolution recommending award pursuant to Step 5.8"
+              {pr && winningQuote && (
+                <>
+                  <Link
+                    href={`/print/bac-resolution?category=award_of_contract&prId=${pr.id}&resNo=2601-GAS2-${pr.prNumber.replace(/^PR-/, "")}&winningSupplier=${encodeURIComponent(supplierMap.get(winningQuote.supplierId)?.companyName || "")}&awardedAmount=${winningQuote.totalPrice}&rfqNo=${rfq?.rfqNumber || ""}&savings=${savings}`}
                   >
-                    <ScrollText className="mr-1.5 h-3.5 w-3.5" />
-                    Draft BAC Resolution (Step 5.8)
-                  </Button>
-                </Link>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs border-emerald-700 text-emerald-800 hover:bg-emerald-50"
+                      title="Print Official Step 5.8 BAC Resolution Recommending Award of Contract"
+                    >
+                      <Printer className="mr-1.5 h-3.5 w-3.5" />
+                      Print Award Resolution (5.8)
+                    </Button>
+                  </Link>
+                  <Link
+                    href={`/officer/transmittals?tab=resolution&category=award_of_contract&prId=${pr.id}&resNo=2601-GAS2-${pr.prNumber.replace(/^PR-/, "")}&winningSupplier=${encodeURIComponent(supplierMap.get(winningQuote.supplierId)?.companyName || "")}&awardedAmount=${winningQuote.totalPrice}&rfqNo=${rfq?.rfqNumber || ""}&savings=${savings}`}
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs border-amber-600 text-amber-800 hover:bg-amber-50"
+                      title="Open BAC Resolution Studio for Step 5.8 Award Recommendation"
+                    >
+                      <ScrollText className="mr-1.5 h-3.5 w-3.5" />
+                      Resolution Studio (Step 5.8)
+                    </Button>
+                  </Link>
+                </>
               )}
             </div>
 
@@ -619,20 +673,30 @@ export function OfficialBacAbstractOfQuotations({
                   Save & Prepare Official AOQ
                 </Button>
               )}
-              {isBac && abstract && abstract.status === "recommended" && (
+              {isBac && abstract && abstract.status === "recommended" && winningQuote && (
                 <Button
                   type="button"
                   size="sm"
                   disabled={approveAbstract.isPending}
-                  onClick={() => approveAbstract.mutate({ rfqId })}
-                  className="h-8 rounded-[4px] bg-emerald-700 text-xs font-semibold text-white hover:bg-emerald-800"
+                  onClick={() => {
+                    const winSupplier = supplierMap.get(winningQuote.supplierId)?.companyName;
+                    approveAbstract.mutate({
+                      rfqId,
+                      winningSupplierId: winningQuote.supplierId,
+                      winningSupplierName: winSupplier,
+                      awardedAmount: Number(winningQuote.totalPrice),
+                      resolutionNumber: pr ? `2601-GAS2-${pr.prNumber.replace(/^PR-/, "")}` : undefined,
+                    });
+                  }}
+                  className="h-8 rounded-[4px] bg-emerald-700 text-xs font-semibold text-white hover:bg-emerald-800 shadow-sm"
+                  title="Section 5.8.1: The BAC recommends to the HoPE the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation."
                 >
                   {approveAbstract.isPending ? (
                     <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                   )}
-                  Approve AOQ & Endorse Award to HoPE
+                  Recommend Award to HoPE (Step 5.8.1)
                 </Button>
               )}
             </div>
