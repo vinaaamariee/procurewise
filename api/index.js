@@ -3113,6 +3113,25 @@ async function transmitRfqToBac(input, user, options) {
       );
     }
   }
+  const currentQuotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfq.id));
+  if (currentQuotes.length < 3) {
+    const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId)).limit(1);
+    if (preCanvass) {
+      const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+      const existingSupplierIds = new Set(currentQuotes.map((q) => q.supplierId));
+      const quotesToInsert = preQuotes.filter((q) => !existingSupplierIds.has(q.supplierId)).map((q) => ({
+        rfqId: rfq.id,
+        supplierId: q.supplierId,
+        totalPrice: q.totalPrice,
+        deliveryDays: q.deliveryDays,
+        isCompliant: q.isCompliant,
+        notes: q.notes ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}` : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`
+      }));
+      if (quotesToInsert.length > 0) {
+        await db.insert(supplierQuotations).values(quotesToInsert);
+      }
+    }
+  }
   const transmittalNumber = `BAC-T-${(/* @__PURE__ */ new Date()).getFullYear()}-${Date.now().toString().slice(-7)}`;
   await db.insert(bacTransmittals).values({
     transmittalNumber,
@@ -4358,6 +4377,22 @@ async function createRfqFromPurchaseRequest(purchaseRequestId, user) {
   await db.update(purchaseRequests).set({ status: "rfq" }).where(eq(purchaseRequests.id, purchaseRequestId));
   const [created] = await db.select().from(rfqs).where(eq(rfqs.rfqNumber, rfqNumber)).limit(1);
   if (!created) throw new Error("The RFQ could not be created.");
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequestId)).limit(1);
+  if (preCanvass) {
+    const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+    if (preQuotes.length > 0) {
+      await db.insert(supplierQuotations).values(
+        preQuotes.map((q) => ({
+          rfqId: created.id,
+          supplierId: q.supplierId,
+          totalPrice: q.totalPrice,
+          deliveryDays: q.deliveryDays,
+          isCompliant: q.isCompliant,
+          notes: q.notes ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}` : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`
+        }))
+      );
+    }
+  }
   await writeAuditEvent({ entityType: "rfq", entityId: created.id, action: "created_from_approved_pr", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { rfqNumber, prNumber: pr.prNumber } });
   return created;
 }
@@ -4397,15 +4432,105 @@ async function createRfqFromPreCanvass(preCanvassId, user) {
   await writeAuditEvent({ entityType: "rfq", entityId: rfq.id, action: "created_from_mcdm_pre_canvass", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { preCanvassId, recommendedSupplierId: mcdm.recommendedSupplierId } });
   return rfq;
 }
+async function importPreCanvassQuotesToRfq(input, user) {
+  const db = await requireDb();
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "procurement_staff", "bac", "bac_secretariat", "admin"])) {
+    throw new Error("Access restricted to Procurement Officer, Staff, BAC, or Admin.");
+  }
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId)).limit(1);
+  if (!preCanvass) {
+    throw new Error("No End-User Pre-Canvass record found for the linked Purchase Request.");
+  }
+  const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+  if (!preQuotes.length) {
+    throw new Error("No supplier quotations were recorded in the End-User Pre-Canvass.");
+  }
+  const existingQuotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (input.overwrite && existingQuotes.length > 0) {
+    await db.delete(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  }
+  const existingSupplierIds = input.overwrite ? /* @__PURE__ */ new Set() : new Set(existingQuotes.map((q) => q.supplierId));
+  const quotesToInsert = preQuotes.filter((q) => !existingSupplierIds.has(q.supplierId)).map((q) => ({
+    rfqId: input.rfqId,
+    supplierId: q.supplierId,
+    totalPrice: q.totalPrice,
+    deliveryDays: q.deliveryDays,
+    isCompliant: q.isCompliant,
+    notes: q.notes ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}` : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`
+  }));
+  if (quotesToInsert.length > 0) {
+    await db.insert(supplierQuotations).values(quotesToInsert);
+  }
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "quotes_imported_from_pre_canvass",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      rfqNumber: rfq.rfqNumber,
+      preCanvassNumber: preCanvass.preCanvassNumber,
+      importedCount: quotesToInsert.length,
+      totalQuotes: existingSupplierIds.size + quotesToInsert.length
+    }
+  });
+  return {
+    success: true,
+    rfqId: input.rfqId,
+    importedCount: quotesToInsert.length,
+    totalQuotes: existingSupplierIds.size + quotesToInsert.length,
+    preCanvassNumber: preCanvass.preCanvassNumber
+  };
+}
 async function addSupplierQuotation(input, user) {
   const db = await requireDb();
-  await db.insert(supplierQuotations).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
+  const [existing] = await db.select().from(supplierQuotations).where(and(eq(supplierQuotations.rfqId, input.rfqId), eq(supplierQuotations.supplierId, input.supplierId))).limit(1);
+  if (existing) {
+    await db.update(supplierQuotations).set({
+      totalPrice: input.totalPrice.toFixed(2),
+      deliveryDays: input.deliveryDays,
+      isCompliant: input.isCompliant ? 1 : 0,
+      notes: input.notes || null
+    }).where(eq(supplierQuotations.id, existing.id));
+  } else {
+    await db.insert(supplierQuotations).values({
+      ...input,
+      totalPrice: input.totalPrice.toFixed(2),
+      isCompliant: input.isCompliant ? 1 : 0,
+      notes: input.notes || null
+    });
+  }
   await writeAuditEvent({ entityType: "rfq", entityId: input.rfqId, action: "supplier_quotation_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
 async function createQuotationAbstract(inputOrRfqId, user) {
   const db = await requireDb();
   const rfqId = typeof inputOrRfqId === "number" ? inputOrRfqId : inputOrRfqId.rfqId;
-  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+  let quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+  if (quotes.length < 3) {
+    const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId)).limit(1);
+    if (rfq) {
+      const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId)).limit(1);
+      if (preCanvass) {
+        const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+        const existingSupplierIds = new Set(quotes.map((q) => q.supplierId));
+        const quotesToInsert = preQuotes.filter((q) => !existingSupplierIds.has(q.supplierId)).map((q) => ({
+          rfqId,
+          supplierId: q.supplierId,
+          totalPrice: q.totalPrice,
+          deliveryDays: q.deliveryDays,
+          isCompliant: q.isCompliant,
+          notes: q.notes ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}` : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`
+        }));
+        if (quotesToInsert.length > 0) {
+          await db.insert(supplierQuotations).values(quotesToInsert);
+          quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+        }
+      }
+    }
+  }
   if (quotes.length < 3) throw new Error("At least three supplier quotations are required before an Abstract of Quotation can be generated.");
   const compliant = quotes.filter((quote) => quote.isCompliant === 1).sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
   const defaultRecommended = compliant[0];
@@ -4454,7 +4579,26 @@ async function forwardRfqToBacForAoq(input, user) {
   const db = await requireDb();
   const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
   if (!rfq) throw new Error("RFQ not found.");
-  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  let quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  if (quotes.length < 3) {
+    const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId)).limit(1);
+    if (preCanvass) {
+      const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+      const existingSupplierIds = new Set(quotes.map((q) => q.supplierId));
+      const quotesToInsert = preQuotes.filter((q) => !existingSupplierIds.has(q.supplierId)).map((q) => ({
+        rfqId: rfq.id,
+        supplierId: q.supplierId,
+        totalPrice: q.totalPrice,
+        deliveryDays: q.deliveryDays,
+        isCompliant: q.isCompliant,
+        notes: q.notes ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}` : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`
+      }));
+      if (quotesToInsert.length > 0) {
+        await db.insert(supplierQuotations).values(quotesToInsert);
+        quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+      }
+    }
+  }
   if (quotes.length < 3) {
     throw new Error(`Mandatory canvass requirement: At least three (3) supplier quotations are required before forwarding to BAC (currently ${quotes.length}/3).`);
   }
@@ -7315,8 +7459,23 @@ var appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "admin"]);
         return createRfqFromPurchaseRequest(input.purchaseRequestId, ctx.user);
       }),
+      importPreCanvassQuotes: protectedProcedure.input(z2.object({
+        rfqId: z2.number().int().positive(),
+        overwrite: z2.boolean().optional()
+      })).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), [
+          "procurement_staff",
+          "procurement_officer",
+          "bac",
+          "bac_secretariat",
+          "admin"
+        ]);
+        const result = await importPreCanvassQuotesToRfq(input, ctx.user);
+        void publishProcurementRealtimeUpdate("rfq");
+        return result;
+      }),
       addQuotation: protectedProcedure.input(z2.object({ rfqId: z2.number().int().positive(), supplierId: z2.number().int().positive(), totalPrice: z2.number().positive(), deliveryDays: z2.number().int().nonnegative(), isCompliant: z2.boolean(), notes: z2.string().optional() })).mutation(({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "admin"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "procurement_staff", "bac", "bac_secretariat", "admin"]);
         return addSupplierQuotation(input, ctx.user);
       }),
       generateAbstract: protectedProcedure.input(z2.object({
@@ -7351,7 +7510,7 @@ var appRouter = router({
         rfqId: z2.number().int().positive(),
         remarks: z2.string().optional()
       })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "procurement_officer", "admin"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_staff", "procurement_officer", "bac", "bac_secretariat", "admin"]);
         const result = await forwardRfqToBacForAoq(input, ctx.user);
         void publishProcurementRealtimeUpdate("rfq");
         return result;

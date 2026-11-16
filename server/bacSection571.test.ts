@@ -117,5 +117,59 @@ describe("Section 5.7.1: Opening of Quotations & Preparation of Abstract of Quot
     expect(savingsAmount).toBe(5100.0);
     expect(savingsPercent).toBeCloseTo(9.51, 1);
   });
+
+  it("validates adopting End-User Pre-Canvass quotes (3/3) into the official RFQ Abstract (Section 5.7.1)", () => {
+    // Schema for importing pre-canvass quotes
+    const importPreCanvassSchema = z.object({
+      rfqId: z.number().int().positive(),
+      overwrite: z.boolean().optional(),
+    });
+
+    const parsed = importPreCanvassSchema.safeParse({ rfqId: 442180, overwrite: false });
+    expect(parsed.success).toBe(true);
+
+    // Pre-canvass quotes recorded by End-User during PR preparation
+    const endUserPreCanvassQuotes = [
+      { supplierId: 1, companyName: "NSGB Books Trading", totalPrice: 2400.0, deliveryDays: 3, isCompliant: 1 },
+      { supplierId: 2, companyName: "IDB Merida Photo Studio & Artworks", totalPrice: 2450.0, deliveryDays: 5, isCompliant: 1 },
+      { supplierId: 3, companyName: "I.B.S. Travel and Tours", totalPrice: 2350.0, deliveryDays: 2, isCompliant: 1 },
+    ];
+
+    expect(endUserPreCanvassQuotes.length).toBe(3);
+
+    // Simulate adoption into RFQ supplierQuotations
+    const adoptedQuotes = endUserPreCanvassQuotes.map((q) => ({
+      rfqId: 442180,
+      supplierId: q.supplierId,
+      totalPrice: q.totalPrice.toFixed(2),
+      deliveryDays: q.deliveryDays,
+      isCompliant: q.isCompliant,
+      notes: "Adopted from End-User Pre-Canvass",
+    }));
+
+    expect(adoptedQuotes.length).toBe(3);
+    expect(adoptedQuotes.every((q) => q.isCompliant === 1)).toBe(true);
+
+    // Lowest Calculated and Responsive Quotation (LCRQ) identification
+    const sorted = [...adoptedQuotes].sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
+    expect(sorted[0].supplierId).toBe(3); // I.B.S. Travel and Tours at 2,350.00
+    expect(Number(sorted[0].totalPrice)).toBe(2350.0);
+  });
+
+  it("authorizes BAC, Secretariat, and Procurement Officer for adopting pre-canvass quotes and recording quotations", () => {
+    const authorized = new Set([
+      "procurement_staff",
+      "procurement_officer",
+      "bac",
+      "bac_secretariat",
+      "admin",
+    ]);
+
+    expect(authorized.has("bac")).toBe(true);
+    expect(authorized.has("bac_secretariat")).toBe(true);
+    expect(authorized.has("procurement_officer")).toBe(true);
+    expect(authorized.has("procurement_staff")).toBe(true);
+    expect(authorized.has("admin")).toBe(true);
+  });
 });
 

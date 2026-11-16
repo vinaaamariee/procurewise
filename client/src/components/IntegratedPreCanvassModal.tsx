@@ -176,12 +176,13 @@ export function IntegratedPreCanvassModal({
     });
   };
 
-  const handleUploadPreliminaryAoq = async () => {
-    if (!existingPreCanvass || !preliminaryAoqFile) {
+  const handleUploadPreliminaryAoq = async (overrideFile?: File) => {
+    const file = overrideFile || preliminaryAoqFile;
+    if (!existingPreCanvass || !file) {
       toast.error("Choose the preliminary quotation attachment first.");
       return;
     }
-    if (preliminaryAoqFile.size > 10 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast.error("The pre-canvass attachment must be 10 MB or smaller.");
       return;
     }
@@ -193,14 +194,14 @@ export function IntegratedPreCanvassModal({
           const result = String(reader.result || "");
           resolve(result.includes(",") ? result.split(",")[1] || "" : result);
         };
-        reader.readAsDataURL(preliminaryAoqFile);
+        reader.readAsDataURL(file);
       });
       attachDocumentMutation.mutate({
         entityType: "pre_canvass",
         entityId: existingPreCanvass.id,
         documentType: "Preliminary Abstract of Quotations",
-        originalFileName: preliminaryAoqFile.name,
-        mimeType: preliminaryAoqFile.type || "application/octet-stream",
+        originalFileName: file.name,
+        mimeType: file.type || "application/octet-stream",
         dataBase64,
       });
     } catch (error) {
@@ -275,8 +276,8 @@ export function IntegratedPreCanvassModal({
             <span>2. 3 Supplier Quotes ({quotesCount}/3)</span>
           </div>
           <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground" />
-          <div className={`shrink-0 flex items-center gap-1.5 ${canForward ? "text-[#27633b] font-semibold" : isReadyToForward ? "text-[#7b1e1e] font-bold" : "text-muted-foreground"}`}>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#f5f3ee] dark:bg-[#232c35]">
+          <div className={`shrink-0 flex items-center gap-1.5 ${canForward ? "text-[#27633b] font-bold" : isReadyToForward ? "text-[#27633b] font-semibold" : "text-muted-foreground"}`}>
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full ${canForward ? "bg-[#eff9f2] text-[#27633b] dark:bg-[#1a3824]" : isReadyToForward ? "bg-[#e8f5e9] text-[#27633b] dark:bg-[#1b3323]" : "bg-[#f5f3ee] dark:bg-[#232c35]"}`}>
               {canForward ? "✓" : "3"}
             </span>
             <span>3. Attach &amp; forward</span>
@@ -288,7 +289,7 @@ export function IntegratedPreCanvassModal({
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Quotes and attachment progress</span>
             <span className="font-semibold text-foreground">
-              {canForward ? "Ready to submit" : isReadyToForward ? "Attachment required" : `${quotesCount}/3 quotes recorded`}
+              {canForward ? "Ready to submit" : isReadyToForward ? (hasPreliminaryAoq ? "Attachment verified" : preliminaryAoqFile ? "Uploading attachment..." : "Attachment required") : `${quotesCount}/3 quotes recorded`}
             </span>
           </div>
           <Progress value={modalProgress} className="h-1.5" />
@@ -556,8 +557,13 @@ export function IntegratedPreCanvassModal({
 
                 <div className="mt-4 rounded-[4px] border border-[#d5c89f] bg-white p-3.5 dark:border-[#635028] dark:bg-[#1b2229]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label htmlFor="integrated-preliminary-aoq" className="text-xs font-semibold">
-                      Preliminary quotation attachment {!hasPreliminaryAoq && <span className="text-rose-600 font-bold">Required</span>}
+                    <Label htmlFor="integrated-preliminary-aoq" className="text-xs font-semibold flex items-center gap-1.5">
+                      Preliminary quotation attachment
+                      {!hasPreliminaryAoq && (
+                        <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full">
+                          Attachment required
+                        </span>
+                      )}
                     </Label>
                     {hasPreliminaryAoq && (
                       <StatusBadge tone="approved">ATTACHED</StatusBadge>
@@ -575,7 +581,13 @@ export function IntegratedPreCanvassModal({
                       id="integrated-preliminary-aoq"
                       type="file"
                       accept=".xlsx,.xls,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/pdf"
-                      onChange={(event) => setPreliminaryAoqFile(event.target.files?.[0] ?? null)}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        setPreliminaryAoqFile(file);
+                        if (file) {
+                          void handleUploadPreliminaryAoq(file);
+                        }
+                      }}
                       className="sr-only"
                     />
                     <Button
@@ -590,7 +602,7 @@ export function IntegratedPreCanvassModal({
                     <div
                       className={`min-w-0 flex-1 truncate rounded-md border px-3 py-2 text-xs ${
                         preliminaryAoqFile
-                          ? "border-amber-400 bg-amber-50 font-semibold text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+                          ? "border-emerald-300 bg-emerald-50/70 font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                           : preliminaryAoqDocument
                           ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                           : "border-slate-200 bg-slate-50 text-muted-foreground dark:border-slate-800 dark:bg-slate-900/50"
@@ -599,11 +611,20 @@ export function IntegratedPreCanvassModal({
                     >
                       {preliminaryAoqFile ? (
                         <div className="flex items-center gap-1.5 truncate">
-                          <FileCheck2 className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                          {attachDocumentMutation.isPending ? (
+                            <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                          )}
                           <span className="truncate">{preliminaryAoqFile.name}</span>
-                          <span className="shrink-0 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                          <span className="shrink-0 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
                             ({(preliminaryAoqFile.size / 1024).toFixed(1)} KB)
                           </span>
+                          {attachDocumentMutation.isPending && (
+                            <span className="shrink-0 text-[10px] text-emerald-700 dark:text-emerald-400 font-normal italic">
+                              · Uploading...
+                            </span>
+                          )}
                         </div>
                       ) : preliminaryAoqDocument ? (
                         <div className="flex items-center gap-1.5 truncate text-emerald-800 dark:text-emerald-300">
@@ -620,7 +641,7 @@ export function IntegratedPreCanvassModal({
                       onClick={() => void handleUploadPreliminaryAoq()}
                       className={`h-10 shrink-0 px-4 text-xs font-bold transition-all shadow-sm ${
                         preliminaryAoqFile
-                          ? "bg-[#881337] text-white hover:bg-[#70102e] ring-2 ring-[#881337]/50 shadow-md animate-pulse cursor-pointer"
+                          ? "bg-[#27633b] text-white hover:bg-[#1f5030] ring-2 ring-[#27633b]/40 shadow-md cursor-pointer"
                           : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed opacity-60"
                       }`}
                     >
@@ -629,23 +650,32 @@ export function IntegratedPreCanvassModal({
                       ) : (
                         <Upload className="mr-1.5 h-4 w-4" />
                       )}
-                      Upload attachment
+                      {attachDocumentMutation.isPending ? "Uploading..." : "Upload attachment"}
                     </Button>
                   </div>
 
-                  {preliminaryAoqFile && !attachDocumentMutation.isPending && (
-                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md border-2 border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-950 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-100">
+                  {preliminaryAoqFile && attachDocumentMutation.isPending && (
+                    <div className="mt-2.5 flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100">
+                      <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        Uploading <strong>{preliminaryAoqFile.name}</strong> to procurement package... Please wait.
+                      </span>
+                    </div>
+                  )}
+
+                  {preliminaryAoqFile && !attachDocumentMutation.isPending && !hasPreliminaryAoq && (
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100">
                       <div className="flex items-center gap-2">
-                        <Upload className="h-4 w-4 shrink-0 text-rose-700 dark:text-rose-400" />
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
                         <span>
-                          File chosen: <u>{preliminaryAoqFile.name}</u>. Click <strong>Upload attachment</strong> on the right to attach it!
+                          File chosen: <strong>{preliminaryAoqFile.name}</strong>. Ready to attach.
                         </span>
                       </div>
                       <Button
                         type="button"
                         size="sm"
                         onClick={() => void handleUploadPreliminaryAoq()}
-                        className="h-7 bg-[#881337] text-white hover:bg-[#70102e] px-3 text-[11px] font-bold shrink-0 shadow-xs"
+                        className="h-7 bg-[#27633b] text-white hover:bg-[#1f5030] px-3 text-[11px] font-bold shrink-0 shadow-xs"
                       >
                         Upload Now
                       </Button>

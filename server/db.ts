@@ -1552,6 +1552,31 @@ export async function transmitRfqToBac(
     }
   }
 
+  // Auto-adopt pre-canvass quotes into RFQ if supplier quotations are empty / less than 3
+  const currentQuotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfq.id));
+  if (currentQuotes.length < 3) {
+    const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId)).limit(1);
+    if (preCanvass) {
+      const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+      const existingSupplierIds = new Set(currentQuotes.map((q) => q.supplierId));
+      const quotesToInsert = preQuotes
+        .filter((q) => !existingSupplierIds.has(q.supplierId))
+        .map((q) => ({
+          rfqId: rfq.id,
+          supplierId: q.supplierId,
+          totalPrice: q.totalPrice,
+          deliveryDays: q.deliveryDays,
+          isCompliant: q.isCompliant,
+          notes: q.notes
+            ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}`
+            : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`,
+        }));
+      if (quotesToInsert.length > 0) {
+        await db.insert(supplierQuotations).values(quotesToInsert);
+      }
+    }
+  }
+
   const transmittalNumber = `BAC-T-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   await db.insert(bacTransmittals).values({
     transmittalNumber,
@@ -3110,6 +3135,27 @@ export async function createRfqFromPurchaseRequest(purchaseRequestId: number, us
   await db.update(purchaseRequests).set({ status: "rfq" }).where(eq(purchaseRequests.id, purchaseRequestId));
   const [created] = await db.select().from(rfqs).where(eq(rfqs.rfqNumber, rfqNumber)).limit(1);
   if (!created) throw new Error("The RFQ could not be created.");
+
+  // Automatically adopt preliminary supplier quotations recorded by the End-User during Pre-Canvass
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, purchaseRequestId)).limit(1);
+  if (preCanvass) {
+    const preQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+    if (preQuotes.length > 0) {
+      await db.insert(supplierQuotations).values(
+        preQuotes.map((q) => ({
+          rfqId: created.id,
+          supplierId: q.supplierId,
+          totalPrice: q.totalPrice,
+          deliveryDays: q.deliveryDays,
+          isCompliant: q.isCompliant,
+          notes: q.notes
+            ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}`
+            : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`,
+        }))
+      );
+    }
+  }
+
   await writeAuditEvent({ entityType: "rfq", entityId: created.id, action: "created_from_approved_pr", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { rfqNumber, prNumber: pr.prNumber } });
   return created;
 }
@@ -3151,9 +3197,117 @@ export async function createRfqFromPreCanvass(preCanvassId: number, user: User) 
   return rfq;
 }
 
+export async function importPreCanvassQuotesToRfq(
+  input: { rfqId: number; overwrite?: boolean },
+  user: User
+) {
+  const db = await requireDb();
+  const actorRole = normalizeProcurementRole(user.role);
+  if (!roleCanAct(actorRole, ["procurement_officer", "procurement_staff", "bac", "bac_secretariat", "admin"])) {
+    throw new Error("Access restricted to Procurement Officer, Staff, BAC, or Admin.");
+  }
+
+  const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+  if (!rfq) throw new Error("RFQ not found.");
+
+  const [preCanvass] = await db
+    .select()
+    .from(preCanvasses)
+    .where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId))
+    .limit(1);
+
+  if (!preCanvass) {
+    throw new Error("No End-User Pre-Canvass record found for the linked Purchase Request.");
+  }
+
+  const preQuotes = await db
+    .select()
+    .from(preCanvassQuotes)
+    .where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+
+  if (!preQuotes.length) {
+    throw new Error("No supplier quotations were recorded in the End-User Pre-Canvass.");
+  }
+
+  const existingQuotes = await db
+    .select()
+    .from(supplierQuotations)
+    .where(eq(supplierQuotations.rfqId, input.rfqId));
+
+  if (input.overwrite && existingQuotes.length > 0) {
+    await db.delete(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  }
+
+  const existingSupplierIds = input.overwrite
+    ? new Set<number>()
+    : new Set(existingQuotes.map((q) => q.supplierId));
+
+  const quotesToInsert = preQuotes
+    .filter((q) => !existingSupplierIds.has(q.supplierId))
+    .map((q) => ({
+      rfqId: input.rfqId,
+      supplierId: q.supplierId,
+      totalPrice: q.totalPrice,
+      deliveryDays: q.deliveryDays,
+      isCompliant: q.isCompliant,
+      notes: q.notes
+        ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}`
+        : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`,
+    }));
+
+  if (quotesToInsert.length > 0) {
+    await db.insert(supplierQuotations).values(quotesToInsert);
+  }
+
+  await writeAuditEvent({
+    entityType: "rfq",
+    entityId: input.rfqId,
+    action: "quotes_imported_from_pre_canvass",
+    performedById: user.id,
+    performedByRole: actorRole,
+    details: {
+      rfqNumber: rfq.rfqNumber,
+      preCanvassNumber: preCanvass.preCanvassNumber,
+      importedCount: quotesToInsert.length,
+      totalQuotes: existingSupplierIds.size + quotesToInsert.length,
+    },
+  });
+
+  return {
+    success: true,
+    rfqId: input.rfqId,
+    importedCount: quotesToInsert.length,
+    totalQuotes: existingSupplierIds.size + quotesToInsert.length,
+    preCanvassNumber: preCanvass.preCanvassNumber,
+  };
+}
+
 export async function addSupplierQuotation(input: { rfqId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; notes?: string }, user: User) {
   const db = await requireDb();
-  await db.insert(supplierQuotations).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, notes: input.notes || null });
+  const [existing] = await db
+    .select()
+    .from(supplierQuotations)
+    .where(and(eq(supplierQuotations.rfqId, input.rfqId), eq(supplierQuotations.supplierId, input.supplierId)))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(supplierQuotations)
+      .set({
+        totalPrice: input.totalPrice.toFixed(2),
+        deliveryDays: input.deliveryDays,
+        isCompliant: input.isCompliant ? 1 : 0,
+        notes: input.notes || null,
+      })
+      .where(eq(supplierQuotations.id, existing.id));
+  } else {
+    await db.insert(supplierQuotations).values({
+      ...input,
+      totalPrice: input.totalPrice.toFixed(2),
+      isCompliant: input.isCompliant ? 1 : 0,
+      notes: input.notes || null,
+    });
+  }
   await writeAuditEvent({ entityType: "rfq", entityId: input.rfqId, action: "supplier_quotation_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
 
@@ -3172,7 +3326,43 @@ export async function createQuotationAbstract(
 ) {
   const db = await requireDb();
   const rfqId = typeof inputOrRfqId === "number" ? inputOrRfqId : inputOrRfqId.rfqId;
-  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+  let quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+
+  // If RFQ has < 3 quotes, auto-adopt from linked Pre-Canvass if available
+  if (quotes.length < 3) {
+    const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId)).limit(1);
+    if (rfq) {
+      const [preCanvass] = await db
+        .select()
+        .from(preCanvasses)
+        .where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId))
+        .limit(1);
+      if (preCanvass) {
+        const preQuotes = await db
+          .select()
+          .from(preCanvassQuotes)
+          .where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+        const existingSupplierIds = new Set(quotes.map((q) => q.supplierId));
+        const quotesToInsert = preQuotes
+          .filter((q) => !existingSupplierIds.has(q.supplierId))
+          .map((q) => ({
+            rfqId,
+            supplierId: q.supplierId,
+            totalPrice: q.totalPrice,
+            deliveryDays: q.deliveryDays,
+            isCompliant: q.isCompliant,
+            notes: q.notes
+              ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}`
+              : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`,
+          }));
+        if (quotesToInsert.length > 0) {
+          await db.insert(supplierQuotations).values(quotesToInsert);
+          quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, rfqId));
+        }
+      }
+    }
+  }
+
   if (quotes.length < 3) throw new Error("At least three supplier quotations are required before an Abstract of Quotation can be generated.");
   const compliant = quotes.filter((quote) => quote.isCompliant === 1).sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
   const defaultRecommended = compliant[0];
@@ -3244,7 +3434,40 @@ export async function forwardRfqToBacForAoq(
   const db = await requireDb();
   const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
   if (!rfq) throw new Error("RFQ not found.");
-  const quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+  let quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+
+  // If RFQ has < 3 quotes, auto-adopt from linked Pre-Canvass if available
+  if (quotes.length < 3) {
+    const [preCanvass] = await db
+      .select()
+      .from(preCanvasses)
+      .where(eq(preCanvasses.purchaseRequestId, rfq.purchaseRequestId))
+      .limit(1);
+    if (preCanvass) {
+      const preQuotes = await db
+        .select()
+        .from(preCanvassQuotes)
+        .where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+      const existingSupplierIds = new Set(quotes.map((q) => q.supplierId));
+      const quotesToInsert = preQuotes
+        .filter((q) => !existingSupplierIds.has(q.supplierId))
+        .map((q) => ({
+          rfqId: rfq.id,
+          supplierId: q.supplierId,
+          totalPrice: q.totalPrice,
+          deliveryDays: q.deliveryDays,
+          isCompliant: q.isCompliant,
+          notes: q.notes
+            ? `[Pre-Canvass ${preCanvass.preCanvassNumber}] ${q.notes}`
+            : `Adopted from End-User Pre-Canvass ${preCanvass.preCanvassNumber}`,
+        }));
+      if (quotesToInsert.length > 0) {
+        await db.insert(supplierQuotations).values(quotesToInsert);
+        quotes = await db.select().from(supplierQuotations).where(eq(supplierQuotations.rfqId, input.rfqId));
+      }
+    }
+  }
+
   if (quotes.length < 3) {
     throw new Error(`Mandatory canvass requirement: At least three (3) supplier quotations are required before forwarding to BAC (currently ${quotes.length}/3).`);
   }
