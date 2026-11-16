@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
@@ -84,28 +84,39 @@ export function TransmittalsPage() {
   const [winningSupplierName, setWinningSupplierName] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
-      return search.get("winningSupplier") || "Basco General Merchandise";
+      return search.get("winningSupplier") || "";
     }
-    return "Basco General Merchandise";
+    return "";
   });
 
   const [winningQuotationAmount, setWinningQuotationAmount] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
       const val = Number(search.get("awardedAmount"));
-      return val > 0 ? val : 48500;
+      return val > 0 ? val : 0;
     }
-    return 48500;
+    return 0;
   });
 
   const [savingsAmount, setSavingsAmount] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const search = new URLSearchParams(window.location.search);
       const val = Number(search.get("savings"));
-      return val > 0 ? val : 5100;
+      return val > 0 ? val : 0;
     }
-    return 5100;
+    return 0;
   });
+
+  // Step 5.8 Supplier choice state: user selects from options according to chosen PR
+  const [selectedSupplierKey, setSelectedSupplierKey] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      const supp = search.get("winningSupplier");
+      return supp ? `param-${supp}` : "";
+    }
+    return "";
+  });
+  const [isCustomSupplier, setIsCustomSupplier] = useState<boolean>(false);
 
   const [rfqNumber, setRfqNumber] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -137,6 +148,175 @@ export function TransmittalsPage() {
     { enabled: Boolean(selectedPrId) && Number(selectedPrId) > 0, retry: false }
   );
 
+  // Active PR quotes & suppliers derived dynamically from chosen PR
+  const activePrId = Number(selectedPrId);
+  const activeLinkedRfq = useMemo(() => {
+    if (!activePrId) return undefined;
+    return (dashboard.data?.rfqs ?? []).find((r) => r.purchaseRequestId === activePrId);
+  }, [dashboard.data?.rfqs, activePrId]);
+
+  const activeRfqQuotes = useMemo(() => {
+    if (!activeLinkedRfq) return [];
+    return (dashboard.data?.supplierQuotations ?? []).filter((q) => q.rfqId === activeLinkedRfq.id);
+  }, [dashboard.data?.supplierQuotations, activeLinkedRfq]);
+
+  const activePreCanvass = useMemo(() => {
+    if (!activePrId) return undefined;
+    return (dashboard.data?.preCanvasses ?? []).find((pc) => pc.purchaseRequestId === activePrId);
+  }, [dashboard.data?.preCanvasses, activePrId]);
+
+  const activePreCanvassQuotes = useMemo(() => {
+    if (!activePreCanvass) return [];
+    return (dashboard.data?.preCanvassQuotes ?? []).filter((pq) => pq.preCanvassId === activePreCanvass.id);
+  }, [dashboard.data?.preCanvassQuotes, activePreCanvass]);
+
+  // Options of suppliers according to the PR chosen
+  interface SupplierChoice {
+    key: string;
+    supplierId?: number;
+    supplierName: string;
+    quotedPrice?: number;
+    deliveryDays?: number;
+    isCompliant?: boolean;
+    isLowest?: boolean;
+    group: "pr_quotes" | "registered";
+    label: string;
+    badge?: string;
+  }
+
+  const availableSupplierOptions = useMemo<SupplierChoice[]>(() => {
+    const list: SupplierChoice[] = [];
+    const suppliers = setup.data?.suppliers ?? [];
+    const supplierMap = new Map(suppliers.map((s) => [s.id, s]));
+
+    if (activeRfqQuotes.length > 0) {
+      const compliant = activeRfqQuotes.filter((q) => q.isCompliant === 1 || q.isCompliant === (true as any));
+      const lowestPrice = compliant.length > 0
+        ? Math.min(...compliant.map((q) => Number(q.totalPrice)))
+        : null;
+
+      activeRfqQuotes.forEach((q) => {
+        const supp = supplierMap.get(q.supplierId);
+        const name = supp?.companyName || `Supplier #${q.supplierId}`;
+        const price = Number(q.totalPrice);
+        const isComp = q.isCompliant === 1 || q.isCompliant === (true as any);
+        const isLowest = isComp && lowestPrice !== null && price === lowestPrice;
+
+        list.push({
+          key: `rfq-quote-${q.id}`,
+          supplierId: q.supplierId,
+          supplierName: name,
+          quotedPrice: price,
+          deliveryDays: q.deliveryDays ?? undefined,
+          isCompliant: isComp,
+          isLowest,
+          group: "pr_quotes",
+          label: `${name} — ₱${price.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          badge: isLowest
+            ? "Single or Lowest Calculated Responsive Quotation (S/LCRQ)"
+            : isComp
+            ? "Compliant & Responsive Quotation"
+            : "Non-compliant Quotation",
+        });
+      });
+    } else if (activePreCanvassQuotes.length > 0) {
+      activePreCanvassQuotes.forEach((pq) => {
+        const supp = supplierMap.get(pq.supplierId);
+        const name = supp?.companyName || `Supplier #${pq.supplierId}`;
+        const price = Number(pq.totalPrice);
+        list.push({
+          key: `precanvass-quote-${pq.id}`,
+          supplierId: pq.supplierId,
+          supplierName: name,
+          quotedPrice: price,
+          deliveryDays: pq.deliveryDays ?? undefined,
+          isCompliant: Boolean(pq.isCompliant),
+          group: "pr_quotes",
+          label: `${name} — ₱${price.toLocaleString("en-PH", { minimumFractionDigits: 2 })} (Canvass Quote)`,
+          badge: "Canvass Quote",
+        });
+      });
+    }
+
+    // Registered suppliers
+    const usedSupplierIds = new Set(list.map((c) => c.supplierId).filter(Boolean));
+    suppliers.forEach((s) => {
+      if (!usedSupplierIds.has(s.id)) {
+        list.push({
+          key: `registered-${s.id}`,
+          supplierId: s.id,
+          supplierName: s.companyName,
+          group: "registered",
+          label: `${s.companyName} (TIN: ${s.tin || "Registered"})`,
+        });
+      }
+    });
+
+    return list;
+  }, [activeRfqQuotes, activePreCanvassQuotes, setup.data?.suppliers]);
+
+  // Synchronize URL param if navigated from AOQ with winningSupplier
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      const urlSupplier = search.get("winningSupplier");
+      if (urlSupplier && !selectedSupplierKey && availableSupplierOptions.length > 0) {
+        const match = availableSupplierOptions.find(
+          (c) => c.supplierName.trim().toLowerCase() === urlSupplier.trim().toLowerCase()
+        );
+        if (match) {
+          setSelectedSupplierKey(match.key);
+        } else {
+          setSelectedSupplierKey("custom");
+          setIsCustomSupplier(true);
+        }
+      }
+    }
+  }, [availableSupplierOptions, selectedSupplierKey]);
+
+  const handleSelectSupplierOption = (key: string) => {
+    setSelectedSupplierKey(key);
+    if (!key || key === "none") {
+      setWinningSupplierName("");
+      setWinningQuotationAmount(0);
+      setSavingsAmount(0);
+      setIsCustomSupplier(false);
+      return;
+    }
+
+    if (key === "custom") {
+      setIsCustomSupplier(true);
+      setWinningSupplierName("");
+      setWinningQuotationAmount(0);
+      setSavingsAmount(0);
+      return;
+    }
+
+    setIsCustomSupplier(false);
+    const choice = availableSupplierOptions.find((c) => c.key === key);
+    if (choice) {
+      setWinningSupplierName(choice.supplierName);
+      if (choice.quotedPrice !== undefined && choice.quotedPrice > 0) {
+        setWinningQuotationAmount(choice.quotedPrice);
+        const abc = approvedBudget > 0 ? approvedBudget : (prDetailQuery.data?.purchaseRequest?.totalEstimate ? Number(prDetailQuery.data.purchaseRequest.totalEstimate) : 0);
+        setSavingsAmount(Math.max(0, abc - choice.quotedPrice));
+      } else {
+        setWinningQuotationAmount(0);
+        setSavingsAmount(0);
+      }
+    }
+  };
+
+  const handlePrSelect = (prIdStr: string) => {
+    setSelectedPrId(prIdStr);
+    // Reset supplier choice so the user chooses according to the newly chosen PR!
+    setSelectedSupplierKey("");
+    setWinningSupplierName("");
+    setWinningQuotationAmount(0);
+    setSavingsAmount(0);
+    setIsCustomSupplier(false);
+  };
+
   // When PR is selected, auto-populate resolution fields
   useEffect(() => {
     if (prDetailQuery.data?.purchaseRequest) {
@@ -157,25 +337,13 @@ export function TransmittalsPage() {
       if (pr.requestedSignatoryName) setEndUserName(pr.requestedSignatoryName);
       else if (pr.requesterDesignation) setEndUserName(pr.requesterDesignation);
 
-      // Check if there is an active RFQ & Abstract for this PR
+      // Check if there is an active RFQ for this PR to update rfqNumber
       const linkedRfq = (dashboard.data?.rfqs ?? []).find((r) => r.purchaseRequestId === pr.id);
       if (linkedRfq) {
         setRfqNumber(linkedRfq.rfqNumber);
-        const quotes = (dashboard.data?.supplierQuotations ?? []).filter((q) => q.rfqId === linkedRfq.id);
-        const compliantQuotes = quotes.filter((q) => q.isCompliant === 1 || q.isCompliant === (true as any));
-        const sorted = [...compliantQuotes].sort((a, b) => Number(a.totalPrice) - Number(b.totalPrice));
-        const lowest = sorted[0];
-        if (lowest) {
-          const supplier = (setup.data?.suppliers ?? []).find((s) => s.id === lowest.supplierId);
-          if (supplier) setWinningSupplierName(supplier.companyName);
-          const winPrice = Number(lowest.totalPrice);
-          setWinningQuotationAmount(winPrice);
-          const abc = Number(pr.totalEstimate) || approvedBudget;
-          setSavingsAmount(Math.max(0, abc - winPrice));
-        }
       }
     }
-  }, [prDetailQuery.data, dashboard.data?.rfqs, dashboard.data?.supplierQuotations, setup.data?.suppliers, approvedBudget]);
+  }, [prDetailQuery.data, dashboard.data?.rfqs]);
 
   // General Transmittal State
   const [transmittalPrId, setTransmittalPrId] = useState("");
@@ -288,6 +456,11 @@ export function TransmittalsPage() {
     setModeOfProcurement("Small Value Procurement");
     setEvaluationMode("lot_basis");
     setApprovedBudget(53600);
+    setWinningSupplierName("");
+    setWinningQuotationAmount(0);
+    setSavingsAmount(0);
+    setSelectedSupplierKey("");
+    setIsCustomSupplier(false);
     setPurposeOrItems(
       "AM snacks (Burger and Canned Juice/Soda), Packed Meals (Pork,Chicken,Veggie,Rice,Dessert,and Drinking Water),and PM Snacks (Special spaghetti and Canned Juice/ Soda)--Snacks and meals for the evaluation and interview of applicants for private sector representative (PSR)."
     );
@@ -334,6 +507,21 @@ export function TransmittalsPage() {
     if (!purposeOrItems.trim()) {
       toast.error("Please enter the procurement purpose or item description.");
       return;
+    }
+
+    if (resolutionCategory === "award_of_contract") {
+      if (!winningSupplierName.trim()) {
+        toast.error("Please choose a winning supplier from the supplier options above for Step 5.8 Award of Contract.");
+        return;
+      }
+      if (!winningQuotationAmount || winningQuotationAmount <= 0) {
+        toast.error("Please specify a valid offered contract price for the winning supplier.");
+        return;
+      }
+      if (approvedBudget > 0 && winningQuotationAmount > approvedBudget) {
+        toast.error("The offered contract price cannot exceed the Approved Budget for the Contract (ABC).");
+        return;
+      }
     }
 
     endorseMutation.mutate({
@@ -472,29 +660,152 @@ export function TransmittalsPage() {
                     </div>
                   </Field>
 
+                  {/* Select Purchase Request (PR) upfront so supplier options and details load for it */}
+                  <Field label="Select Purchase Request (PR) to Prepare Resolution For *">
+                    <Select value={selectedPrId} onValueChange={handlePrSelect}>
+                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden bg-white dark:bg-[#151c24] font-medium">
+                        <SelectValue placeholder="Choose Purchase Request to load..." className="truncate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(dashboard.data?.purchaseRequests ?? []).map((pr) => (
+                          <SelectItem key={pr.id} value={String(pr.id)} className="text-xs">
+                            {pr.prNumber} — {pr.purpose?.slice(0, 45)}...
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {/* Step 5.8: Supplier Selection Options According to Chosen PR */}
                   {resolutionCategory === "award_of_contract" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0 bg-emerald-50/60 dark:bg-emerald-950/20 p-3 rounded-lg border border-emerald-300/70 dark:border-emerald-800/60">
-                      <Field label="Winning Supplier (S/LCRQ) *">
-                        <Input
-                          value={winningSupplierName}
-                          onChange={(e) => setWinningSupplierName(e.target.value)}
-                          placeholder="Supplier with Single/Lowest Calculated Bid"
-                          className="h-9 text-xs font-semibold text-emerald-950 dark:text-emerald-100 w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
-                          required
-                        />
+                    <div className="space-y-3 w-full min-w-0 bg-emerald-50/60 dark:bg-emerald-950/20 p-3.5 rounded-lg border border-emerald-300/80 dark:border-emerald-800/80">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <label className="text-xs font-bold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                          <Award className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                          Step 5.8 Award: Choose Winning Supplier (S/LCRQ) *
+                        </label>
+                        {activeRfqQuotes.length > 0 ? (
+                          <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full w-fit">
+                            {activeRfqQuotes.length} Responding Quotation{activeRfqQuotes.length > 1 ? "s" : ""} on File
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-stone-500 italic">
+                            Select winning supplier from registered vendors below
+                          </span>
+                        )}
+                      </div>
+
+                      <Field label="Supplier Options for this PR (Quotes / Registered) *">
+                        <Select value={selectedSupplierKey || "none"} onValueChange={handleSelectSupplierOption}>
+                          <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border bg-white dark:bg-[#151c24] border-emerald-300 dark:border-emerald-800 font-semibold text-stone-900 dark:text-stone-100">
+                            <SelectValue placeholder="-- Choose Winning Supplier for this PR --" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value="none" className="text-xs text-stone-500 italic">
+                              -- Choose Winning Supplier for this PR --
+                            </SelectItem>
+
+                            {availableSupplierOptions.some((c) => c.group === "pr_quotes") && (
+                              <SelectGroup>
+                                <SelectLabel className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 px-2 py-1 bg-emerald-50/80 dark:bg-emerald-950/50">
+                                  Responding Quotations for {customPrNumber || "Selected PR"}
+                                </SelectLabel>
+                                {availableSupplierOptions
+                                  .filter((c) => c.group === "pr_quotes")
+                                  .map((opt) => (
+                                    <SelectItem key={opt.key} value={opt.key} className="text-xs">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-semibold text-stone-900 dark:text-stone-100">
+                                          {opt.label}
+                                        </span>
+                                        {opt.badge && (
+                                          <span className={`text-[10px] font-medium ${opt.isLowest ? "text-emerald-700 dark:text-emerald-400 font-bold" : "text-stone-500"}`}>
+                                            {opt.badge}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                              </SelectGroup>
+                            )}
+
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
+                                All Registered BSC Suppliers
+                              </SelectLabel>
+                              {availableSupplierOptions
+                                .filter((c) => c.group === "registered")
+                                .map((opt) => (
+                                  <SelectItem key={opt.key} value={opt.key} className="text-xs">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                            </SelectGroup>
+
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] font-bold text-stone-600 dark:text-stone-400 px-2 py-1 bg-stone-100/70 dark:bg-stone-800/50">
+                                Manual / Custom
+                              </SelectLabel>
+                              <SelectItem value="custom" className="text-xs italic text-stone-700 dark:text-stone-300">
+                                + Enter Unlisted / Custom Supplier Name Manually...
+                              </SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                       </Field>
-                      <Field label="Offered Contract Price (₱) *">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={winningQuotationAmount}
-                          onChange={(e) => setWinningQuotationAmount(Number(e.target.value))}
-                          placeholder="48500.00"
-                          className="h-9 text-xs font-semibold text-emerald-800 dark:text-emerald-300 font-mono w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
-                          required
-                        />
-                      </Field>
+
+                      {/* If custom supplier selected */}
+                      {isCustomSupplier && (
+                        <Field label="Custom Winning Supplier Business Name *">
+                          <Input
+                            value={winningSupplierName}
+                            onChange={(e) => setWinningSupplierName(e.target.value)}
+                            placeholder="Enter supplier or contractor business name"
+                            className="h-9 text-xs font-semibold text-emerald-950 dark:text-emerald-100 w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                            required
+                          />
+                        </Field>
+                      )}
+
+                      {/* Winning Supplier & Offered Price Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <Field label="Selected Winning Supplier *">
+                          <Input
+                            value={winningSupplierName}
+                            readOnly={!isCustomSupplier}
+                            onChange={(e) => isCustomSupplier && setWinningSupplierName(e.target.value)}
+                            placeholder="Choose from supplier options above"
+                            className={`h-9 text-xs font-semibold w-full min-w-0 box-border ${winningSupplierName ? "text-emerald-950 dark:text-emerald-100 bg-white dark:bg-[#151c24]" : "text-stone-400 bg-stone-50 dark:bg-stone-900 italic"}`}
+                            required
+                          />
+                        </Field>
+                        <Field label="Offered Contract Price (₱) *">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={winningQuotationAmount > 0 ? winningQuotationAmount : ""}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setWinningQuotationAmount(val);
+                              if (approvedBudget > val) setSavingsAmount(approvedBudget - val);
+                            }}
+                            placeholder="0.00"
+                            className="h-9 text-xs font-bold text-emerald-800 dark:text-emerald-300 font-mono w-full min-w-0 box-border bg-white dark:bg-[#151c24]"
+                            required
+                          />
+                        </Field>
+                      </div>
+
+                      {/* Public Savings Pill */}
+                      {winningQuotationAmount > 0 && approvedBudget > winningQuotationAmount && (
+                        <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                          <span>Government Savings Generated against ABC:</span>
+                          <span className="font-bold font-mono">
+                            ₱{(approvedBudget - winningQuotationAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -507,21 +818,6 @@ export function TransmittalsPage() {
                         <SelectItem value="resolution">1. BAC Resolution (Recommendation to HoPE)</SelectItem>
                         <SelectItem value="hope_approval">2. Letter of Approval of HoPE (Approval of Resolution)</SelectItem>
                         <SelectItem value="both">Complete Package (Both Documents)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  <Field label="Auto-fill from Purchase Request (Optional)">
-                    <Select value={selectedPrId} onValueChange={setSelectedPrId}>
-                      <SelectTrigger className="h-9 text-xs w-full min-w-0 box-border truncate overflow-hidden">
-                        <SelectValue placeholder="Choose Purchase Request to load..." className="truncate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(dashboard.data?.purchaseRequests ?? []).map((pr) => (
-                          <SelectItem key={pr.id} value={String(pr.id)} className="text-xs">
-                            {pr.prNumber} — {pr.purpose?.slice(0, 45)}...
-                          </SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                   </Field>

@@ -86,9 +86,9 @@ export function OfficialBacResolutionCanvas({
   const [localApprovedBudget, setLocalApprovedBudget] = useState(approvedBudget);
   const [localModeOfProcurement, setLocalModeOfProcurement] = useState(modeOfProcurement);
   const [localEvaluationMode, setLocalEvaluationMode] = useState(evaluationMode);
-  const [localWinningSupplier, setLocalWinningSupplier] = useState(winningSupplierName || "Basco General Merchandise");
-  const [localWinningAmount, setLocalWinningAmount] = useState<number | string>(winningQuotationAmount ?? 48500);
-  const [localSavings, setLocalSavings] = useState<number | string>(savingsAmount ?? 5100);
+  const [localWinningSupplier, setLocalWinningSupplier] = useState(winningSupplierName || "");
+  const [localWinningAmount, setLocalWinningAmount] = useState<number | string>(winningQuotationAmount ?? "");
+  const [localSavings, setLocalSavings] = useState<number | string>(savingsAmount ?? "");
   const [localDateResolved, setLocalDateResolved] = useState(
     dateResolved || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
   );
@@ -112,9 +112,9 @@ export function OfficialBacResolutionCanvas({
   useEffect(() => { setLocalApprovedBudget(approvedBudget); }, [approvedBudget]);
   useEffect(() => { setLocalModeOfProcurement(modeOfProcurement); }, [modeOfProcurement]);
   useEffect(() => { setLocalEvaluationMode(evaluationMode); }, [evaluationMode]);
-  useEffect(() => { if (winningSupplierName) setLocalWinningSupplier(winningSupplierName); }, [winningSupplierName]);
-  useEffect(() => { if (winningQuotationAmount !== undefined) setLocalWinningAmount(winningQuotationAmount); }, [winningQuotationAmount]);
-  useEffect(() => { if (savingsAmount !== undefined) setLocalSavings(savingsAmount); }, [savingsAmount]);
+  useEffect(() => { setLocalWinningSupplier(winningSupplierName ?? ""); }, [winningSupplierName]);
+  useEffect(() => { setLocalWinningAmount(winningQuotationAmount ?? ""); }, [winningQuotationAmount]);
+  useEffect(() => { setLocalSavings(savingsAmount ?? ""); }, [savingsAmount]);
   useEffect(() => { setLocalPresidentName(collegePresidentName); }, [collegePresidentName]);
   useEffect(() => { setLocalPresidentDesignation(collegePresidentDesignation); }, [collegePresidentDesignation]);
   useEffect(() => {
@@ -143,13 +143,18 @@ export function OfficialBacResolutionCanvas({
     ? localApprovedBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : Number(localApprovedBudget || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const formattedWinningAmount = typeof localWinningAmount === "number"
-    ? localWinningAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : Number(localWinningAmount || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const isWinningSupplierChosen = Boolean(localWinningSupplier && String(localWinningSupplier).trim().length > 0);
+  const displayWinningSupplier = isWinningSupplierChosen
+    ? String(localWinningSupplier).trim()
+    : "[CHOOSE WINNING SUPPLIER / BIDDER]";
 
-  const formattedSavings = typeof localSavings === "number"
-    ? localSavings.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : Number(localSavings || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedWinningAmount = Number(localWinningAmount) > 0
+    ? Number(localWinningAmount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "[OFFERED CONTRACT PRICE]";
+
+  const formattedSavings = Number(localSavings) > 0
+    ? Number(localSavings).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "0.00";
 
   const editableClass = editable
     ? "cursor-text hover:bg-amber-50/70 focus:bg-amber-50 dark:hover:bg-amber-950/40 dark:focus:bg-amber-950/60 focus:ring-1 focus:ring-[#7b1e1e] focus:outline-none rounded px-0.5 transition-colors print:bg-transparent print:ring-0 print:px-0"
@@ -268,7 +273,7 @@ export function OfficialBacResolutionCanvas({
           <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>
             <span className="font-bold tracking-wide">WHEREAS</span>, upon detailed evaluation of quotations and determination of eligibility and technical compliance, the quotation submitted by{" "}
             <span
-              className={`font-bold text-[#7b1e1e] underline ${editableClass}`}
+              className={`font-bold text-[#7b1e1e] underline ${editableClass} ${!isWinningSupplierChosen ? "italic text-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1 py-0.5 rounded border border-dashed border-amber-400" : ""}`}
               contentEditable={editable}
               suppressContentEditableWarning
               onBlur={(e) => {
@@ -277,7 +282,7 @@ export function OfficialBacResolutionCanvas({
                 onFieldChange?.("winningSupplierName", val);
               }}
             >
-              {localWinningSupplier}
+              {displayWinningSupplier}
             </span>{" "}
             in the total contract amount of{" "}
             <span className="font-bold underline">PhP {formattedWinningAmount}</span> was determined and validated to be the{" "}
@@ -370,7 +375,7 @@ export function OfficialBacResolutionCanvas({
   // Render Document 1: BAC Resolution
   const renderBacResolution = () => {
     const resTitle = localCategory === "award_of_contract"
-      ? `BAC Resolution Recommending the Award of Contract in Favor of ${localWinningSupplier} as the Single or Lowest Calculated and Responsive Quotation (S/LCRQ)`
+      ? `BAC Resolution Recommending the Award of Contract in Favor of ${displayWinningSupplier} as the Single or Lowest Calculated and Responsive Quotation (S/LCRQ)`
       : `BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`;
 
     return (
@@ -387,10 +392,18 @@ export function OfficialBacResolutionCanvas({
             </p>
             <ol className="list-decimal pl-6 space-y-1.5 font-medium">
               <li>
-                To <span className="font-bold">DECLARE</span> <span className="font-bold underline">{localWinningSupplier}</span> as the supplier/contractor with the <span className="font-bold">Single or Lowest Calculated and Responsive Quotation (S/LCRQ)</span> for the said procurement; and
+                To <span className="font-bold">DECLARE</span>{" "}
+                <span className={`font-bold underline ${!isWinningSupplierChosen ? "text-amber-800 italic" : ""}`}>
+                  {displayWinningSupplier}
+                </span>{" "}
+                as the supplier/contractor with the <span className="font-bold">Single or Lowest Calculated and Responsive Quotation (S/LCRQ)</span> for the said procurement; and
               </li>
               <li>
-                To <span className="font-bold">RECOMMEND TO THE HEAD OF THE PROCURING ENTITY (HoPE / College President)</span> the <span className="font-bold text-[#7b1e1e]">AWARD OF CONTRACT</span> in favor of <span className="font-bold underline">{localWinningSupplier}</span> in the aggregate sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span> pursuant to Section 5.8.1 of the procurement guidelines.
+                To <span className="font-bold">RECOMMEND TO THE HEAD OF THE PROCURING ENTITY (HoPE / College President)</span> the <span className="font-bold text-[#7b1e1e]">AWARD OF CONTRACT</span> in favor of{" "}
+                <span className={`font-bold underline ${!isWinningSupplierChosen ? "text-amber-800 italic" : ""}`}>
+                  {displayWinningSupplier}
+                </span>{" "}
+                in the aggregate sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span> pursuant to Section 5.8.1 of the procurement guidelines.
               </li>
             </ol>
 
@@ -537,7 +550,7 @@ export function OfficialBacResolutionCanvas({
   // Render Document 2: Letter of Approval of HoPE (Approval of BAC Resolution)
   const renderHopeApproval = () => {
     const hopeTitle = localCategory === "award_of_contract"
-      ? `Approval of BAC Resolution Recommending Award of Contract in Favor of ${localWinningSupplier}`
+      ? `Approval of BAC Resolution Recommending Award of Contract in Favor of ${displayWinningSupplier}`
       : `Approval of BAC Resolution Recommending Alternative Mode of Procurement under ${localModeOfProcurement}`;
 
     return (
@@ -563,7 +576,11 @@ export function OfficialBacResolutionCanvas({
               >
                 {localPresidentName}
               </span>,{" "}
-              Head of the Procuring Entity (HoPE) by virtue of the authority vested in me by the Board of Trustees of this Institution and after taking into consideration the merits and legal bases of the recommendation of the members of the Bids and Awards Committee (BAC) pursuant to Section 5.8 of the procurement rules, do hereby <span className="font-bold text-[#7b1e1e]">APPROVE</span> the foregoing recommendation and <span className="font-bold text-[#7b1e1e]">APPROVE THE AWARD OF CONTRACT</span> in favor of <span className="font-bold underline">{localWinningSupplier}</span> in the total contract sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span>;
+              Head of the Procuring Entity (HoPE) by virtue of the authority vested in me by the Board of Trustees of this Institution and after taking into consideration the merits and legal bases of the recommendation of the members of the Bids and Awards Committee (BAC) pursuant to Section 5.8 of the procurement rules, do hereby <span className="font-bold text-[#7b1e1e]">APPROVE</span> the foregoing recommendation and <span className="font-bold text-[#7b1e1e]">APPROVE THE AWARD OF CONTRACT</span> in favor of{" "}
+              <span className={`font-bold underline ${!isWinningSupplierChosen ? "text-amber-800 italic" : ""}`}>
+                {displayWinningSupplier}
+              </span>{" "}
+              in the total contract sum of <span className="font-bold underline">PhP {formattedWinningAmount}</span>;
             </p>
 
             <p className={editableClass} contentEditable={editable} suppressContentEditableWarning>

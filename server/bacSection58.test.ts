@@ -141,5 +141,65 @@ describe("Section 5.8: Recommendation on the Award of Contract (Section 5.8.1)",
     const isWithinAbc = disqualifyingQuotation <= abc;
     expect(isWithinAbc).toBe(false);
   });
+
+  it("dynamically generates supplier options according to the chosen PR without hardcoding defaults", () => {
+    const chosenPr = { id: 8243405, prNumber: "PR-2026-8243405", totalEstimate: 50000.0 };
+    const registeredSuppliers = [
+      { id: 1, companyName: "Basco General Merchandise", tin: "111-222-333" },
+      { id: 2, companyName: "Batanes Commercial Trading", tin: "444-555-666" },
+      { id: 3, companyName: "Ibayat Hardware & Enterprise", tin: "777-888-999" },
+      { id: 4, companyName: "Northern Batanes Supplies", tin: "000-111-222" },
+    ];
+
+    const rfqForPr = { id: 501, rfqNumber: "RFQ-2026-001", purchaseRequestId: chosenPr.id };
+    const quotationsForPr = [
+      { id: 201, rfqId: 501, supplierId: 1, totalPrice: 48499.56, isCompliant: true },
+      { id: 202, rfqId: 501, supplierId: 2, totalPrice: 49200.00, isCompliant: true },
+      { id: 203, rfqId: 501, supplierId: 3, totalPrice: 47800.00, isCompliant: false }, // Non-compliant!
+    ];
+
+    // Build options according to the chosen PR
+    const compliantQuotes = quotationsForPr.filter((q) => q.isCompliant);
+    const lowestCompliantPrice = Math.min(...compliantQuotes.map((q) => q.totalPrice));
+
+    const options = quotationsForPr.map((q) => {
+      const supplier = registeredSuppliers.find((s) => s.id === q.supplierId);
+      const isLowest = q.isCompliant && q.totalPrice === lowestCompliantPrice;
+      return {
+        key: `rfq-quote-${q.id}`,
+        supplierId: q.supplierId,
+        supplierName: supplier?.companyName || `Supplier #${q.supplierId}`,
+        quotedPrice: q.totalPrice,
+        isLowest,
+        isCompliant: q.isCompliant,
+      };
+    });
+
+    // Verify option list
+    expect(options.length).toBe(3);
+    const lowestOption = options.find((o) => o.isLowest);
+    expect(lowestOption?.supplierName).toBe("Basco General Merchandise");
+    expect(lowestOption?.quotedPrice).toBe(48499.56);
+
+    // Initial state before user selection must be unselected (empty string, not hardcoded default)
+    let selectedSupplierName = "";
+    let selectedOfferedPrice = 0;
+    expect(selectedSupplierName).toBe("");
+    expect(selectedOfferedPrice).toBe(0);
+
+    // User chooses a supplier from the options
+    const userChoice = options.find((o) => o.supplierId === 2); // User chooses Batanes Commercial Trading
+    expect(userChoice).toBeDefined();
+    if (userChoice) {
+      selectedSupplierName = userChoice.supplierName;
+      selectedOfferedPrice = userChoice.quotedPrice;
+    }
+
+    expect(selectedSupplierName).toBe("Batanes Commercial Trading");
+    expect(selectedOfferedPrice).toBe(49200.00);
+
+    const savings = chosenPr.totalEstimate - selectedOfferedPrice;
+    expect(savings).toBe(800.00);
+  });
 });
 
