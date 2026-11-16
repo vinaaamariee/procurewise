@@ -157,7 +157,7 @@ export function OfficialBacAbstractOfQuotations({
 
   return (
     <div className="rounded-xl border border-[#d5cfc4] dark:border-[#384554] bg-white dark:bg-[#151c24] overflow-hidden shadow-xs">
-      {/* Top Section 5.7.1 Statutory Bar */}
+      {/* Top Section 5.7 Statutory Bar */}
       <div className="bg-[#fcfaf5] dark:bg-[#1a232d] border-b border-[#e9e3d8] dark:border-[#2e3b4a] p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -167,7 +167,7 @@ export function OfficialBacAbstractOfQuotations({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs font-bold text-[#7b1e1e] dark:text-[#f87171]">
-                  Section 5.7.1
+                  Procedure 5.7 / Section 5.7.1
                 </span>
                 <span className="text-xs font-semibold text-[#1f2937] dark:text-stone-100">
                   Forward to BAC for Preparation of Abstract of Quotations
@@ -200,11 +200,11 @@ export function OfficialBacAbstractOfQuotations({
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-[#556170] dark:text-[#a0aec0] max-w-3xl">
                 <em>
-                  &ldquo;After the deadline for submission of quotations, the same shall be forwarded to BAC Chairperson
+                  &ldquo;5.7.1 After the deadline for submission of quotations, the same shall be forwarded to BAC Chairperson
                   for opening. An Abstract of Quotations/ Ratings is prepared setting forth the names of those who
                   responded to the RFQ, their corresponding price quotations.&rdquo;
                 </em>{" "}
-                — <strong>Section 5.7.1 Procurement Mandate</strong>
+                — <strong>Procedure 5.7 Procurement Mandate</strong>
               </p>
             </div>
           </div>
@@ -242,7 +242,7 @@ export function OfficialBacAbstractOfQuotations({
                 <ShieldCheck className="h-5 w-5 text-[#9a6d19] dark:text-[#eab308] mt-0.5 shrink-0" />
                 <div>
                   <p className="font-semibold text-sm text-[#34404e] dark:text-stone-200">
-                    BAC Chairperson Formal Opening of Quotations (Section 5.7.1)
+                    BAC Chairperson Formal Opening of Quotations (Procedure 5.7 / Section 5.7.1)
                   </p>
                   {isOpened ? (
                     <div className="mt-1 space-y-0.5 text-[11px] text-[#4b5563] dark:text-[#94a3b8]">
@@ -300,7 +300,7 @@ export function OfficialBacAbstractOfQuotations({
                     ) : (
                       <Send className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    Forward to BAC for Opening (5.7.1)
+                    Forward to BAC Chairperson for Opening (Step 5.7)
                   </Button>
                 )}
                 {isOpened && (

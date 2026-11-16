@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Award, CheckCircle2, FileCheck, FilePlus2, FileSpreadsheet, FileText, Filter, LineChart as LineChartIcon, LoaderCircle, Printer, RefreshCw, ScrollText, Search, Send, SendHorizontal, Star } from "lucide-react";
+import { Award, CheckCircle2, FileCheck, FilePlus2, FileSpreadsheet, FileText, Filter, Layers, LineChart as LineChartIcon, LoaderCircle, Printer, RefreshCw, ScrollText, Search, Send, SendHorizontal, Star } from "lucide-react";
 import { SupplierEvaluationPreviewModal, type SupplierEvaluationFormData } from "@/components/SupplierEvaluationDocument";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { DEFAULT_BSC_BAC_MEMBERS, OfficialBacResolutionCanvas, type BacSignatory } from "@/components/OfficialBacResolutionCanvas";
@@ -35,7 +35,7 @@ function SubmitButton({ pending, label }: { pending: boolean; label: string }) {
 export { NoticesPage } from "./NoticeWorkflowPage";
 
 // ── Statutory Step Quick Navigation Stepper ─────────────────────────────────
-export function StatutoryWorkflowNav({ activeStep }: { activeStep: "5.3" | "5.7.1" | "5.8" | "register" }) {
+export function StatutoryWorkflowNav({ activeStep }: { activeStep: "5.3" | "5.4-5.6" | "5.7" | "5.7.1" | "5.8" | "register" }) {
   const transmittals = trpc.procurement.officer.transmittals.list.useQuery(undefined, { retry: false });
   const transmittalCount = transmittals.data?.length ?? 0;
 
@@ -53,6 +53,7 @@ export function StatutoryWorkflowNav({ activeStep }: { activeStep: "5.3" | "5.7.
                 ? "bg-[#7b1e1e] text-white hover:bg-[#641818] shadow-sm font-bold"
                 : "text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#1e2733]"
             )}
+            title="Step 5.3: Prepare Resolution & Endorsement to BAC Members and HoPE for Signature"
           >
             <ScrollText className="h-3.5 w-3.5 shrink-0" />
             <span>Step 5.3: BAC Resolution (Mode & ABC)</span>
@@ -61,20 +62,41 @@ export function StatutoryWorkflowNav({ activeStep }: { activeStep: "5.3" | "5.7.
 
         <span className="text-stone-400 dark:text-stone-600 select-none font-bold text-xs">→</span>
 
-        <Link href="/officer/abstract-of-quotations">
+        <Link href="/rfq-management">
           <Button
             type="button"
-            variant={activeStep === "5.7.1" ? "default" : "ghost"}
+            variant={activeStep === "5.4-5.6" ? "default" : "ghost"}
             size="sm"
             className={cn(
-              "h-8 text-xs font-semibold px-3.5 flex items-center gap-2 rounded-lg transition-all",
-              activeStep === "5.7.1"
+              "h-8 text-xs font-semibold px-3 flex items-center gap-1.5 rounded-lg transition-all",
+              activeStep === "5.4-5.6"
                 ? "bg-[#7b1e1e] text-white hover:bg-[#641818] shadow-sm font-bold"
                 : "text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#1e2733]"
             )}
+            title="Step 5.4 Prepare RFQ, 5.5 Distribute & Canvass, 5.6 PhilGEPS Posting"
+          >
+            <Layers className="h-3.5 w-3.5 shrink-0" />
+            <span>Steps 5.4–5.6: RFQ & Canvass</span>
+          </Button>
+        </Link>
+
+        <span className="text-stone-400 dark:text-stone-600 select-none font-bold text-xs">→</span>
+
+        <Link href="/officer/abstract-of-quotations">
+          <Button
+            type="button"
+            variant={activeStep === "5.7" || activeStep === "5.7.1" ? "default" : "ghost"}
+            size="sm"
+            className={cn(
+              "h-8 text-xs font-semibold px-3.5 flex items-center gap-2 rounded-lg transition-all",
+              activeStep === "5.7" || activeStep === "5.7.1"
+                ? "bg-[#7b1e1e] text-white hover:bg-[#641818] shadow-sm font-bold"
+                : "text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#1e2733]"
+            )}
+            title="Step 5.7: Forward to BAC for Preparation of Abstract of Quotations (5.7.1 Opening & AOQ)"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
-            <span>Step 5.7.1: Opening & Abstract of Quotations (AOQ)</span>
+            <span>Step 5.7: Forward to BAC & AOQ</span>
           </Button>
         </Link>
 
@@ -91,6 +113,7 @@ export function StatutoryWorkflowNav({ activeStep }: { activeStep: "5.3" | "5.7.
                 ? "bg-[#7b1e1e] text-white hover:bg-[#641818] shadow-sm font-bold"
                 : "text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#1e2733]"
             )}
+            title="Step 5.8: Recommendation on the Award of Contract (S/LCRQ to HoPE)"
           >
             <Award className="h-3.5 w-3.5 shrink-0" />
             <span>Step 5.8: Award of Contract Resolution (S/LCRQ)</span>
@@ -658,7 +681,7 @@ function useBacResolutionForm(defaultCategory: "mode_of_procurement" | "award_of
   };
 }
 
-// ── WINDOW 1: Step 5.3 Mode of Procurement Resolution ───────────────────────
+// ── WINDOW 1: Step 5.3 Mode of Procurement Resolution & Endorsement ─────────
 export function TransmittalsPage() {
   const [, setLocation] = useLocation();
   const formState = useBacResolutionForm("mode_of_procurement");
@@ -682,9 +705,9 @@ export function TransmittalsPage() {
   return (
     <div className="mx-auto max-w-[1300px]">
       <PageHeader
-        eyebrow="BAC Secretariat & Bids and Awards Committee"
-        title="Step 5.3: BAC Resolution (Mode of Procurement & ABC)"
-        description="Statutory preparation of BAC Resolution determining the Approved Budget for the Contract (ABC) and recommended Alternative Mode of Procurement prior to canvassing."
+        eyebrow="BAC Secretariat & Bids and Awards Committee — BSC-PRO-QP-95-1 §5.3"
+        title="Step 5.3: Prepare Resolution & Endorsement to BAC Members and HoPE for Signature"
+        description="Pursuant to Section 5.3.1, the BAC Secretariat or designated staff shall prepare the Resolution where it contains the ABC and mode of procurement of the request. The resolution shall then be endorsed to the end-user, BAC Members, and HoPE for signature."
         action={{
           label: "Transmittal Register",
           onClick: () => setLocation("/officer/transmittal-register"),
@@ -698,13 +721,12 @@ export function TransmittalsPage() {
         <ScrollText className="h-5 w-5 text-[#9a6d19] dark:text-[#f3ba4b] shrink-0 mt-0.5" />
         <div>
           <p className="font-bold text-sm text-[#64420e] dark:text-[#f8d88e]">
-            Procedure 5.3: BAC Secretariat Statutory Mandate — Recommending Mode of Procurement & ABC
+            Procedure 5.3: Prepare resolution, endorsement to BAC members and HoPE for signature
           </p>
           <p className="mt-1 leading-relaxed text-[#7c561a] dark:text-[#e0cb9e]">
-            The BAC Secretariat or designated staff shall prepare the <strong>BAC Resolution</strong> containing the{" "}
-            <strong>Approved Budget for the Contract (ABC)</strong> and the recommended{" "}
-            <strong>Mode of Procurement</strong> (e.g., Small Value Procurement, Shopping, Direct Contracting) of the request.
-            The resolution is then formally endorsed to the End-User and BAC Members for signature, and to the Head of the Procuring Entity (HoPE / College President) for approval prior to canvassing.
+            <strong>Section 5.3.1:</strong> The BAC Secretariat or designated staff shall prepare the <strong>Resolution</strong> where it contains the{" "}
+            <strong>Approved Budget for the Contract (ABC)</strong> and the <strong>mode of procurement</strong> of the request.
+            The resolution shall then be endorsed to the end-user and BAC Members for signature, and to the Head of the Procuring Entity (HoPE / College President) for approval prior to canvassing.
           </p>
         </div>
       </div>
@@ -717,10 +739,10 @@ export function TransmittalsPage() {
               <div>
                 <h3 className="font-semibold text-sm text-[#202833] dark:text-stone-100 flex items-center gap-2">
                   <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
-                  Step 5.3: Mode of Procurement Resolution Form
+                  Step 5.3: Prepare Resolution & Endorsement Form
                 </h3>
                 <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Statutory preparation of ABC & Mode of Procurement before canvass
+                  Section 5.3.1: Preparation of ABC & Mode of Procurement and endorsement to BAC members & HoPE
                 </p>
               </div>
               <Button
@@ -899,7 +921,7 @@ export function TransmittalsPage() {
                   ) : (
                     <Send className="h-3.5 w-3.5 shrink-0" />
                   )}
-                  <span>Endorse Step 5.3 Resolution to HoPE</span>
+                  <span>Endorse Step 5.3 Resolution to End-User, BAC Members & HoPE</span>
                 </Button>
               </div>
             </form>
@@ -912,7 +934,7 @@ export function TransmittalsPage() {
             <div className="flex items-center gap-2">
               <ScrollText className="h-4 w-4 text-[#7b1e1e]" />
               <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
-                Live Official Canvas Preview — Step 5.3: Mode of Procurement
+                Live Official Canvas Preview — Step 5.3: Mode of Procurement Resolution & Endorsement
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -968,7 +990,7 @@ export function TransmittalsPage() {
   );
 }
 
-// ── WINDOW 2: Step 5.7.1 Opening & Abstract of Quotations ────────────────────
+// ── WINDOW 2: Step 5.7 Forward to BAC for Preparation of Abstract of Quotations ──
 export function BacAbstractOfQuotationsPage() {
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
@@ -978,16 +1000,16 @@ export function BacAbstractOfQuotationsPage() {
   return (
     <div className="mx-auto max-w-[1300px] space-y-6">
       <PageHeader
-        eyebrow="BAC Secretariat & Bids and Awards Committee"
-        title="Step 5.7.1: Opening & Abstract of Quotations (AOQ)"
-        description="Pursuant to Section 5.7.1, quotations are opened by BAC Chairperson Doreen C. Castillo and tabulated into the official Abstract of Quotations setting forth supplier bids and compliance."
+        eyebrow="BAC Secretariat & Bids and Awards Committee — BSC-PRO-QP-95-1 §5.7"
+        title="Step 5.7: Forward to BAC for Preparation of Abstract of Quotations"
+        description="Pursuant to Section 5.7.1, after the deadline for submission of quotations, the same shall be forwarded to BAC Chairperson for opening. An Abstract of Quotations/Ratings is prepared setting forth the names of those who responded to the RFQ, their corresponding price quotations."
         action={{
           label: "Proceed to Award Resolution (Step 5.8) →",
           onClick: () => setLocation("/officer/award-resolution"),
         }}
       />
 
-      <StatutoryWorkflowNav activeStep="5.7.1" />
+      <StatutoryWorkflowNav activeStep="5.7" />
 
       {dashboard.data?.rfqs?.length ? (
         <div className="space-y-6">
@@ -998,10 +1020,10 @@ export function BacAbstractOfQuotationsPage() {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
-                  Step 5.7.1: BAC Opening & Abstract of Quotations Workbench
+                  Step 5.7: BAC Opening & Abstract of Quotations Workbench
                 </h4>
                 <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                  Pursuant to Section 5.7.1, quotations are opened by BAC Chairperson Doreen C. Castillo and tabulated into the official Abstract of Quotations.
+                  Section 5.7.1: After deadline for submission of quotations, the same shall be forwarded to BAC Chairperson for opening and preparation of official Abstract of Quotations / Ratings setting forth supplier bids and compliance.
                 </p>
               </div>
             </div>
@@ -1064,7 +1086,7 @@ export function BacAwardResolutionPage() {
         title="Step 5.8: Award of Contract Resolution (S/LCRQ to HoPE)"
         description="Statutory preparation of BAC Resolution recommending the award of contract in favor of the Single or Lowest Calculated and Responsive Quotation (S/LCRQ) to the Head of the Procuring Entity pursuant to RA 9184 §5.8 and RA 12009."
         action={{
-          label: "Open Step 5.7.1 Abstract of Quotations (AOQ)",
+          label: "View Step 5.7 Abstract of Quotations (AOQ)",
           onClick: () => setLocation("/officer/abstract-of-quotations"),
         }}
       />

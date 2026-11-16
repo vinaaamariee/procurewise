@@ -693,12 +693,12 @@ export function OfficialBacResolutionCanvas({
             ) : (
               <span className="flex items-center gap-1.5 text-xs font-bold font-sans text-[#7b1e1e] dark:text-[#f87171]">
                 <ScrollText className="h-4 w-4" />
-                Step 5.3: Mode of Procurement Resolution & ABC
+                Step 5.3: Prepare Resolution & Endorsement (Mode & ABC)
               </span>
             )}
           </div>
           <span className="text-[11px] font-sans font-medium text-stone-600 dark:text-stone-400">
-            {localCategory === "award_of_contract" ? "Statutory Mandate: Section 5.8.1 (RA 9184 & RA 12009)" : "Statutory Mandate: Section 5.3 (RA 9184)"}
+            {localCategory === "award_of_contract" ? "Statutory Mandate: Section 5.8.1 (RA 9184 & RA 12009)" : "Statutory Mandate: Section 5.3.1 (RA 9184 & BSC Manual)"}
           </span>
         </div>
 
