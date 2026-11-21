@@ -130,7 +130,13 @@ export const NAV_ITEMS: NavItemConfig[] = [
     stepNumber: "Pre-Canvass",
     icon: FileSearch,
     section: "workspace",
-    roles: ["end_user"],
+    roles: [
+      "procurement_officer",
+      "procurement_officer_i",
+      "procurement_officer_ii",
+      "procurement_staff",
+      "admin",
+    ],
   },
   {
     id: "catalog",
@@ -663,6 +669,7 @@ export default function DashboardLayout({
       const allowedStaffPaths = [
         "/dashboard",
         "/pmr-registry",
+        "/rfq",
         "/rfq-management",
         "/officer/rfq-distribution",
         "/officer/transmittals",
@@ -685,6 +692,7 @@ export default function DashboardLayout({
       const allowedOfficerPaths = [
         "/dashboard",
         "/officer/pr-verification",
+        "/rfq",
         "/officer/rfq-distribution",
         "/officer/philgeps",
         "/officer/transmittals",

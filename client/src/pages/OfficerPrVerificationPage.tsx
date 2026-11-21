@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import {
   detectMixedCategories,
   normalizeProcurementRole,
@@ -26,6 +27,7 @@ import {
   FileCheck2,
   FileSpreadsheet,
   FileText,
+  FileSearch,
   Filter,
   History,
   Layers,
@@ -111,6 +113,7 @@ export function OfficerPrVerificationPage() {
 
   // Review & Verification Modal
   const [selectedVerificationItem, setSelectedVerificationItem] = useState<any | null>(null);
+  const [canvassModalPr, setCanvassModalPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string } | null>(null);
   const [categorySegregationConfirmed, setCategorySegregationConfirmed] = useState(false);
 
   // Document Preview Modal
@@ -998,7 +1001,28 @@ export function OfficerPrVerificationPage() {
                       )}
                     </div>
 
-                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          setCanvassModalPr({
+                            id: selectedVerificationItem.purchaseRequest.id,
+                            prNumber: selectedVerificationItem.purchaseRequest.prNumber,
+                            purpose: selectedVerificationItem.purchaseRequest.purpose,
+                            totalEstimate: selectedVerificationItem.purchaseRequest.totalEstimate,
+                            officeId: selectedVerificationItem.purchaseRequest.officeId,
+                            status: selectedVerificationItem.purchaseRequest.status,
+                          })
+                        }
+                        className="h-8 w-full rounded-[4px] bg-[#881337] text-white hover:bg-[#70102b] text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm mb-2"
+                      >
+                        <FileSearch className="h-3.5 w-3.5" />
+                        <span>Record / Manage Supplier Quotes ({(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3)</span>
+                      </Button>
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between gap-2">
                       {selectedVerificationItem.preCanvassDoc ? (
                         <>
                           <Button
@@ -1496,6 +1520,20 @@ export function OfficerPrVerificationPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+      {/* Integrated Pre-Canvass / Supplier Quoting Modal */}
+      {canvassModalPr && (
+        <IntegratedPreCanvassModal
+          open={Boolean(canvassModalPr)}
+          onOpenChange={(open) => {
+            if (!open) setCanvassModalPr(null);
+          }}
+          purchaseRequest={canvassModalPr}
+          onCompleted={() => {
+            void utils.procurement.officer.prVerification.list.invalidate();
+            void utils.procurement.dashboard.invalidate();
+          }}
+        />
       )}
     </div>
   );

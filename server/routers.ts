@@ -255,19 +255,19 @@ export const appRouter = router({
     }),
     preCanvasses: router({
       create: protectedProcedure.input(z.object({ purchaseRequestId: z.number().int().positive(), approvedBudget: z.number().positive().optional(), quotationDeadline: z.coerce.date().optional(), deliveryPeriodDays: z.number().int().positive().max(365).optional(), priceEvaluationMode: z.enum(["lot_basis", "per_item"]).optional() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
         const result = await createPreCanvass(input, ctx.user);
         void publishProcurementRealtimeUpdate("pre_canvass");
         return result;
       }),
       addQuote: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive(), supplierId: z.number().int().positive(), totalPrice: z.number().positive(), deliveryDays: z.number().int().nonnegative(), isCompliant: z.boolean(), quotationReference: z.string().max(80).optional(), supplierRepresentative: z.string().max(160).optional(), acknowledgedAt: z.coerce.date().optional(), receivedBy: z.string().max(160).optional(), notes: z.string().optional() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
         const result = await addPreCanvassQuote(input, ctx.user);
         void publishProcurementRealtimeUpdate("pre_canvass");
         return result;
       }),
       submit: protectedProcedure.input(z.object({ preCanvassId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user"]);
+        assertRole(normalizeProcurementRole(ctx.user.role), ["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
         const result = await submitPreCanvass(input.preCanvassId, ctx.user);
         await recordPreCanvassResubmission(input.preCanvassId, ctx.user);
         void publishProcurementRealtimeUpdate("pre_canvass");

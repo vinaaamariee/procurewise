@@ -2345,16 +2345,7 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   if (input.nextStatus === "procurement_review") {
     if (!pr.ppmpEntryId) throw new Error("Link the Purchase Request to a PPMP entry before forwarding the procurement package.");
     const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, pr.id)).limit(1);
-    if (!preCanvass) throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
-
-    const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
-    const validQuotes = getValidPreCanvassQuotes(quotes);
-    if (!hasRequiredSupplierQuotations(validQuotes.length)) {
-      throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
-    }
-    await requirePreliminaryQuotationAttachment(db, preCanvass.id);
-
-    if (preCanvass.status === "draft") {
+    if (preCanvass && preCanvass.status === "draft") {
       await db.update(preCanvasses).set({ status: "submitted", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
       await recordAudit({
         entityType: "pre_canvass",
@@ -2362,10 +2353,8 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
         action: "submitted_to_procurement",
         performedById: user.id,
         performedByRole: normalizeProcurementRole(user.role),
-        details: { quoteCount: validQuotes.length, autoSubmittedOnPrForward: true },
+        details: { autoSubmittedOnPrForward: true },
       });
-    } else if (preCanvass.status !== "submitted" && preCanvass.status !== "abstracted" && preCanvass.status !== "approved") {
-      throw new Error(`The linked Pre-Canvass is currently in "${preCanvass.status}" status and cannot be forwarded.`);
     }
 
     let [allotment] = await db.select().from(budgetAllotments).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear()))).limit(1);
@@ -2556,6 +2545,11 @@ export async function listOfficerPrVerifications(user: User) {
 
     const preCanvassDoc =
       preCanvassDocuments.find((d) =>
+        d.documentType.toLowerCase().includes("abstract") ||
+        d.documentType.toLowerCase().includes("pre-canvass") ||
+        d.documentType.toLowerCase().includes("preliminary")
+      ) ||
+      prDocuments.find((d) =>
         d.documentType.toLowerCase().includes("abstract") ||
         d.documentType.toLowerCase().includes("pre-canvass") ||
         d.documentType.toLowerCase().includes("preliminary")
@@ -3012,7 +3006,9 @@ export async function getPurchaseRequestHistory(
 export async function createPreCanvass(input: { purchaseRequestId: number; approvedBudget?: number; quotationDeadline?: Date; deliveryPeriodDays?: number; priceEvaluationMode?: "lot_basis" | "per_item" }, user: User) {
   const db = await requireDb();
   const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
-  if (!pr || pr.requestedById !== user.id) throw new Error("End-Users may prepare a Pre-Canvass only for their own Purchase Request.");
+  const actorRole = normalizeProcurementRole(user.role);
+  const isOfficerOrAdmin = roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
+  if (!pr || (pr.requestedById !== user.id && !isOfficerOrAdmin)) throw new Error("You are not authorized to prepare a Pre-Canvass for this Purchase Request.");
   const preCanvassNumber = `PC-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
   await db.insert(preCanvasses).values({ preCanvassNumber, purchaseRequestId: input.purchaseRequestId, approvedBudget: (input.approvedBudget ?? Number(pr.totalEstimate)).toFixed(2), quotationDeadline: input.quotationDeadline ?? null, deliveryPeriodDays: input.deliveryPeriodDays ?? 30, priceEvaluationMode: input.priceEvaluationMode ?? "lot_basis", preparedById: user.id });
   const [created] = await db.select().from(preCanvasses).where(eq(preCanvasses.preCanvassNumber, preCanvassNumber)).limit(1);
@@ -3024,7 +3020,9 @@ export async function createPreCanvass(input: { purchaseRequestId: number; appro
 export async function addPreCanvassQuote(input: { preCanvassId: number; supplierId: number; totalPrice: number; deliveryDays: number; isCompliant: boolean; quotationReference?: string; supplierRepresentative?: string; acknowledgedAt?: Date; receivedBy?: string; notes?: string }, user: User) {
   const db = await requireDb();
   const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, input.preCanvassId)).limit(1);
-  if (!preCanvass || preCanvass.preparedById !== user.id || preCanvass.status !== "draft") throw new Error("Supplier quotes may be entered only by the End-User before the Pre-Canvass is submitted.");
+  const actorRole = normalizeProcurementRole(user.role);
+  const isOfficerOrAdmin = roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
+  if (!preCanvass || (preCanvass.preparedById !== user.id && !isOfficerOrAdmin)) throw new Error("You are not authorized to enter supplier quotes for this Pre-Canvass.");
   await db.insert(preCanvassQuotes).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, quotationReference: input.quotationReference || null, supplierRepresentative: input.supplierRepresentative || null, acknowledgedAt: input.acknowledgedAt ?? null, receivedBy: input.receivedBy || null, notes: input.notes || null });
   await writeAuditEvent({ entityType: "pre_canvass", entityId: input.preCanvassId, action: "supplier_quote_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
 }
@@ -3033,7 +3031,9 @@ export async function submitPreCanvass(preCanvassId: number, user: User, options
   const db = options?.db ?? await requireDb();
   const recordAudit = options?.recordAudit ?? writeAuditEvent;
   const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, preCanvassId)).limit(1);
-  if (!preCanvass || preCanvass.preparedById !== user.id || preCanvass.status !== "draft") throw new Error("This Pre-Canvass cannot be submitted by the current user.");
+  const actorRole = normalizeProcurementRole(user.role);
+  const isOfficerOrAdmin = roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
+  if (!preCanvass || (preCanvass.preparedById !== user.id && !isOfficerOrAdmin)) throw new Error("This Pre-Canvass cannot be submitted by the current user.");
   const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
   const validQuotes = getValidPreCanvassQuotes(quotes);
   if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("Three supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
