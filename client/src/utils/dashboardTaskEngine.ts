@@ -82,9 +82,9 @@ export const STATUS_MICROCOPY_DICTIONARY: Record<CanonicalPrStatus, PlainStatusM
   },
   SUBMITTED_FOR_VERIFICATION: {
     canonicalStatus: "SUBMITTED_FOR_VERIFICATION",
-    badgeLabel: "Step 1: Checking Budget & Items",
+    badgeLabel: "Submitted · Pending PO Verification",
     description:
-      "The Procurement Officer is currently checking your PPMP budget plan and item descriptions.",
+      "Your Purchase Request has been submitted. The Procurement Officer is currently checking your PPMP budget plan and item specifications.",
     iconName: "clock",
     tone: "amber",
   },
@@ -98,9 +98,9 @@ export const STATUS_MICROCOPY_DICTIONARY: Record<CanonicalPrStatus, PlainStatusM
   },
   VERIFIED_PENDING_BAC: {
     canonicalStatus: "VERIFIED_PENDING_BAC",
-    badgeLabel: "Step 3: Preparing BAC Resolution",
+    badgeLabel: "Verified by PO · Under Approval",
     description:
-      "Verified. The BAC Secretariat is preparing the official procurement resolution.",
+      "Verified by the Procurement Officer. Your package has been verified and is currently undergoing administrative / BAC review.",
     iconName: "scroll",
     tone: "blue",
   },

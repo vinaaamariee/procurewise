@@ -2122,8 +2122,8 @@ export async function resubmitPurchaseOrder(purchaseOrderId: number, user: User,
 export async function listPurchaseRequests(user: User) {
   const db = await requireDb();
   const records = normalizeProcurementRole(user.role) === "end_user"
-    ? db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id))
-    : db.select().from(purchaseRequests);
+    ? db.select().from(purchaseRequests).where(eq(purchaseRequests.requestedById, user.id)).orderBy(desc(purchaseRequests.createdAt), desc(purchaseRequests.id))
+    : db.select().from(purchaseRequests).orderBy(desc(purchaseRequests.createdAt), desc(purchaseRequests.id));
   const [archivedArchives, allDecisions, allAudits] = await Promise.all([
     db.select().from(testRecordArchives).where(isNull(testRecordArchives.cleanedAt)),
     db.select().from(purchaseRequestDecisions),
@@ -2131,6 +2131,7 @@ export async function listPurchaseRequests(user: User) {
   ]);
   const archivedPpmpEntryIds = new Set(archivedArchives.map((archive) => archive.ppmpEntryId));
   const activeRecords = (await records).filter((record) => !record.ppmpEntryId || !archivedPpmpEntryIds.has(record.ppmpEntryId));
+  activeRecords.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id - a.id);
 
   return activeRecords.map((pr) => {
     const prDecisions = allDecisions.filter((d) => d.purchaseRequestId === pr.id);
@@ -2475,7 +2476,7 @@ export async function listOfficerPrVerifications(user: User) {
   if (!roleCanAct(actorRole, ["procurement_officer", "admin"])) {
     throw new Error("Access restricted to Procurement Officer.");
   }
-  const allPrs = await db.select().from(purchaseRequests).orderBy(desc(purchaseRequests.createdAt));
+  const allPrs = await db.select().from(purchaseRequests).orderBy(desc(purchaseRequests.createdAt), desc(purchaseRequests.id));
   const prIds = allPrs.map((p) => p.id);
   const items = prIds.length > 0
     ? await db.select().from(purchaseRequestItems).where(inArray(purchaseRequestItems.purchaseRequestId, prIds))

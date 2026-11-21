@@ -150,8 +150,9 @@ export default function Dashboard() {
     return [...rawList]
       .sort(
         (a, b) =>
-          new Date(b.updatedAt || b.createdAt || 0).getTime() -
-          new Date(a.updatedAt || a.createdAt || 0).getTime()
+          new Date(b.createdAt || b.updatedAt || 0).getTime() -
+          new Date(a.createdAt || a.updatedAt || 0).getTime() ||
+          b.id - a.id
       )
       .map((pr) => ({
         id: pr.id,
@@ -587,7 +588,7 @@ export default function Dashboard() {
           open={Boolean(selectedRequestForModal)}
           onOpenChange={(open) => !open && setSelectedRequestForModal(null)}
         >
-          <DialogContent className="max-w-2xl border-2 border-slate-300 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:max-w-4xl lg:max-w-5xl border-2 border-slate-300 bg-white p-6 sm:p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-900 max-h-[92vh] overflow-y-auto">
             <DialogHeader className="border-b-2 border-slate-200 pb-4 dark:border-slate-800">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white">

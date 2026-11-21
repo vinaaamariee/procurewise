@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import { AuditHistoryDrawer, QuietCompliancePill } from "@/components/compliance";
 import { trpc } from "@/lib/trpc";
 import { formatFriendlyError } from "@/lib/formatError";
 import { countValidPreCanvassQuotes, detectMixedCategories, hasRequiredSupplierQuotations, normalizeProcurementRole, SECTION_5_1_1_CATEGORIES } from "../../../shared/procurementRules";
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, ChevronDown, ChevronUp, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Folder, Info, LoaderCircle, MailCheck, Plus, PlusCircle, Search, Send, ShieldAlert, Star, Trash2, Upload, UploadCloud, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Download, Eye, CheckCircle2, CircleAlert, ChevronDown, ChevronUp, ExternalLink, FileCheck, FileCheck2, FileSearch, FileText, Folder, Info, LoaderCircle, MailCheck, Plus, PlusCircle, Search, Send, ShieldAlert, Star, Trash2, Upload, UploadCloud, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -90,6 +91,133 @@ function clearPrDraft() {
   } catch {}
 }
 
+function DocumentPreviewDialog({
+  doc,
+  onClose,
+}: {
+  doc: {
+    title: string;
+    file: { name: string; type: string; size: number; base64: string };
+  } | null;
+  onClose: () => void;
+}) {
+  const blobUrl = useMemo(() => {
+    if (!doc?.file?.base64) return null;
+    try {
+      const byteCharacters = atob(doc.file.base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const mime =
+        doc.file.type ||
+        (doc.file.name.toLowerCase().endsWith(".pdf")
+          ? "application/pdf"
+          : doc.file.name.toLowerCase().endsWith(".xlsx")
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : doc.file.name.toLowerCase().endsWith(".docx")
+          ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          : "application/octet-stream");
+      const blob = new Blob([byteArray], { type: mime });
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
+    }
+  }, [doc]);
+
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
+
+  if (!doc) return null;
+
+  const isPdf =
+    doc.file.name.toLowerCase().endsWith(".pdf") ||
+    doc.file.type.toLowerCase().includes("pdf");
+  const isImage =
+    doc.file.type.toLowerCase().startsWith("image/") ||
+    /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.file.name);
+
+  return (
+    <Dialog open={Boolean(doc)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[92vh] flex flex-col p-6 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700">
+        <DialogHeader className="border-b pb-3 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#881337] dark:text-rose-400" />
+                <span>{doc.title}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {doc.file.name} · {(doc.file.size / 1024).toFixed(1)} KB · Verified Attachment
+              </DialogDescription>
+            </div>
+            {blobUrl && (
+              <a
+                href={blobUrl}
+                download={doc.file.name}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download / Open
+              </a>
+            )}
+          </div>
+        </DialogHeader>
+
+        <div className="my-3 flex-1 overflow-auto min-h-[450px] max-h-[65vh] rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/60 flex items-center justify-center">
+          {blobUrl && isPdf ? (
+            <iframe
+              src={blobUrl}
+              title={`Preview of ${doc.file.name}`}
+              className="h-full w-full min-h-[550px] rounded-lg bg-white"
+            />
+          ) : blobUrl && isImage ? (
+            <img
+              src={blobUrl}
+              alt={doc.file.name}
+              className="max-h-[60vh] max-w-full rounded-lg object-contain shadow-sm"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center max-w-md">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 mb-4">
+                <FileCheck2 className="h-8 w-8" />
+              </div>
+              <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {doc.file.name}
+              </h4>
+              <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                This document is verified and attached to your procurement package. You can open or download it to view all contents locally.
+              </p>
+              {blobUrl && (
+                <a
+                  href={blobUrl}
+                  download={doc.file.name}
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#881337] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#70102e]"
+                >
+                  <Download className="h-4 w-4" />
+                  Download &amp; Open Document
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t pt-3 dark:border-slate-800">
+          <Button type="button" variant="outline" onClick={onClose} className="h-9">
+            Close Preview
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DocumentUploadCard({
   title,
   badge,
@@ -101,6 +229,7 @@ function DocumentUploadCard({
   onDragLeave,
   onDrop,
   onBrowseClick,
+  onPreview,
   onRemove,
   fileInputRef,
   inputAccept,
@@ -117,6 +246,7 @@ function DocumentUploadCard({
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
   onBrowseClick: () => void;
+  onPreview?: () => void;
   onRemove: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null> | React.RefObject<HTMLInputElement>;
   inputAccept: string;
@@ -194,7 +324,19 @@ function DocumentUploadCard({
                 {(file.size / 1024).toFixed(1)} KB · Verified Document
               </p>
             </div>
-            <div className="mt-3 flex items-center gap-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
+            <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-emerald-200 dark:border-emerald-800">
+              {onPreview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onPreview}
+                  className="h-7 flex-1 border-blue-400 bg-white text-[11px] font-semibold text-blue-800 hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-300"
+                >
+                  <Eye className="mr-1 h-3 w-3" />
+                  Preview
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -800,8 +942,49 @@ function PurchaseRequestTable({
 }) {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
-  const tone = (status: string) => status === "approved" ? "approved" : status === "rejected" ? "returned" : status.includes("review") || ["rfq", "po", "po_issued"].includes(status) ? "pending" : "draft";
-  const label = (status: string) => status === "approved" ? "APPROVED" : status === "rejected" ? "REJECTED" : ["draft", "procurement_review", "approval_review", "budget_review", "supply_review", "bac_review", "rfq", "po", "po_issued"].includes(status) ? "IN PROGRESS" : status.replaceAll("_", " ").toUpperCase();
+
+  const getPrStatusDisplay = (status: string) => {
+    switch (status) {
+      case "draft":
+        return { label: "DRAFT", tone: "draft" as const };
+      case "procurement_review":
+        return { label: "PENDING PO VERIFICATION", tone: "active" as const };
+      case "approval_review":
+        return { label: "VERIFIED BY PO", tone: "verified" as const };
+      case "budget_review":
+        return { label: "BUDGET REVIEW", tone: "pending" as const };
+      case "supply_review":
+        return { label: "SUPPLY REVIEW", tone: "pending" as const };
+      case "bac_review":
+        return { label: "BAC REVIEW", tone: "pending" as const };
+      case "rfq":
+        return { label: "CANVASS / RFQ", tone: "active" as const };
+      case "po":
+      case "po_issued":
+        return { label: "PO PREPARED", tone: "verified" as const };
+      case "approved":
+        return { label: "APPROVED", tone: "approved" as const };
+      case "delivered":
+        return { label: "DELIVERED", tone: "approved" as const };
+      case "returned":
+        return { label: "RETURNED FOR REVISION", tone: "returned" as const };
+      case "rejected":
+        return { label: "REJECTED", tone: "returned" as const };
+      case "closed":
+      case "pmr_logged":
+        return { label: "CLOSED / PMR LOGGED", tone: "draft" as const };
+      default:
+        return { label: status.replaceAll("_", " ").toUpperCase(), tone: "pending" as const };
+    }
+  };
+
+  const sortedRecords = useMemo(() => {
+    return [...records].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+        b.id - a.id
+    );
+  }, [records]);
 
   // Helper to count quotes for a PR using unified validation helper
   const getQuotesCount = (prId: number) => {
@@ -810,11 +993,11 @@ function PurchaseRequestTable({
     return countValidPreCanvassQuotes(preCanvassQuotes, pc.id);
   };
 
-  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status / history</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4] dark:divide-[#46515c]">{records.map((record) => {
+  return <RecordTable><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">PR number</th><th className="px-4 py-3 font-semibold">Purpose</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Status / history</th><th className="px-4 py-3 font-semibold">Created</th><th className="px-4 py-3 font-semibold">Action</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4] dark:divide-[#46515c]">{sortedRecords.map((record) => {
     const quotesCount = getQuotesCount(record.id);
     const hasEnoughQuotes = hasRequiredSupplierQuotations(quotesCount);
 
-    return <tr key={record.id} onClick={() => onSelectPr?.(record.id)} className={`cursor-pointer transition-colors ${selectedPrId === record.id ? "bg-[#fbf7f0] dark:bg-[#2b3540] ring-1 ring-inset ring-[#7b1e1e]/25 dark:ring-[#ff837a]/30" : "hover:bg-[#fdfcf9] dark:hover:bg-[#232c35]"}`}><td className="px-4 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{label(record.status)}</StatusBadge>{record.status === "draft" && <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${hasEnoughQuotes ? "bg-[#eff9f2] text-[#27633b] dark:bg-[#1a3824] dark:text-[#8ce6aa]" : "bg-[#fffaf0] text-[#9a6d19] dark:bg-[#342817] dark:text-[#f0c36a]"}`}>{quotesCount}/3 Canvass Quotes</span>}{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525] dark:text-[#ff837a]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c] dark:text-[#d1dae2]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] text-white hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && (
+    return <tr key={record.id} onClick={() => onSelectPr?.(record.id)} className={`cursor-pointer transition-colors ${selectedPrId === record.id ? "bg-[#fbf7f0] dark:bg-[#2b3540] ring-1 ring-inset ring-[#7b1e1e]/25 dark:ring-[#ff837a]/30" : "hover:bg-[#fdfcf9] dark:hover:bg-[#232c35]"}`}><td className="px-4 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3">{(() => { const s = getPrStatusDisplay(record.status); return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>; })()}{record.status === "draft" && <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${hasEnoughQuotes ? "bg-[#eff9f2] text-[#27633b] dark:bg-[#1a3824] dark:text-[#8ce6aa]" : "bg-[#fffaf0] text-[#9a6d19] dark:bg-[#342817] dark:text-[#f0c36a]"}`}>{quotesCount}/3 Canvass Quotes</span>}{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525] dark:text-[#ff837a]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c] dark:text-[#d1dae2]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] text-white hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && (
       <Button
         size="sm"
         onClick={() => onSubmit(record.id)}
@@ -985,6 +1168,10 @@ function PurchaseRequestForm({
   const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(
     () => initialDraft?.marketScopingFile || null
   );
+  const [previewingDoc, setPreviewingDoc] = useState<{
+    title: string;
+    file: { name: string; type: string; size: number; base64: string };
+  } | null>(null);
   const [preCanvassFile, setPreCanvassFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(
     () => initialDraft?.preCanvassFile || null
   );
@@ -1562,6 +1749,7 @@ function PurchaseRequestForm({
               onDragLeave={() => setIsDraggingPpmpFile(false)}
               onDrop={(e) => { e.preventDefault(); setIsDraggingPpmpFile(false); handlePpmpFile(e.dataTransfer.files?.[0]); }}
               onBrowseClick={() => fileInputRef.current?.click()}
+              onPreview={uploadedFile ? () => setPreviewingDoc({ title: "Approved PPMP Plan", file: uploadedFile }) : undefined}
               onRemove={removeUploadedFile}
               fileInputRef={fileInputRef}
               inputAccept={STRICT_PPMP_ACCEPT}
@@ -1581,6 +1769,7 @@ function PurchaseRequestForm({
               onDragLeave={() => setIsDraggingMarketScopingFile(false)}
               onDrop={(e) => { e.preventDefault(); setIsDraggingMarketScopingFile(false); handleMarketScopingFile(e.dataTransfer.files?.[0]); }}
               onBrowseClick={() => marketScopingFileInputRef.current?.click()}
+              onPreview={marketScopingFile ? () => setPreviewingDoc({ title: "Strategic Market Scoping", file: marketScopingFile }) : undefined}
               onRemove={removeMarketScopingFile}
               fileInputRef={marketScopingFileInputRef}
               inputAccept=".pdf, .xlsx, .xls, .docx, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1600,6 +1789,7 @@ function PurchaseRequestForm({
               onDragLeave={() => setIsDraggingPreCanvassFile(false)}
               onDrop={(e) => { e.preventDefault(); setIsDraggingPreCanvassFile(false); handlePreCanvassFile(e.dataTransfer.files?.[0]); }}
               onBrowseClick={() => preCanvassFileInputRef.current?.click()}
+              onPreview={preCanvassFile ? () => setPreviewingDoc({ title: "Pre-Canvass Form", file: preCanvassFile }) : undefined}
               onRemove={removePreCanvassFile}
               fileInputRef={preCanvassFileInputRef}
               inputAccept=".pdf, .xlsx, .xls, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
@@ -1841,11 +2031,24 @@ function PurchaseRequestForm({
                     </div>
                   </div>
 
-                  {/* Item Description, Quantity, Unit, Unit Price */}
-                  <div className="grid gap-4 sm:grid-cols-12">
-                    <div className="sm:col-span-6">
+                  {/* Item Reference No. & Description, Quantity, Unit, Unit Price */}
+                  <div className="grid gap-3 sm:grid-cols-12">
+                    <div className="sm:col-span-4">
+                      <Label htmlFor={`item-ref-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Reference / Stock No. (Stock / property no.)
+                      </Label>
+                      <Input
+                        id={`item-ref-${index}`}
+                        value={item.stockPropertyNo}
+                        onChange={(e) => updateItem(index, "stockPropertyNo", e.target.value)}
+                        placeholder="e.g., 13111203-AC-F01"
+                        className="mt-1.5 font-mono text-xs sm:text-sm"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-8">
                       <Label htmlFor={`item-desc-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Item Name &amp; Specification (Stock / property no.) <span className="text-rose-700">*</span>
+                        Item Name &amp; Specification <span className="text-rose-700">*</span>
                       </Label>
                       <Input
                         id={`item-desc-${index}`}
@@ -1855,8 +2058,10 @@ function PurchaseRequestForm({
                         className="mt-1.5 text-xs sm:text-sm"
                       />
                     </div>
+                  </div>
 
-                    <div className="sm:col-span-2">
+                  <div className="grid gap-3 sm:grid-cols-12 pt-2">
+                    <div className="sm:col-span-3">
                       <Label htmlFor={`item-qty-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Quantity <span className="text-rose-700">*</span>
                       </Label>
@@ -1867,12 +2072,12 @@ function PurchaseRequestForm({
                         step="any"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                        placeholder="e.g., 10"
+                        placeholder="1"
                         className="mt-1.5 text-xs sm:text-sm"
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-3">
                       <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Unit <span className="text-rose-700">*</span>
                       </Label>
@@ -1893,7 +2098,7 @@ function PurchaseRequestForm({
                       </Select>
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-3">
                       <Label htmlFor={`item-price-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Unit Price (₱) <span className="text-rose-700">*</span>
                       </Label>
@@ -1907,6 +2112,15 @@ function PurchaseRequestForm({
                         placeholder="0.00"
                         className="mt-1.5 text-xs sm:text-sm"
                       />
+                    </div>
+
+                    <div className="sm:col-span-3 flex flex-col justify-end">
+                      <div className="h-9 rounded-md border border-slate-200 bg-slate-100/80 px-3 flex items-center justify-between font-bold text-xs sm:text-sm dark:border-slate-800 dark:bg-slate-800/60">
+                        <span className="text-[11px] text-slate-500 font-normal">Subtotal:</span>
+                        <span className="text-[#881337] dark:text-rose-400">
+                          ₱{((Number(item.quantity) || 0) * (Number(item.estimatedUnitCost) || 0)).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2211,6 +2425,7 @@ function PurchaseRequestForm({
           </div>
         </section>
       )}
+      <DocumentPreviewDialog doc={previewingDoc} onClose={() => setPreviewingDoc(null)} />
     </form>
   );
 }

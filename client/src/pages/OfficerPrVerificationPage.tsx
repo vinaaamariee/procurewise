@@ -159,7 +159,15 @@ export function OfficerPrVerificationPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const allRecords = verificationsQuery.data ?? [];
+  const allRecords = useMemo(() => {
+    const records = verificationsQuery.data ?? [];
+    return [...records].sort(
+      (a, b) =>
+        new Date(b.purchaseRequest.createdAt).getTime() -
+        new Date(a.purchaseRequest.createdAt).getTime() ||
+        b.purchaseRequest.id - a.purchaseRequest.id
+    );
+  }, [verificationsQuery.data]);
 
   // Summary Metrics
   const metrics = useMemo(() => {
