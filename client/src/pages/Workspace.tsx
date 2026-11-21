@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { OfficeSelect } from "@/components/OfficeSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import { AuditHistoryDrawer, QuietCompliancePill } from "@/components/compliance";
 import { trpc } from "@/lib/trpc";
@@ -24,6 +25,334 @@ import { toast } from "sonner";
 
 type WorkspaceKind = "rfq" | "po" | "plans" | "suppliers" | "budgets" | "analytics" | "audit";
 type RequestItem = { catalogItemId: string; stockPropertyNo: string; description: string; specification: string; quantity: string; unit: string; estimatedUnitCost: string };
+
+interface PrCreationDraft {
+  isCreating: boolean;
+  currentStep: 1 | 2 | 3 | 4;
+  ppmpOfficeId: string;
+  ppmpObjectId: string;
+  customPpmpBudget: string;
+  customPpmpTitle: string;
+  customPpmpYear: number;
+  customFundSource: string;
+  uploadedFile: { name: string; type: string; size: number; base64: string } | null;
+  marketScopingFile: { name: string; type: string; size: number; base64: string } | null;
+  preCanvassFile: { name: string; type: string; size: number; base64: string } | null;
+  selectedCategory: string;
+  items: RequestItem[];
+  purpose: string;
+  requestedSignatoryChoice: string;
+  approvedSignatoryChoice: string;
+  updatedAt: number;
+}
+
+let inMemoryPrDraft: Partial<PrCreationDraft> | null = null;
+
+function loadPrDraft(): Partial<PrCreationDraft> | null {
+  if (inMemoryPrDraft) return inMemoryPrDraft;
+  try {
+    const raw = localStorage.getItem("procurewise.prCreationDraft") || sessionStorage.getItem("procurewise.prCreationDraft");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      inMemoryPrDraft = parsed;
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function savePrDraft(draft: Partial<PrCreationDraft>) {
+  inMemoryPrDraft = { ...(inMemoryPrDraft || {}), ...draft, updatedAt: Date.now() };
+  try {
+    const serialized = JSON.stringify(inMemoryPrDraft);
+    localStorage.setItem("procurewise.prCreationDraft", serialized);
+    sessionStorage.setItem("procurewise.prCreationDraft", serialized);
+  } catch {
+    try {
+      const lightweight = {
+        ...inMemoryPrDraft,
+        uploadedFile: inMemoryPrDraft.uploadedFile ? { name: inMemoryPrDraft.uploadedFile.name, type: inMemoryPrDraft.uploadedFile.type, size: inMemoryPrDraft.uploadedFile.size, base64: "" } : null,
+        marketScopingFile: inMemoryPrDraft.marketScopingFile ? { name: inMemoryPrDraft.marketScopingFile.name, type: inMemoryPrDraft.marketScopingFile.type, size: inMemoryPrDraft.marketScopingFile.size, base64: "" } : null,
+        preCanvassFile: inMemoryPrDraft.preCanvassFile ? { name: inMemoryPrDraft.preCanvassFile.name, type: inMemoryPrDraft.preCanvassFile.type, size: inMemoryPrDraft.preCanvassFile.size, base64: "" } : null,
+      };
+      localStorage.setItem("procurewise.prCreationDraft", JSON.stringify(lightweight));
+      sessionStorage.setItem("procurewise.prCreationDraft", JSON.stringify(inMemoryPrDraft));
+    } catch {}
+  }
+}
+
+function clearPrDraft() {
+  inMemoryPrDraft = null;
+  try {
+    localStorage.removeItem("procurewise.prCreationDraft");
+    sessionStorage.removeItem("procurewise.prCreationDraft");
+    sessionStorage.removeItem("procurewise.prWizardStep");
+  } catch {}
+}
+
+function DocumentUploadCard({
+  title,
+  badge,
+  subtitle,
+  acceptedFormats,
+  file,
+  isDragging,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onBrowseClick,
+  onRemove,
+  fileInputRef,
+  inputAccept,
+  onFileInputChange,
+  inputId,
+}: {
+  title: string;
+  badge: string;
+  subtitle: string;
+  acceptedFormats: string;
+  file: { name: string; size: number } | null;
+  isDragging: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onBrowseClick: () => void;
+  onRemove: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null> | React.RefObject<HTMLInputElement>;
+  inputAccept: string;
+  onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  inputId: string;
+}) {
+  return (
+    <div className="flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <FileText className={`h-4 w-4 ${file ? "text-emerald-600 dark:text-emerald-400" : "text-[#881337] dark:text-rose-400"}`} />
+            {title}
+          </span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+            file
+              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+          }`}>
+            {file ? "Attached" : badge}
+          </span>
+        </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug mb-3">
+          {subtitle}
+        </p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={inputAccept}
+          onChange={onFileInputChange}
+          className="hidden"
+          id={inputId}
+        />
+
+        {!file ? (
+          <div
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            className={`min-h-[140px] rounded-lg border-2 border-dashed p-4 flex flex-col items-center justify-center text-center transition-colors ${
+              isDragging
+                ? "border-[#881337] bg-rose-50/80 dark:border-rose-400 dark:bg-rose-950/40"
+                : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900"
+            }`}
+          >
+            <UploadCloud className="h-7 w-7 text-[#881337] dark:text-rose-400" aria-hidden="true" />
+            <p className="mt-2 text-xs font-bold text-slate-900 dark:text-slate-100">
+              Drag file here
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+              {acceptedFormats}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onBrowseClick}
+              className="mt-3 h-8 border-slate-300 px-3 text-xs font-semibold dark:border-slate-700"
+            >
+              <Folder className="mr-1.5 h-3.5 w-3.5 text-[#881337] dark:text-rose-400" />
+              Browse File
+            </Button>
+          </div>
+        ) : (
+          <div className="min-h-[140px] rounded-lg border-2 border-emerald-300 bg-emerald-50/80 p-3.5 dark:border-emerald-800 dark:bg-emerald-950/30 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="text-xs font-bold truncate" title={file.name}>
+                  {file.name}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400 pl-5.5">
+                {(file.size / 1024).toFixed(1)} KB · Verified Document
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onBrowseClick}
+                className="h-7 flex-1 border-emerald-400 bg-white text-[11px] font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <Upload className="mr-1 h-3 w-3" />
+                Change
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRemove}
+                className="h-7 border-rose-300 bg-white px-2 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-400"
+                title="Remove file"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CatalogItemPicker({
+  value,
+  catalogItems,
+  favoriteIds,
+  onSelect,
+  onClear,
+}: {
+  value: string;
+  catalogItems: Array<{ id: number; productCode: string; description: string; referencePrice: string; unit?: string | null }>;
+  favoriteIds: Set<number>;
+  onSelect: (item: { id: number; productCode: string; description: string; referencePrice: string; unit?: string | null }) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selectedItem = useMemo(() => {
+    if (!value || value === "manual-item") return null;
+    return catalogItems.find((item) => String(item.id) === String(value)) || null;
+  }, [value, catalogItems]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return catalogItems;
+    return catalogItems.filter(
+      (item) =>
+        item.productCode.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q)
+    );
+  }, [catalogItems, search]);
+
+  return (
+    <div className="relative">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 dark:border-slate-700"
+          >
+            {selectedItem ? (
+              <div className="flex w-full items-center justify-between gap-3 text-left">
+                <div className="flex items-center gap-1.5 truncate">
+                  {favoriteIds.has(selectedItem.id) && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500 shrink-0" />}
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300 shrink-0">{selectedItem.productCode}</span>
+                  <span className="text-slate-400">—</span>
+                  <span className="truncate font-medium text-slate-900 dark:text-slate-100">{selectedItem.description}</span>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="rounded bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#881337] dark:bg-rose-950/60 dark:text-rose-300">
+                    ₱{Number(selectedItem.referencePrice).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs sm:text-sm">
+                Manual entry — type specifications directly below or click to search catalog...
+              </span>
+            )}
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[340px] max-w-[650px] p-0" align="start">
+          <div className="border-b border-border p-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Type item code or name to filter catalog items..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-border/60">
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                setOpen(false);
+              }}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <span>Manual entry — type specifications directly below</span>
+              {!selectedItem && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
+            </button>
+            {filteredItems.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                No catalog items match "{search}". You can type manual specifications directly below.
+              </div>
+            ) : (
+              filteredItems.map((catItem) => (
+                <button
+                  type="button"
+                  key={catItem.id}
+                  onClick={() => {
+                    onSelect(catItem);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs transition-colors hover:bg-[#fff9f0] dark:hover:bg-[#252c34] ${
+                    selectedItem?.id === catItem.id ? "bg-rose-50/70 font-semibold dark:bg-rose-950/40" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate pr-2">
+                    {favoriteIds.has(catItem.id) && (
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-500 shrink-0" />
+                    )}
+                    <span className="font-mono font-bold text-slate-600 dark:text-slate-400 shrink-0">
+                      {catItem.productCode}
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-600">—</span>
+                    <span className="truncate text-slate-900 dark:text-slate-100 font-medium">
+                      {catItem.description}
+                    </span>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="rounded bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#881337] dark:bg-rose-950/70 dark:text-rose-300 whitespace-nowrap">
+                      ₱{Number(catItem.referencePrice).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 
 const content: Record<WorkspaceKind, { eyebrow: string; title: string; description: string; emptyTitle: string; emptyDescription: string }> = {
   rfq: { eyebrow: "Quotation management", title: "RFQs & quotation canvass", description: "Prepare procurement canvasses, compare supplier quotations, and document compliant selection.", emptyTitle: "No RFQ or supplier quotation records yet.", emptyDescription: "RFQs appear here after an approved PR is endorsed to Supply for canvassing." },
@@ -63,7 +392,11 @@ export function PurchaseRequestsPage() {
   const searchParams = new URLSearchParams(search);
   const [catalogSelection] = useState<Array<{ id: number; quantity: string }>>(() => { try { return JSON.parse(sessionStorage.getItem("procurewise.catalogSelection") || "[]") as Array<{ id: number; quantity: string }>; } catch { return []; } });
   const catalogItemIds = useMemo(() => catalogSelection.map((item) => item.id), [catalogSelection]);
-  const [isCreating, setIsCreating] = useState(() => searchParams.get("create") === "1");
+  const [isCreating, setIsCreating] = useState(() => {
+    if (searchParams.get("create") === "1") return true;
+    const draft = loadPrDraft();
+    return Boolean(draft?.isCreating);
+  });
   const [activeCanvassPr, setActiveCanvassPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string } | null>(null);
 
   useEffect(() => {
@@ -128,6 +461,8 @@ export function PurchaseRequestsPage() {
     }
     resubmitRequest.mutate({ purchaseRequestId, remarks: resubmitRemarks.trim() || undefined });
   };
+    const advanceRequestMutation = trpc.procurement.purchaseRequests.advance.useMutation();
+  const createPreCanvassMutation = trpc.procurement.preCanvasses.create.useMutation();
   const createPpmpMutation = trpc.procurement.setup.createAppPpmpEntry.useMutation();
   const attachDocumentMutation = trpc.procurement.documents.attach.useMutation();
   const [isSubmittingPackage, setIsSubmittingPackage] = useState(false);
@@ -135,19 +470,10 @@ export function PurchaseRequestsPage() {
   const createRequest = trpc.procurement.purchaseRequests.create.useMutation({
     onSuccess: (created) => {
       void navigator.clipboard?.writeText(created.trackingToken);
-      toast.success("Purchase Request created! Now complete the 3 supplier quotations below.");
+      clearPrDraft();
       setIsCreating(false);
       void utils.procurement.purchaseRequests.list.invalidate();
       void utils.procurement.dashboard.invalidate();
-      // Prompt user to immediately complete the required 3-supplier canvass
-      setActiveCanvassPr({
-        id: created.id,
-        prNumber: created.prNumber,
-        purpose: created.purpose,
-        totalEstimate: created.totalEstimate,
-        officeId: created.officeId,
-        status: created.status,
-      });
     },
     onError: (error) => toast.error(formatFriendlyError(error)),
   });
@@ -156,13 +482,13 @@ export function PurchaseRequestsPage() {
     input: Parameters<typeof createRequest.mutateAsync>[0],
     uploadedPpmpFile?: { name: string; type: string; size: number; base64: string } | null,
     newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null,
-    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null
+    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null,
+    preCanvassFile?: { name: string; type: string; size: number; base64: string } | null
   ) => {
     setIsSubmittingPackage(true);
     try {
       let resolvedPpmpId = input.ppmpEntryId;
 
-      // If user is registering a new PPMP entry on the fly
       if (!resolvedPpmpId && newPpmpData) {
         const estTotal = input.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.estimatedUnitCost) || 0), 0);
         const ceiling = Number(newPpmpData.plannedAmount) || 0;
@@ -190,7 +516,7 @@ export function PurchaseRequestsPage() {
         ppmpEntryId: resolvedPpmpId,
       });
 
-      // If user uploaded a PPMP file, attach it to the purchase request
+      // 1. Attach PPMP
       if (uploadedPpmpFile) {
         try {
           await attachDocumentMutation.mutateAsync({
@@ -212,13 +538,12 @@ export function PurchaseRequestsPage() {
               dataBase64: uploadedPpmpFile.base64,
             }).catch(() => {});
           }
-          toast.success("Department PPMP document successfully attached to this package.");
         } catch (attachErr: any) {
           console.warn("PPMP attachment notice:", attachErr);
-          toast.warning("PR created, but file attachment had an issue: " + (attachErr.message || "Upload issue"));
         }
       }
 
+      // 2. Attach Market Scoping
       if (marketScopingFile) {
         try {
           await attachDocumentMutation.mutateAsync({
@@ -229,12 +554,65 @@ export function PurchaseRequestsPage() {
             mimeType: marketScopingFile.type || "application/octet-stream",
             dataBase64: marketScopingFile.base64,
           });
-          toast.success("Market Scoping document attached to your request.");
         } catch (attachErr: any) {
           console.warn("Market Scoping attachment notice:", attachErr);
-          toast.warning("Purchase Request created, but the Market Scoping file could not be attached: " + (attachErr.message || "Upload issue"));
         }
       }
+
+      // 3. Attach Pre-Canvass Form
+      let createdPreCanvassId: number | null = null;
+      try {
+        const pc = await createPreCanvassMutation.mutateAsync({
+          purchaseRequestId: created.id,
+          approvedBudget: Number(created.totalEstimate),
+          deliveryPeriodDays: 30,
+          priceEvaluationMode: "lot_basis",
+        });
+        createdPreCanvassId = pc.id;
+      } catch (pcErr: any) {
+        console.warn("PreCanvass initialization notice:", pcErr);
+      }
+
+      if (preCanvassFile) {
+        try {
+          await attachDocumentMutation.mutateAsync({
+            entityType: "purchase_request",
+            entityId: created.id,
+            documentType: "Pre-Canvass Form",
+            originalFileName: preCanvassFile.name,
+            mimeType: preCanvassFile.type || "application/pdf",
+            dataBase64: preCanvassFile.base64,
+          });
+
+          if (createdPreCanvassId) {
+            await attachDocumentMutation.mutateAsync({
+              entityType: "pre_canvass",
+              entityId: createdPreCanvassId,
+              documentType: "Preliminary Abstract of Quotations",
+              originalFileName: preCanvassFile.name,
+              mimeType: preCanvassFile.type || "application/pdf",
+              dataBase64: preCanvassFile.base64,
+            }).catch(() => {});
+          }
+        } catch (attachErr: any) {
+          console.warn("Pre-Canvass attachment notice:", attachErr);
+        }
+      }
+
+      // 4. Advance PR directly to procurement_review (for Procurement Officer verification)
+      try {
+        await advanceRequestMutation.mutateAsync({
+          purchaseRequestId: created.id,
+        });
+      } catch (advErr: any) {
+        console.warn("Advance to procurement_review notice:", advErr);
+      }
+
+      clearPrDraft();
+      setIsCreating(false);
+      toast.success(`Purchase Request ${created.prNumber} successfully submitted and forwarded to Procurement Officer for verification!`);
+      void utils.procurement.purchaseRequests.list.invalidate();
+      void utils.procurement.dashboard.invalidate();
     } catch (err: any) {
       toast.error(err.message || "Failed to create Purchase Request.");
     } finally {
@@ -267,6 +645,7 @@ export function PurchaseRequestsPage() {
           <Button
             onClick={() => {
               setCreationInitialMode("upload");
+              savePrDraft({ isCreating: true });
               setIsCreating(true);
             }}
             className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:hover:bg-[#eb766a] shadow-xs"
@@ -277,7 +656,7 @@ export function PurchaseRequestsPage() {
         </div>
       )}
     </div>
-    {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={isSubmittingPackage || createRequest.isPending} initialMode={creationInitialMode} onCancel={() => setIsCreating(false)} onCreate={handleCreatePurchaseRequest} /> : (
+    {isCreating ? <PurchaseRequestForm setup={setup.data} ppmpEntries={dashboard.data?.appPpmpEntries} catalogItemIds={catalogItemIds} catalogSelection={catalogSelection} isSaving={isSubmittingPackage || createRequest.isPending} initialMode={creationInitialMode} onCancel={() => { setIsCreating(false); savePrDraft({ isCreating: false }); }} onCreate={handleCreatePurchaseRequest} /> : (
       <div className="mt-7">
         {purchaseRequests.isLoading ? <LoadingPanel label="Loading Purchase Requests" /> : purchaseRequests.data?.length ? <>
           <PurchaseRequestTable
@@ -436,28 +815,15 @@ function PurchaseRequestTable({
     const hasEnoughQuotes = hasRequiredSupplierQuotations(quotesCount);
 
     return <tr key={record.id} onClick={() => onSelectPr?.(record.id)} className={`cursor-pointer transition-colors ${selectedPrId === record.id ? "bg-[#fbf7f0] dark:bg-[#2b3540] ring-1 ring-inset ring-[#7b1e1e]/25 dark:ring-[#ff837a]/30" : "hover:bg-[#fdfcf9] dark:hover:bg-[#232c35]"}`}><td className="px-4 py-3 font-semibold text-[#7b1e1e] dark:text-[#ff837a]">{record.prNumber}<PurchaseRequestHistory purchaseRequestId={record.id} /></td><td className="max-w-[350px] px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">{record.purpose}</td><td className="px-4 py-3 text-[#3e4855] dark:text-[#f1f5f8]">₱{Number(record.totalEstimate).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td><td className="px-4 py-3"><StatusBadge tone={tone(record.status)}>{label(record.status)}</StatusBadge>{record.status === "draft" && <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${hasEnoughQuotes ? "bg-[#eff9f2] text-[#27633b] dark:bg-[#1a3824] dark:text-[#8ce6aa]" : "bg-[#fffaf0] text-[#9a6d19] dark:bg-[#342817] dark:text-[#f0c36a]"}`}>{quotesCount}/3 Canvass Quotes</span>}{record.rejectionCount ? <p className="mt-1 text-[10px] text-[#9c2525] dark:text-[#ff837a]">Rejected {record.rejectionCount} time{record.rejectionCount === 1 ? "" : "s"}{record.rejectionReason ? `: ${record.rejectionReason}` : ""}</p> : null}</td><td className="px-4 py-3 text-[#74808c] dark:text-[#d1dae2]">{new Date(record.createdAt).toLocaleDateString("en-PH")}</td><td className="px-4 py-3">{rejectingId === record.id ? <div className="min-w-[220px]"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason for rejection (required)" className="min-h-16 text-[11px]" /><div className="mt-2 flex gap-1.5"><Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setReason(""); }} className="h-7 text-[10px]">Cancel</Button><Button size="sm" disabled={reason.trim().length < 10} onClick={() => { onReject(record.id, reason.trim()); setRejectingId(null); setReason(""); }} className="h-7 bg-[#9c2525] text-[10px] text-white hover:bg-[#7d1d1d]">Reject</Button></div></div> : <div className="flex flex-wrap gap-1.5">{record.status === "draft" && (
-      <>
-        <Button
-          size="sm"
-          variant={hasEnoughQuotes ? "outline" : "default"}
-          onClick={() => onOpenCanvass(record)}
-          className={`h-7 rounded-[4px] px-2.5 text-[10px] ${!hasEnoughQuotes ? "bg-[#7b1e1e] text-white hover:bg-[#641818] dark:bg-[#d65c50] dark:text-white dark:hover:bg-[#eb766a]" : "border-[#b5a995] text-[#4b5563] dark:text-[#d1dae2]"}`}
-        >
-          <FileSearch className="mr-1 h-3 w-3" />
-          {hasEnoughQuotes ? `Canvass Quotes (${quotesCount}/3)` : `Complete Canvass (${quotesCount}/3)`}
-        </Button>
-        {hasEnoughQuotes && (
-          <Button
-            size="sm"
-            onClick={() => onSubmit(record.id)}
-            disabled={submittingId === record.id}
-            className="h-7 rounded-[4px] bg-[#27633b] px-2.5 text-[10px] text-white hover:bg-[#1f5030] dark:bg-[#348e53] dark:text-white"
-          >
-            {submittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <Send className="mr-1 h-3 w-3" />}
-            Forward Package
-          </Button>
-        )}
-      </>
+      <Button
+        size="sm"
+        onClick={() => onSubmit(record.id)}
+        disabled={submittingId === record.id}
+        className="h-7 rounded-[4px] bg-[#27633b] px-2.5 text-[10px] text-white hover:bg-[#1f5030] dark:bg-[#348e53] dark:text-white"
+      >
+        {submittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <Send className="mr-1 h-3 w-3" />}
+        Forward Package
+      </Button>
     )}
     {canReject && !["draft", "rejected", "delivered", "pmr_logged", "closed"].includes(record.status) && (
       <>
@@ -509,7 +875,7 @@ const WIZARD_STEP_TITLES: Record<1 | 2 | 3 | 4, string> = {
   1: "Upload Your Approved Budget Plan",
   2: "Select Category and Add Items",
   3: "Purpose of Request & Market Scoping",
-  4: "Review Your Request Before Submitting",
+  4: "Review & Submit: Review Your Request Before Submitting",
 };
 
 const STRICT_PPMP_ACCEPT =
@@ -540,8 +906,25 @@ function PurchaseRequestForm({
   onCancel,
   onCreate,
 }: {
-  setup?: { offices: Array<{ id: number; code: string; name: string }>; objectsOfExpenditure: Array<{ id: number; code: string; name: string }>; settings?: any };
-  ppmpEntries?: Array<{ id: number; description: string; fiscalYear: number; officeId?: number; objectOfExpenditureId?: number; plannedAmount?: string | number }>;
+  setup?: {
+    offices: Array<{ id: number; code: string; name: string }>;
+    objectsOfExpenditure: Array<{ id: number; code: string; name: string }>;
+    settings: {
+      entityName: string;
+      authorizedOfficialName?: string | null;
+      authorizedOfficialDesignation?: string | null;
+    } | null;
+  };
+  ppmpEntries?: Array<{
+    id: number;
+    description: string;
+    plannedAmount: string | null;
+    fiscalYear: number;
+    officeId: number;
+    objectOfExpenditureId: number;
+    fundSource?: string | null;
+    modeOfProcurement?: string | null;
+  }>;
   catalogItemIds: number[];
   catalogSelection: Array<{ id: number; quantity: string }>;
   isSaving: boolean;
@@ -551,16 +934,15 @@ function PurchaseRequestForm({
     input: {
       purpose: string;
       category?: string;
-      ppmpFileName?: string;
+      officeId: number;
+      objectOfExpenditureId: number;
+      ppmpEntryId?: number;
       fundSource?: string;
       fundCluster?: string;
       responsibilityCenterCode?: string;
       requesterDesignation?: string;
       requestedSignatoryId?: number;
       approvedSignatoryId?: number;
-      ppmpEntryId?: number;
-      officeId: number;
-      objectOfExpenditureId: number;
       items: Array<{
         catalogItemId?: number;
         stockPropertyNo?: string;
@@ -573,45 +955,51 @@ function PurchaseRequestForm({
     },
     uploadedPpmpFile?: { name: string; type: string; size: number; base64: string } | null,
     newPpmpData?: { title: string; fiscalYear: number; plannedAmount?: number } | null,
-    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null
+    marketScopingFile?: { name: string; type: string; size: number; base64: string } | null,
+    preCanvassFile?: { name: string; type: string; size: number; base64: string } | null
   ) => void;
 }) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const initialDraft = useMemo(() => loadPrDraft(), []);
 
-  // Linear 4-Step Wizard State Machine (persisted in sessionStorage to prevent accidental refresh loss)
+  // Wizard Step (1: Upload Documents, 2: Items, 3: Purpose & Signatories, 4: Review)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(() => {
-    try {
-      const saved = Number(sessionStorage.getItem("procurewise.prWizardStep"));
-      if (saved === 1 || saved === 2 || saved === 3 || saved === 4) return saved;
-    } catch {}
-    return 1;
+    return (initialDraft?.currentStep as 1 | 2 | 3 | 4) || 1;
   });
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem("procurewise.prWizardStep", String(currentStep));
-    } catch {}
-  }, [currentStep]);
-
-  // Step 1: PPMP Budget Plan & Strict File Validation state
-  const [ppmpMode, setPpmpMode] = useState<"upload" | "existing">(initialMode);
+  // Step 1: PPMP & Documents state
+  const [ppmpMode, setPpmpMode] = useState<"upload" | "existing">("upload");
   const [selectedPpmpId, setSelectedPpmpId] = useState<string>("");
-  const [customPpmpTitle, setCustomPpmpTitle] = useState("");
-  const [customPpmpYear, setCustomPpmpYear] = useState<number>(new Date().getFullYear());
-  const [ppmpOfficeId, setPpmpOfficeId] = useState("");
-  const [ppmpObjectId, setPpmpObjectId] = useState("");
-  const [customPpmpBudget, setCustomPpmpBudget] = useState("");
-  const [customFundSource, setCustomFundSource] = useState("General Appropriations Act");
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
+  const [customPpmpTitle, setCustomPpmpTitle] = useState(() => initialDraft?.customPpmpTitle || "");
+  const [customPpmpYear, setCustomPpmpYear] = useState<number>(() => initialDraft?.customPpmpYear || new Date().getFullYear());
+  const [ppmpOfficeId, setPpmpOfficeId] = useState(() => initialDraft?.ppmpOfficeId || "");
+  const [ppmpObjectId, setPpmpObjectId] = useState(() => initialDraft?.ppmpObjectId || "");
+  const [customPpmpBudget, setCustomPpmpBudget] = useState(() => initialDraft?.customPpmpBudget || "");
+  const [customFundSource, setCustomFundSource] = useState(() => initialDraft?.customFundSource || "General Appropriations Act");
+
+  // Combined 3-Document Upload states
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(
+    () => initialDraft?.uploadedFile || null
+  );
+  const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(
+    () => initialDraft?.marketScopingFile || null
+  );
+  const [preCanvassFile, setPreCanvassFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(
+    () => initialDraft?.preCanvassFile || null
+  );
+
   const [ppmpFileError, setPpmpFileError] = useState<string | null>(null);
-  const [marketScopingFile, setMarketScopingFile] = useState<{ name: string; type: string; size: number; base64: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingPpmpFile, setIsDraggingPpmpFile] = useState(false);
+
   const marketScopingFileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingMarketScopingFile, setIsDraggingMarketScopingFile] = useState(false);
 
-  // Pre-select user's assigned office and default expenditure object if available
+  const preCanvassFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingPreCanvassFile, setIsDraggingPreCanvassFile] = useState(false);
+
+  // Office & Object preselection
   useEffect(() => {
     if (!ppmpOfficeId && setup?.offices?.length) {
       if (user?.officeName) {
@@ -641,43 +1029,85 @@ function PurchaseRequestForm({
   }, [setup?.objectsOfExpenditure, ppmpObjectId]);
 
   // Step 2: Category & Items state
-  const [selectedCategory, setSelectedCategory] = useState<string>("Office Supplies");
-  const [items, setItems] = useState<RequestItem[]>([
-    {
-      catalogItemId: "",
-      stockPropertyNo: "",
-      description: "",
-      specification: "",
-      quantity: "1",
-      unit: "Ream",
-      estimatedUnitCost: "",
-    },
-  ]);
-  const [showCatalogPicker, setShowCatalogPicker] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => initialDraft?.selectedCategory || "Office Supplies");
+  const [items, setItems] = useState<RequestItem[]>(() => {
+    if (initialDraft?.items && initialDraft.items.length > 0) {
+      return initialDraft.items;
+    }
+    return [
+      {
+        catalogItemId: "",
+        stockPropertyNo: "",
+        description: "",
+        specification: "",
+        quantity: "1",
+        unit: "Piece",
+        estimatedUnitCost: "",
+      },
+    ];
+  });
 
   // Step 3: Purpose & Signatories state
-  const [purpose, setPurpose] = useState("");
-  const [fundSource, setFundSource] = useState("General Appropriations Act");
+  const [purpose, setPurpose] = useState(() => initialDraft?.purpose || "");
+  const [fundSource, setFundSource] = useState(() => initialDraft?.customFundSource || "General Appropriations Act");
   const [fundCluster, setFundCluster] = useState("01101101");
   const [responsibilityCenterCode, setResponsibilityCenterCode] = useState("");
-  const [requestedSignatoryChoice, setRequestedSignatoryChoice] = useState("");
-  const [approvedSignatoryChoice, setApprovedSignatoryChoice] = useState("");
-  const [officeId, setOfficeId] = useState("");
-  const [objectId, setObjectId] = useState("");
+  const [requestedSignatoryChoice, setRequestedSignatoryChoice] = useState(() => initialDraft?.requestedSignatoryChoice || "");
+  const [approvedSignatoryChoice, setApprovedSignatoryChoice] = useState(() => initialDraft?.approvedSignatoryChoice || "");
+  const [officeId, setOfficeId] = useState(() => initialDraft?.ppmpOfficeId || "");
+  const [objectId, setObjectId] = useState(() => initialDraft?.ppmpObjectId || "");
   const [showAppendixPreview, setShowAppendixPreview] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  // Strict Client-Side PPMP File Validation Catch (.pdf, .xlsx, .xls <= 10MB)
+  // Auto-save draft on every change
+  useEffect(() => {
+    savePrDraft({
+      isCreating: true,
+      currentStep,
+      ppmpOfficeId: ppmpOfficeId || officeId,
+      ppmpObjectId: ppmpObjectId || objectId,
+      customPpmpBudget,
+      customPpmpTitle,
+      customPpmpYear,
+      customFundSource,
+      uploadedFile,
+      marketScopingFile,
+      preCanvassFile,
+      selectedCategory,
+      items,
+      purpose,
+      requestedSignatoryChoice,
+      approvedSignatoryChoice,
+    });
+  }, [
+    currentStep,
+    ppmpOfficeId,
+    officeId,
+    ppmpObjectId,
+    objectId,
+    customPpmpBudget,
+    customPpmpTitle,
+    customPpmpYear,
+    customFundSource,
+    uploadedFile,
+    marketScopingFile,
+    preCanvassFile,
+    selectedCategory,
+    items,
+    purpose,
+    requestedSignatoryChoice,
+    approvedSignatoryChoice,
+  ]);
+
+  // File Handlers
   const handlePpmpFile = (file?: File) => {
     if (!file) return;
     if (!isStrictPpmpFileValid(file)) {
-      const errMsg =
-        "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.";
+      const errMsg = "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.";
       setPpmpFileError(errMsg);
-      setUploadedFile(null);
       toast.error(errMsg);
       return;
     }
-
     setPpmpFileError(null);
     const reader = new FileReader();
     reader.onload = () => {
@@ -690,10 +1120,9 @@ function PurchaseRequestForm({
         base64,
       });
       if (!customPpmpTitle.trim()) {
-        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-        setCustomPpmpTitle(nameWithoutExt);
+        setCustomPpmpTitle(file.name.replace(/\.[^/.]+$/, ""));
       }
-      toast.success(`Official PPMP document verified: ${file.name}`);
+      toast.success(`Verified PPMP document: ${file.name}`);
     };
     reader.readAsDataURL(file);
   };
@@ -706,19 +1135,16 @@ function PurchaseRequestForm({
   const removeUploadedFile = () => {
     setUploadedFile(null);
     setPpmpFileError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleMarketScopingFile = (file?: File | null) => {
     if (!file) return;
     if (file.size > MAX_PPMP_BYTES) {
-      toast.error("Supporting Market Scoping file exceeds the 10MB limit.");
+      toast.error("Market Scoping file exceeds the 10MB limit.");
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => toast.error("The Market Scoping file could not be read.");
     reader.onload = () => {
       const result = String(reader.result || "");
       setMarketScopingFile({
@@ -727,59 +1153,47 @@ function PurchaseRequestForm({
         size: file.size,
         base64: result.includes(",") ? result.split(",")[1] : result,
       });
-      toast.success(`Attached Market Scoping file: ${file.name}`);
+      toast.success(`Attached Market Scoping: ${file.name}`);
     };
     reader.readAsDataURL(file);
   };
 
   const removeMarketScopingFile = () => {
     setMarketScopingFile(null);
-    if (marketScopingFileInputRef.current) {
-      marketScopingFileInputRef.current.value = "";
-    }
+    if (marketScopingFileInputRef.current) marketScopingFileInputRef.current.value = "";
   };
 
-  // Catalog Queries (preserved for common-use catalog integration)
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [catalogSearch, setCatalogSearch] = useState("");
-  const [catalogCodeFamily, setCatalogCodeFamily] = useState("all");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const catalogInput = useMemo(
-    () => ({
-      search: catalogSearch.trim() || undefined,
-      codeFamily: catalogCodeFamily === "all" ? undefined : catalogCodeFamily,
-      page: 1,
-      limit: 100,
-    }),
-    [catalogSearch, catalogCodeFamily]
-  );
-  const catalog = trpc.procurement.catalog.list.useQuery(catalogInput, { retry: false });
-  const codeFamilies = trpc.procurement.catalog.codeFamilies.useQuery(undefined, { retry: false });
+  const handlePreCanvassFile = (file?: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_PPMP_BYTES) {
+      toast.error("Pre-Canvass file exceeds the 10MB limit.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      setPreCanvassFile({
+        name: file.name,
+        type: file.type || "application/pdf",
+        size: file.size,
+        base64: result.includes(",") ? result.split(",")[1] : result,
+      });
+      toast.success(`Attached Pre-Canvass Form: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePreCanvassFile = () => {
+    setPreCanvassFile(null);
+    if (preCanvassFileInputRef.current) preCanvassFileInputRef.current.value = "";
+  };
+
+  // Common-use Catalog queries
+  const catalog = trpc.procurement.catalog.list.useQuery(undefined, { retry: false });
   const favorites = trpc.procurement.catalog.favorites.useQuery(undefined, { retry: false });
   const signatories = trpc.procurement.purchaseRequests.signatories.useQuery(undefined, { retry: false });
-  const favoriteIds = useMemo(
-    () => new Set((favorites.data ?? []).map((catalogItem) => catalogItem.id)),
-    [favorites.data]
-  );
-  const catalogItems = useMemo(() => {
-    if (!favoritesOnly) return catalog.data?.items ?? [];
-    const search = catalogSearch.trim().toLowerCase();
-    return (favorites.data ?? []).filter(
-      (catalogItem) =>
-        (!catalogCodeFamily ||
-          catalogCodeFamily === "all" ||
-          catalogItem.productCode.startsWith(catalogCodeFamily)) &&
-        (!search ||
-          catalogItem.productCode.toLowerCase().includes(search) ||
-          catalogItem.description.toLowerCase().includes(search))
-    );
-  }, [catalog.data?.items, catalogCodeFamily, catalogSearch, favorites.data, favoritesOnly]);
-  const toggleFavorite = trpc.procurement.catalog.setFavorite.useMutation({
-    onSuccess: () => {
-      void utils.procurement.catalog.favorites.invalidate();
-    },
-    onError: (error) => toast.error(formatFriendlyError(error)),
-  });
+  const favoriteIds = useMemo(() => new Set((favorites.data ?? []).map((c) => c.id)), [favorites.data]);
+  const catalogItems = useMemo(() => catalog.data?.items ?? [], [catalog.data?.items]);
 
   useEffect(() => {
     const selectedItems = (catalog.data?.items ?? []).filter((item) => catalogItemIds.includes(item.id));
@@ -851,27 +1265,15 @@ function PurchaseRequestForm({
         description: "",
         specification: "",
         quantity: "1",
-        unit: "Ream",
+        unit: "Piece",
         estimatedUnitCost: "",
       },
     ]);
 
-  const linkedExistingPpmp = useMemo(
-    () =>
-      ppmpMode === "existing"
-        ? ppmpEntries?.find((entry) => String(entry.id) === selectedPpmpId)
-        : undefined,
-    [ppmpMode, ppmpEntries, selectedPpmpId]
-  );
-
   const activeBudgetCeiling = useMemo(() => {
-    if (ppmpMode === "existing" && selectedPpmpId) {
-      const amt = Number(linkedExistingPpmp?.plannedAmount);
-      if (!isNaN(amt) && amt > 0) return amt;
-    }
     const custom = Number(customPpmpBudget);
     return !isNaN(custom) && custom > 0 ? custom : 0;
-  }, [ppmpMode, selectedPpmpId, linkedExistingPpmp, customPpmpBudget]);
+  }, [customPpmpBudget]);
 
   const isOverBudget = activeBudgetCeiling > 0 && total > activeBudgetCeiling + 0.001;
   const remainingBudget = activeBudgetCeiling > 0 ? Math.max(0, activeBudgetCeiling - total) : 0;
@@ -879,27 +1281,31 @@ function PurchaseRequestForm({
   const budgetUtilizationRatio = activeBudgetCeiling > 0 ? total / activeBudgetCeiling : 0;
   const budgetUtilizationPct = activeBudgetCeiling > 0 ? Math.min(Math.round(budgetUtilizationRatio * 100), 999) : 0;
 
-  // Step 1 Valid Check: Next Step button remains disabled until a valid document passes inspection (or existing PPMP selected) and positive ceiling is set
-  const isCustomBudgetValid =
-    ppmpMode === "upload" ? !isNaN(Number(customPpmpBudget)) && Number(customPpmpBudget) > 0 : true;
-
-  const isStep1Valid =
-    ppmpMode === "upload"
-      ? Boolean(uploadedFile && !ppmpFileError && isCustomBudgetValid)
-      : Boolean(selectedPpmpId);
+  const isCustomBudgetValid = !isNaN(Number(customPpmpBudget)) && Number(customPpmpBudget) > 0;
+  const isStep1Valid = Boolean(
+    (uploadedFile || selectedPpmpId) &&
+    marketScopingFile &&
+    preCanvassFile &&
+    isCustomBudgetValid &&
+    (ppmpOfficeId || officeId) &&
+    (ppmpObjectId || objectId)
+  );
 
   const handleAdvanceFromStep1 = () => {
-    if (
-      ppmpMode === "upload" &&
-      (!customPpmpBudget.trim() || isNaN(Number(customPpmpBudget)) || Number(customPpmpBudget) <= 0)
-    ) {
-      toast.error("Please enter a valid Approved PPMP Budget Ceiling greater than ₱0.00.");
+    if (!uploadedFile && !selectedPpmpId) {
+      toast.error("Please upload your approved PPMP file (Annex B).");
       return;
     }
-    if (!isStep1Valid) {
-      setPpmpFileError(
-        "File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB."
-      );
+    if (!marketScopingFile) {
+      toast.error("Please upload your Market Scoping document (mandatory under RA 12009 Art. II).");
+      return;
+    }
+    if (!preCanvassFile) {
+      toast.error("Please upload your Pre-Canvass Form (preliminary quotation worksheet).");
+      return;
+    }
+    if (!customPpmpBudget.trim() || isNaN(Number(customPpmpBudget)) || Number(customPpmpBudget) <= 0) {
+      toast.error("Please enter a valid Approved PPMP Budget Ceiling greater than ₱0.00.");
       return;
     }
     if (ppmpOfficeId) setOfficeId(ppmpOfficeId);
@@ -974,12 +1380,6 @@ function PurchaseRequestForm({
       );
       return;
     }
-    if (!marketScopingFile) {
-      toast.error(
-        "Market Scoping document is mandatory under RA 12009 Art. II. Please upload your market scoping analysis before proceeding."
-      );
-      return;
-    }
     setCurrentStep(4);
   };
 
@@ -1000,82 +1400,87 @@ function PurchaseRequestForm({
       return;
     }
 
-    if (!marketScopingFile) {
-      toast.error(
-        "Cannot submit: Market Scoping document is mandatory under RA 12009 Art. II. Please upload your market scoping file before submitting."
-      );
+    const resolvedOffice = setup?.offices.find(
+      (o) => String(o.id) === (officeId || ppmpOfficeId)
+    );
+    const resolvedObject = setup?.objectsOfExpenditure.find(
+      (obj) => String(obj.id) === (objectId || ppmpObjectId)
+    );
+
+    if (!resolvedOffice || !resolvedObject) {
+      toast.error("Please ensure the Office and Budget Allocation Class are selected.");
       return;
     }
-
-    const resolvedOffice =
-      setup?.offices.find((o) => String(o.id) === resolvedOfficeIdValue) ||
-      setup?.offices.find((o) => o.code.toLowerCase() === resolvedOfficeIdValue.toLowerCase()) ||
-      setup?.offices.find((o) => o.name.toLowerCase() === resolvedOfficeIdValue.toLowerCase()) ||
-      setup?.offices[0];
-    const finalOfficeId = resolvedOffice ? resolvedOffice.id : Number(resolvedOfficeIdValue) || 1;
-    const finalObjectId = Number(resolvedObjectIdValue) || setup?.objectsOfExpenditure[0]?.id || 1;
-
-    const ppmpTitle =
-      linkedExistingPpmp?.description ||
-      customPpmpTitle.trim() ||
-      (uploadedFile ? uploadedFile.name.replace(/\.[^/.]+$/, "") : `${selectedCategory} PPMP`);
-
-    const plannedBudgetNum =
-      activeBudgetCeiling > 0
-        ? activeBudgetCeiling
-        : Number(customPpmpBudget) || Math.max(total, 1000);
-
-    try {
-      sessionStorage.removeItem("procurewise.prWizardStep");
-    } catch {}
 
     onCreate(
       {
         purpose: purpose.trim(),
         category: selectedCategory,
-        ppmpFileName: uploadedFile?.name || linkedExistingPpmp?.description || "Approved Department PPMP.pdf",
+        officeId: resolvedOffice.id,
+        objectOfExpenditureId: resolvedObject.id,
+        ppmpEntryId: ppmpMode === "existing" && selectedPpmpId ? Number(selectedPpmpId) : undefined,
         fundSource: fundSource.trim() || undefined,
-        fundCluster: fundCluster.trim() || "01101101",
+        fundCluster: fundCluster.trim() || undefined,
         responsibilityCenterCode: responsibilityCenterCode.trim() || undefined,
-        requesterDesignation: selectedRequestedSignatory?.designation || undefined,
+        requesterDesignation: user?.name ? "Faculty / Staff Requisitioner" : undefined,
         requestedSignatoryId: selectedRequestedSignatory?.id,
         approvedSignatoryId: selectedApprovedSignatory?.id,
-        ppmpEntryId: linkedExistingPpmp?.id,
-        officeId: finalOfficeId,
-        objectOfExpenditureId: finalObjectId,
         items: items.map((item) => ({
           catalogItemId: item.catalogItemId ? Number(item.catalogItemId) : undefined,
-          stockPropertyNo: item.stockPropertyNo.trim() || undefined,
+          stockPropertyNo: item.stockPropertyNo || undefined,
           description: item.description.trim(),
-          specification: item.specification.trim() || undefined,
-          quantity: Number(item.quantity),
-          unit: item.unit.trim(),
-          estimatedUnitCost: Number(item.estimatedUnitCost),
+          specification: item.specification?.trim() || undefined,
+          quantity: Number(item.quantity) || 1,
+          unit: item.unit.trim() || "Piece",
+          estimatedUnitCost: Number(item.estimatedUnitCost) || 0,
         })),
       },
       uploadedFile,
-      linkedExistingPpmp
-        ? null
-        : {
-            title: ppmpTitle,
-            fiscalYear: customPpmpYear || new Date().getFullYear(),
-            plannedAmount: plannedBudgetNum,
-          },
-      marketScopingFile
+      ppmpMode === "upload"
+        ? {
+            title: customPpmpTitle.trim() || "Annual Department PPMP",
+            fiscalYear: customPpmpYear,
+            plannedAmount: activeBudgetCeiling,
+          }
+        : null,
+      marketScopingFile,
+      preCanvassFile
     );
   };
 
   return (
-    <form onSubmit={handleFinalSubmit} className="mt-6 space-y-6">
-      {/* 1. Linear Wizard Progress Header */}
-      <div className="flex flex-col gap-2 rounded-2xl bg-slate-100 p-4 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700">
+    <form onSubmit={handleFinalSubmit} className="space-y-6">
+      {/* Draft Auto-Saved Indicator Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span><strong>Draft auto-saved:</strong> Your progress and inputs are saved automatically. You will not lose your work if you click another page.</span>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to discard this draft and start over?")) {
+              clearPrDraft();
+              onCancel();
+            }
+          }}
+          className="h-6 text-[11px] font-semibold text-rose-700 hover:text-rose-900 hover:bg-rose-100/50 dark:text-rose-400"
+        >
+          Discard Draft
+        </Button>
+      </div>
+
+      {/* 1. Clickable Stepper Progress Header */}
+      <nav aria-label="Purchase Request creation steps" className="flex flex-col gap-2 rounded-2xl bg-slate-100 p-4 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
             Step {currentStep} of 4: {WIZARD_STEP_TITLES[currentStep]}
           </span>
           <QuietCompliancePill
             stepNumber="Step 5.1"
-            annexForm="Budget Linkage & PPMP Attachment (Annex B)"
+            annexForm="Annex A, B & D"
             procedureRef="BSC – PRO -QP- 95 – 1"
             role="End-User"
           />
@@ -1089,137 +1494,119 @@ function PurchaseRequestForm({
           aria-valuenow={currentStep}
         >
           {([1, 2, 3, 4] as const).map((stepNumber) => (
-            <div
+            <button
               key={stepNumber}
-              className={
-                stepNumber <= currentStep
-                  ? "h-3 rounded-full bg-[#881337] transition-colors"
-                  : "h-3 rounded-full bg-slate-300 dark:bg-slate-700 transition-colors"
-              }
-            />
+              type="button"
+              onClick={() => {
+                if (stepNumber <= currentStep) {
+                  setCurrentStep(stepNumber);
+                } else if (stepNumber === 2 && isStep1Valid) {
+                  setCurrentStep(2);
+                } else if (stepNumber === 3 && isStep1Valid && !isOverBudget) {
+                  setCurrentStep(3);
+                }
+              }}
+              title={stepNumber <= currentStep ? `Click to return to Step ${stepNumber}` : undefined}
+              className={`flex flex-col gap-1 text-left transition-all ${
+                stepNumber <= currentStep ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+              }`}
+            >
+              <div
+                className={
+                  stepNumber <= currentStep
+                    ? "h-3 rounded-full bg-[#881337] transition-colors hover:bg-[#a01842]"
+                    : "h-3 rounded-full bg-slate-300 dark:bg-slate-700 transition-colors"
+                }
+              />
+              <span className={`text-[11px] font-semibold truncate ${stepNumber === currentStep ? "text-[#881337] dark:text-rose-400 font-bold" : "text-slate-500"}`}>
+                {stepNumber}. {stepNumber === 1 ? "Documents" : stepNumber === 2 ? "Items" : stepNumber === 3 ? "Purpose" : "Review"}
+              </span>
+            </button>
           ))}
         </div>
-      </div>
+      </nav>
 
       {/* ===================================================================== */}
-      {/* STEP 1 OF 4: UPLOAD YOUR APPROVED BUDGET PLAN (PPMP)                  */}
+      {/* STEP 1 OF 4: UPLOAD REQUIRED DOCUMENTS & BUDGET PLAN                  */}
       {/* ===================================================================== */}
       {currentStep === 1 && (
         <section className="rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-slate-200 pb-4 dark:border-slate-800">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Step 1 of 4: Upload Your Approved Budget Plan
+                Step 1 of 4: Upload Required Documents &amp; Budget Plan
               </h2>
               <p className="mt-1.5 text-base text-slate-700 dark:text-slate-300">
-                Upload your signed Project Procurement Management Plan (PPMP) file to verify your budget before adding items.
+                Upload your signed PPMP, Market Scoping document, and Pre-Canvass Form together on one window before adding line items.
               </p>
             </div>
             <QuietCompliancePill
               stepNumber="Step 5.1"
-              annexForm="Budget Linkage & PPMP Attachment (Annex B)"
+              annexForm="PPMP, Market Scoping & Pre-Canvass"
               procedureRef="BSC – PRO -QP- 95 – 1"
               role="End-User"
             />
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={STRICT_PPMP_ACCEPT}
-            onChange={handleFileChange}
-            className="hidden"
-            id="ppmp-strict-file-upload"
-          />
+          {/* Unified 3-Document Upload Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Card 1: PPMP */}
+            <DocumentUploadCard
+              title="1. Approved PPMP Plan"
+              badge="Required"
+              subtitle="Linked PPMP entry: Signed Project Procurement Management Plan (Annex B)"
+              acceptedFormats=".pdf, .xlsx, .xls (Max: 10MB)"
+              file={uploadedFile}
+              isDragging={isDraggingPpmpFile}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingPpmpFile(true); }}
+              onDragLeave={() => setIsDraggingPpmpFile(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDraggingPpmpFile(false); handlePpmpFile(e.dataTransfer.files?.[0]); }}
+              onBrowseClick={() => fileInputRef.current?.click()}
+              onRemove={removeUploadedFile}
+              fileInputRef={fileInputRef}
+              inputAccept={STRICT_PPMP_ACCEPT}
+              onFileInputChange={handleFileChange}
+              inputId="ppmp-strict-file-upload"
+            />
 
-          {/* File Dropzone / Active Uploaded File Container */}
-          {!uploadedFile ? (
-            <div
-              onDragOver={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setIsDraggingPpmpFile(true);
-              }}
-              onDragLeave={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setIsDraggingPpmpFile(false);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setIsDraggingPpmpFile(false);
-                handlePpmpFile(event.dataTransfer.files?.[0]);
-              }}
-              className={`min-h-[180px] rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${
-                isDraggingPpmpFile
-                  ? "border-[#881337] bg-rose-50/60 dark:border-rose-400 dark:bg-rose-950/30"
-                  : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
-              }`}
-            >
-              <UploadCloud className="h-9 w-9 text-[#881337] dark:text-rose-400" aria-hidden="true" />
-              <p className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
-                Choose a file or drag it here
-              </p>
-              <p className="mt-1.5 max-w-xl text-sm font-medium text-slate-600 dark:text-slate-300">
-                Accepted formats only: .pdf, .xlsx, .xls (Max size: 10MB). Scanned pictures, Word files, and zip folders cannot be accepted.
-              </p>
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="min-h-12 px-6 py-3 border-2 border-slate-300 rounded-xl font-bold bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <Folder className="h-5 w-5 text-[#881337] dark:text-rose-400" />
-                  <span>Browse File</span>
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="min-h-[180px] rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 p-6 dark:border-emerald-700 dark:bg-emerald-950/30 flex flex-col items-center justify-center text-center transition-all">
-              <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-              <p className="mt-3 max-w-xl truncate text-lg font-bold text-slate-900 dark:text-slate-100" title={uploadedFile.name}>
-                {uploadedFile.name}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB · Verified Official PPMP File
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="min-h-11 border-2 border-emerald-500 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:bg-slate-900 dark:text-emerald-300"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>Change File</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={removeUploadedFile}
-                  className="min-h-11 border-2 border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Remove and choose another file</span>
-                </Button>
-              </div>
-            </div>
-          )}
+            {/* Card 2: Market Scoping */}
+            <DocumentUploadCard
+              title="2. Market Scoping"
+              badge="Required"
+              subtitle="Strategic Market Scoping & Price Sounding (RA 12009 Art. II)"
+              acceptedFormats=".pdf, .xlsx, .xls, .docx (Max: 10MB)"
+              file={marketScopingFile}
+              isDragging={isDraggingMarketScopingFile}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingMarketScopingFile(true); }}
+              onDragLeave={() => setIsDraggingMarketScopingFile(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDraggingMarketScopingFile(false); handleMarketScopingFile(e.dataTransfer.files?.[0]); }}
+              onBrowseClick={() => marketScopingFileInputRef.current?.click()}
+              onRemove={removeMarketScopingFile}
+              fileInputRef={marketScopingFileInputRef}
+              inputAccept=".pdf, .xlsx, .xls, .docx, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onFileInputChange={(e) => { handleMarketScopingFile(e.target.files?.[0]); e.currentTarget.value = ""; }}
+              inputId="market-scoping-file-upload-step1"
+            />
 
-          {/* Inline Error Alert (on invalid file type/size) */}
-          {ppmpFileError && (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-xl border-2 border-rose-300 bg-rose-50 p-4 text-base font-semibold text-rose-950 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
-            >
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-700 dark:text-rose-400" />
-              <span>
-                File not accepted. Please upload only official PDF or Excel (.xlsx, .xls) files under 10MB.
-              </span>
-            </div>
-          )}
+            {/* Card 3: Pre-Canvass Form */}
+            <DocumentUploadCard
+              title="3. Pre-Canvass Form"
+              badge="Required"
+              subtitle="Preliminary canvass quotation worksheet / form"
+              acceptedFormats=".pdf, .xlsx, .xls (Max: 10MB)"
+              file={preCanvassFile}
+              isDragging={isDraggingPreCanvassFile}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingPreCanvassFile(true); }}
+              onDragLeave={() => setIsDraggingPreCanvassFile(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDraggingPreCanvassFile(false); handlePreCanvassFile(e.dataTransfer.files?.[0]); }}
+              onBrowseClick={() => preCanvassFileInputRef.current?.click()}
+              onRemove={removePreCanvassFile}
+              fileInputRef={preCanvassFileInputRef}
+              inputAccept=".pdf, .xlsx, .xls, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onFileInputChange={(e) => { handlePreCanvassFile(e.target.files?.[0]); e.currentTarget.value = ""; }}
+              inputId="pre-canvass-file-upload-step1"
+            />
+          </div>
 
           {/* Department / Office & Budget Allocation Details */}
           <div className="grid gap-4 pt-2 sm:grid-cols-3">
@@ -1293,7 +1680,17 @@ function PurchaseRequestForm({
 
           {/* Step 1 Bottom Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-slate-200 pt-5 dark:border-slate-800">
-            <Button type="button" variant="outline" onClick={onCancel} className="min-h-12">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (window.confirm("Do you want to discard this draft and return to the list?")) {
+                  clearPrDraft();
+                  onCancel();
+                }
+              }}
+              className="min-h-12"
+            >
               <X className="h-5 w-5" />
               <span>Cancel Request</span>
             </Button>
@@ -1312,7 +1709,7 @@ function PurchaseRequestForm({
       )}
 
       {/* ===================================================================== */}
-      {/* STEP 2 OF 4: SELECT CATEGORY AND ADD ITEMS (CLAUSE 5.1.1)             */}
+      {/* STEP 2 OF 4: SELECT CATEGORY AND ADD ITEMS                            */}
       {/* ===================================================================== */}
       {currentStep === 2 && (
         <section className="rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 space-y-6">
@@ -1339,228 +1736,128 @@ function PurchaseRequestForm({
               <span className="font-semibold text-slate-800 dark:text-slate-200">
                 Approved Budget Plan:
               </span>
-              <span className="truncate text-slate-600 dark:text-slate-300">
-                {uploadedFile?.name || (linkedExistingPpmp?.description ? linkedExistingPpmp.description : "Approved Department PPMP")}
+              <span className="truncate text-slate-600 dark:text-slate-400">
+                {uploadedFile?.name || "Verified PPMP Document"}
               </span>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500 dark:text-slate-400">
-                  Approved PPMP Ceiling:
-                </span>
-                <span className="font-bold text-slate-900 dark:text-slate-100">
-                  ₱ {activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  isOverBudget
-                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                }`}
-              >
-                {isOverBudget
-                  ? `Over ceiling (+₱${overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
-                  : `₱${remainingBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining`}
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+              <span className="text-slate-700 dark:text-slate-300">
+                Ceiling: <strong>₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</strong>
               </span>
-            </div>
-          </div>
-
-          {/* College Rule Banner */}
-          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-base text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-amber-800 dark:text-amber-300" />
-              <p className="font-semibold">
-                Rule 5.1.1: Every request can contain only one type of item (e.g., all office supplies or all computer equipment). Different item categories cannot be mixed in one request.
-              </p>
+              <span className="text-slate-700 dark:text-slate-300">
+                Est. Cost: <strong className={isOverBudget ? "text-rose-600" : "text-emerald-600"}>₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</strong>
+              </span>
+              <span className={isOverBudget ? "text-rose-600 font-bold" : "text-emerald-700 dark:text-emerald-400 font-bold"}>
+                Remaining: ₱{remainingBudget.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
 
           {/* Category Selector */}
-          <div className="max-w-xl">
-            <Label htmlFor="pr-category-select" className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Item Category (Clause 5.1.1) <span className="text-rose-700">*</span>
+          <div>
+            <Label htmlFor="item-category-select" className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Item Category <span className="text-rose-700">*</span>
             </Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger id="pr-category-select" className="mt-2 min-h-12 text-base rounded-xl border-2">
-                <SelectValue placeholder="Choose one item category" />
+              <SelectTrigger id="item-category-select" className="mt-2 min-h-12 text-base">
+                <SelectValue placeholder="Select single category" />
               </SelectTrigger>
               <SelectContent>
-                {BSC_PR_CATEGORIES.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {SECTION_5_1_1_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Optional Common-Use Procurement Catalog Lookup */}
-          <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Common-Use Procurement Catalog (Optional Helper)
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Search PhilGEPS reference prices or enter your item specifications directly below.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowCatalogPicker((prev) => !prev)}
-                className="min-h-12"
-              >
-                <Search className="h-5 w-5" />
-                <span>{showCatalogPicker ? "Hide Catalog Filters" : "Filter Common-Use Catalog"}</span>
-              </Button>
+          {/* Line Items List */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Line Items ({items.length})
+              </span>
             </div>
 
-            {showCatalogPicker && (
-              <div className="mt-4 grid gap-4 sm:grid-cols-[1.25fr_1fr_auto]">
-                <div>
-                  <Label htmlFor="catalog-search" className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    Find a common-use catalog item
-                  </Label>
-                  <Input
-                    id="catalog-search"
-                    value={catalogSearch}
-                    onChange={(event) => setCatalogSearch(event.target.value)}
-                    placeholder="Search code or description"
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    Source code family
-                  </Label>
-                  <Select value={catalogCodeFamily} onValueChange={setCatalogCodeFamily}>
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All source code families</SelectItem>
-                      {codeFamilies.data?.map((family) => (
-                        <SelectItem key={family.codeFamily} value={family.codeFamily}>
-                          {family.label} · {family.itemCount}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant={favoritesOnly ? "default" : "outline"}
-                    onClick={() => setFavoritesOnly((current) => !current)}
-                    className="min-h-12 w-full"
-                  >
-                    <Star className={favoritesOnly ? "h-5 w-5 fill-current" : "h-5 w-5"} />
-                    <span>Favorites ({favorites.data?.length ?? 0})</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Item Entry Form Cards (2px border, 16px font) */}
-          <div className="space-y-4">
             {items.map((item, index) => {
               const lineTotal = (Number(item.quantity) || 0) * (Number(item.estimatedUnitCost) || 0);
               return (
                 <div
                   key={index}
-                  className="rounded-2xl border-2 border-slate-300 bg-slate-50/60 p-5 dark:border-slate-700 dark:bg-slate-800/40 space-y-4"
+                  className="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900/50 space-y-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-base font-bold text-slate-900 dark:text-slate-100">
-                      Item #{index + 1} · {selectedCategory}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3 dark:border-slate-800">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      Item #{index + 1}
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="text-base font-bold text-[#881337] dark:text-rose-400">
+                      <span className="text-sm font-bold text-[#881337] dark:text-rose-400">
                         Line Subtotal: ₱{lineTotal.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       {items.length > 1 && (
                         <Button
                           type="button"
                           variant="outline"
+                          size="sm"
                           onClick={() => setItems((current) => current.filter((_, idx) => idx !== index))}
-                          className="min-h-12 border-2 border-rose-300 text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300"
+                          className="h-8 border-rose-300 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300"
                         >
-                          <Trash2 className="h-5 w-5" />
-                          <span>Remove Item</span>
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Remove
                         </Button>
                       )}
                     </div>
                   </div>
 
+                  {/* Choosing Catalog Item (Editable with right-edge price display) */}
                   <div>
-                    <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Choose from Common-Use Catalog (or enter specifications manually below)
                     </Label>
-                    <Select
-                      value={item.catalogItemId || "manual-item"}
-                      onValueChange={(value) => {
-                        if (value === "manual-item") return updateItem(index, "catalogItemId", "");
-                        const selected = [...catalogItems, ...(favorites.data ?? [])].find(
-                          (catalogItem) => String(catalogItem.id) === value
-                        );
-                        if (!selected) return;
-                        setItems((current) =>
-                          current.map((currentItem, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                  ...currentItem,
-                                  catalogItemId: value,
-                                  stockPropertyNo: selected.productCode,
-                                  description: selected.description,
-                                  unit: selected.unit || "Piece",
-                                  estimatedUnitCost: Number(selected.referencePrice).toFixed(2),
-                                }
-                              : currentItem
-                          )
-                        );
-                      }}
-                    >
-                      <SelectTrigger className="mt-1.5 min-h-11">
-                        <SelectValue placeholder="Manual entry or choose a catalog item" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manual-item">Manual entry — type specifications directly below</SelectItem>
-                        {catalogItems.map((catalogItem) => (
-                          <SelectItem key={catalogItem.id} value={String(catalogItem.id)}>
-                            {favoriteIds.has(catalogItem.id) ? "★ " : ""}
-                            {catalogItem.productCode} — {catalogItem.description} (₱{Number(catalogItem.referencePrice).toLocaleString("en-PH", { minimumFractionDigits: 2 })})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-1.5">
+                      <CatalogItemPicker
+                        value={item.catalogItemId}
+                        catalogItems={catalogItems}
+                        favoriteIds={favoriteIds}
+                        onSelect={(catItem) => {
+                          setItems((current) =>
+                            current.map((currentItem, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...currentItem,
+                                    catalogItemId: String(catItem.id),
+                                    stockPropertyNo: catItem.productCode,
+                                    description: catItem.description,
+                                    unit: catItem.unit || "Piece",
+                                    estimatedUnitCost: Number(catItem.referencePrice).toFixed(2),
+                                  }
+                                : currentItem
+                            )
+                          );
+                        }}
+                        onClear={() => updateItem(index, "catalogItemId", "")}
+                      />
+                    </div>
                   </div>
 
+                  {/* Item Description, Quantity, Unit, Unit Price */}
                   <div className="grid gap-4 sm:grid-cols-12">
                     <div className="sm:col-span-6">
-                      <Label
-                        htmlFor={`item-desc-${index}`}
-                        className="text-base font-bold text-slate-900 dark:text-slate-100"
-                      >
-                        Item Name &amp; Specification <span className="text-rose-700">*</span>
+                      <Label htmlFor={`item-desc-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Item Name &amp; Specification (Stock / property no.) <span className="text-rose-700">*</span>
                       </Label>
                       <Input
                         id={`item-desc-${index}`}
                         value={item.description}
-                        onChange={(event) => updateItem(index, "description", event.target.value)}
+                        onChange={(e) => updateItem(index, "description", e.target.value)}
                         placeholder="e.g., A4 Bond Paper, 80gsm, White"
-                        aria-invalid={attemptedSubmit && !item.description.trim()}
-                        className="mt-2 text-base"
+                        className="mt-1.5 text-xs sm:text-sm"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <Label
-                        htmlFor={`item-qty-${index}`}
-                        className="text-base font-bold text-slate-900 dark:text-slate-100"
-                      >
+                      <Label htmlFor={`item-qty-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Quantity <span className="text-rose-700">*</span>
                       </Label>
                       <Input
@@ -1569,28 +1866,27 @@ function PurchaseRequestForm({
                         min="1"
                         step="any"
                         value={item.quantity}
-                        onChange={(event) => updateItem(index, "quantity", event.target.value)}
-                        placeholder="e.g., 20"
-                        aria-invalid={attemptedSubmit && (!item.quantity.trim() || Number(item.quantity) <= 0)}
-                        className="mt-2 text-base"
+                        onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                        placeholder="e.g., 10"
+                        className="mt-1.5 text-xs sm:text-sm"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <Label className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Unit <span className="text-rose-700">*</span>
                       </Label>
                       <Select
                         value={BSC_PR_UNITS.includes(item.unit as any) ? item.unit : "Piece"}
-                        onValueChange={(value) => updateItem(index, "unit", value)}
+                        onValueChange={(val) => updateItem(index, "unit", val)}
                       >
-                        <SelectTrigger className="mt-2 min-h-12 text-base">
-                          <SelectValue placeholder="Select unit" />
+                        <SelectTrigger className="mt-1.5 h-9 text-xs sm:text-sm">
+                          <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent>
-                          {BSC_PR_UNITS.map((unitOption) => (
-                            <SelectItem key={unitOption} value={unitOption}>
-                              {unitOption}
+                          {BSC_PR_UNITS.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {u}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1598,11 +1894,8 @@ function PurchaseRequestForm({
                     </div>
 
                     <div className="sm:col-span-2">
-                      <Label
-                        htmlFor={`item-price-${index}`}
-                        className="text-base font-bold text-slate-900 dark:text-slate-100"
-                      >
-                        Estimated Unit Price (PHP) <span className="text-rose-700">*</span>
+                      <Label htmlFor={`item-price-${index}`} className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Unit Price (₱) <span className="text-rose-700">*</span>
                       </Label>
                       <Input
                         id={`item-price-${index}`}
@@ -1610,193 +1903,25 @@ function PurchaseRequestForm({
                         min="0.01"
                         step="0.01"
                         value={item.estimatedUnitCost}
-                        onChange={(event) => updateItem(index, "estimatedUnitCost", event.target.value)}
-                        placeholder="e.g., 250.00"
-                        aria-invalid={
-                          attemptedSubmit &&
-                          (!item.estimatedUnitCost.trim() || Number(item.estimatedUnitCost) <= 0)
-                        }
-                        className="mt-2 text-base"
+                        onChange={(e) => updateItem(index, "estimatedUnitCost", e.target.value)}
+                        placeholder="0.00"
+                        className="mt-1.5 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
                 </div>
               );
             })}
-          </div>
 
-          {/* Mixed Category Alert if Clause 5.1.1 is violated */}
-          {categoryAnalysis.isMixed && (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-xl border-2 border-rose-300 bg-rose-50 p-4 text-base font-semibold text-rose-950 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addItem}
+              className="w-full border-dashed border-2 border-slate-300 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
             >
-              <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-rose-700 dark:text-rose-400" />
-              <span>
-                Clause 5.1.1 Mixed-Category Alert: Your items appear to mix{" "}
-                <strong>{categoryAnalysis.categoryLabels.join(" and ")}</strong>. Please separate different item categories into separate Purchase Requests.
-              </span>
-            </div>
-          )}
-
-          {/* Budget Limiter Over-Ceiling Warning Banner */}
-          {isOverBudget && (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-xl border-2 border-rose-500 bg-rose-50 p-4 text-base font-semibold text-rose-950 dark:border-rose-600 dark:bg-rose-950/60 dark:text-rose-100"
-            >
-              <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-rose-600 dark:text-rose-400" />
-              <div className="space-y-1">
-                <p className="font-bold text-rose-950 dark:text-rose-100">
-                  Budget Limiter Exceeded: Total Estimated Cost exceeds Approved PPMP Allocation!
-                </p>
-                <p className="text-sm font-medium text-rose-900 dark:text-rose-200">
-                  Your current total of{" "}
-                  <strong>
-                    ₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </strong>{" "}
-                  exceeds the Approved PPMP Budget Ceiling of{" "}
-                  <strong>
-                    ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </strong>{" "}
-                  by{" "}
-                  <strong className="text-rose-700 dark:text-rose-300">
-                    ₱{overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </strong>
-                  .
-                </p>
-                <p className="text-xs text-rose-800 dark:text-rose-300">
-                  Under BSC Budgetary Control guidelines (Annex B), Purchase Requests cannot exceed the approved PPMP allocation. Reduce line item quantities, adjust unit prices, or go back to Step 1 to revise the PPMP ceiling before proceeding.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Add Another Item Button & Budget Limiter Summary Panel */}
-          <div
-            className={`rounded-2xl border-2 p-5 transition-all ${
-              isOverBudget
-                ? "border-rose-400 bg-rose-50/70 dark:border-rose-800 dark:bg-rose-950/40"
-                : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60"
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addItem}
-                className="min-h-12 border-2 border-dashed border-slate-400 bg-white px-6 py-3 text-base font-bold text-slate-900 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-              >
-                <PlusCircle className="h-5 w-5 text-[#881337] dark:text-rose-400" />
-                <span>Add Another Item</span>
-              </Button>
-
-              <div className="flex flex-wrap items-end gap-6 text-right">
-                {activeBudgetCeiling > 0 && (
-                  <div className="text-right">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Approved PPMP Ceiling
-                    </p>
-                    <p className="text-lg font-bold text-slate-800 dark:text-slate-200">
-                      ₱{" "}
-                      {activeBudgetCeiling.toLocaleString("en-PH", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                  </div>
-                )}
-
-                <div className="text-right">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Total Estimated Cost
-                  </p>
-                  <p
-                    className={`text-2xl font-black ${
-                      isOverBudget
-                        ? "text-rose-600 dark:text-rose-400"
-                        : "text-[#881337] dark:text-rose-400"
-                    }`}
-                  >
-                    ₱{" "}
-                    {total.toLocaleString("en-PH", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
-
-                {activeBudgetCeiling > 0 && (
-                  <div className="text-right">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isOverBudget ? "Over Ceiling By" : "Remaining Ceiling"}
-                    </p>
-                    <p
-                      className={`text-lg font-bold ${
-                        isOverBudget
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-emerald-700 dark:text-emerald-400"
-                      }`}
-                    >
-                      {isOverBudget ? "+" : ""}₱{" "}
-                      {Math.abs(activeBudgetCeiling - total).toLocaleString("en-PH", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Visual Budget Utilization Meter */}
-            {activeBudgetCeiling > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                  <span>
-                    Budget Allocation Usage:{" "}
-                    <strong
-                      className={
-                        isOverBudget
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-slate-900 dark:text-slate-100"
-                      }
-                    >
-                      {budgetUtilizationPct}%
-                    </strong>
-                  </span>
-                  <span
-                    className={
-                      isOverBudget
-                        ? "font-bold text-rose-600 dark:text-rose-400"
-                        : "text-slate-500 dark:text-slate-400"
-                    }
-                  >
-                    {isOverBudget
-                      ? `Exceeds ceiling by ₱${overBudgetAmount.toLocaleString("en-PH", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}`
-                      : `₱${remainingBudget.toLocaleString("en-PH", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })} available under ceiling`}
-                  </span>
-                </div>
-                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div
-                    className={`h-full transition-all duration-300 rounded-full ${
-                      isOverBudget
-                        ? "bg-rose-600"
-                        : budgetUtilizationPct > 90
-                        ? "bg-amber-500"
-                        : "bg-emerald-600"
-                    }`}
-                    style={{ width: `${Math.min(budgetUtilizationPct, 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add Another Line Item
+            </Button>
           </div>
 
           {/* Step 2 Bottom Navigation */}
@@ -1804,11 +1929,12 @@ function PurchaseRequestForm({
             <Button
               type="button"
               variant="outline"
+              disabled={isSaving}
               onClick={() => setCurrentStep(1)}
-              className="min-h-12"
+              className="min-h-12 border-2"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>Back to Step 1 (PPMP Upload)</span>
+              <span>← Back to Step 1 (Documents &amp; Budget)</span>
             </Button>
 
             <Button
@@ -1820,13 +1946,8 @@ function PurchaseRequestForm({
                   ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
                   : "bg-[#881337] hover:bg-[#70102e]"
               }`}
-              title={
-                isOverBudget
-                  ? "Cannot proceed: Total Estimated Cost exceeds Approved PPMP Budget Ceiling"
-                  : undefined
-              }
             >
-              <span>Next Step: Purpose &amp; Market Scoping</span>
+              <span>Next Step: Purpose of Request</span>
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -1834,187 +1955,110 @@ function PurchaseRequestForm({
       )}
 
       {/* ===================================================================== */}
-      {/* STEP 3 OF 4: PURPOSE OF REQUEST & MARKET SCOPING (RA 12009 ART. II)   */}
+      {/* STEP 3 OF 4: PURPOSE OF REQUEST & SIGNATORIES                         */}
       {/* ===================================================================== */}
       {currentStep === 3 && (
         <section className="rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-slate-200 pb-4 dark:border-slate-800">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Step 3 of 4: Purpose of Request &amp; Market Scoping
+                Step 3 of 4: Purpose of Request &amp; Signatories
               </h2>
               <p className="mt-1.5 text-base text-slate-700 dark:text-slate-300">
-                State the official college purpose and attach your mandatory Market Scoping document (RA 12009 Art. II) to justify your procurement.
+                State the official college purpose for this procurement request and review attached documents.
               </p>
             </div>
             <QuietCompliancePill
               stepNumber="Step 5.1"
-              annexForm="Market Scoping (RA 12009 Art. II)"
+              annexForm="Appendix 60 (Annex A)"
               procedureRef="BSC – PRO -QP- 95 – 1"
               role="End-User"
             />
           </div>
 
+          {/* Attached Documents Overview from Step 1 */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Attached Documents (from Step 1)
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentStep(1)}
+                className="h-6 text-xs text-[#881337] dark:text-rose-400"
+              >
+                Change in Step 1
+              </Button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 text-xs">
+              <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 truncate">
+                <span className="text-slate-500 text-[10px] block">PPMP Plan:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{uploadedFile?.name || "Verified PPMP"}</span>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 truncate">
+                <span className="text-slate-500 text-[10px] block">Market Scoping:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{marketScopingFile?.name || "Verified Document"}</span>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 truncate">
+                <span className="text-slate-500 text-[10px] block">Pre-Canvass Form:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{preCanvassFile?.name || "Verified Worksheet"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Purpose of Request */}
           <div>
             <Label htmlFor="pr-purpose" className="text-base font-bold text-slate-900 dark:text-slate-100">
               Purpose of Request <span className="text-rose-700">*</span>
             </Label>
-            <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Explain in 1–2 plain sentences how this purchase will be used for BSC students, classes, or office operations.
-            </p>
             <Textarea
               id="pr-purpose"
               value={purpose}
-              onChange={(event) => setPurpose(event.target.value)}
-              placeholder="e.g., For printing student test booklets and grading sheets for the 1st Semester Midterm Exams."
-              className="mt-3 min-h-32 text-base p-4 rounded-xl border-2"
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder="State the clear educational, administrative, or research purpose of this procurement (at least 10 characters)..."
+              className="mt-2 min-h-24 text-sm"
             />
           </div>
 
-          {/* Mandatory Market Scoping Document Upload (RA 12009 Article II) */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Label className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Market Scoping Document (RA 12009 Article II) <span className="text-rose-700">*</span>
-              </Label>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  marketScopingFile
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                    : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                }`}
-              >
-                {marketScopingFile ? "Market Scoping Attached ✓" : "Mandatory Attachment Required"}
-              </span>
-            </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              Under RA 12009 Article II (Strategic Procurement Planning), early market scoping and price research must be conducted before submitting a Purchase Request. Attach your market scoping worksheet, price comparison, or supplier survey.
-            </p>
-
-            <input
-              ref={marketScopingFileInputRef}
-              type="file"
-              accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.png,.jpg,.jpeg,application/pdf"
-              onChange={(e) => {
-                handleMarketScopingFile(e.target.files?.[0]);
-                e.currentTarget.value = "";
-              }}
-              className="hidden"
-              id="market-scoping-file-upload-step3"
-            />
-
-            {!marketScopingFile ? (
-              <div
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDraggingMarketScopingFile(true);
-                }}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDraggingMarketScopingFile(false);
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDraggingMarketScopingFile(false);
-                  handleMarketScopingFile(event.dataTransfer.files?.[0]);
-                }}
-                className={`min-h-[160px] rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${
-                  isDraggingMarketScopingFile
-                    ? "border-[#881337] bg-rose-50/60 dark:border-rose-400 dark:bg-rose-950/30"
-                    : "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
-                }`}
-              >
-                <UploadCloud className="h-9 w-9 text-[#881337] dark:text-rose-400" aria-hidden="true" />
-                <p className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Choose a Market Scoping file or drag it here
-                </p>
-                <p className="mt-1.5 max-w-xl text-sm font-medium text-slate-600 dark:text-slate-300">
-                  Accepted formats: .pdf, .xlsx, .xls, .docx, .doc, .csv, .png, .jpg (Max size: 10MB).
-                </p>
-                <div className="mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => marketScopingFileInputRef.current?.click()}
-                    className="min-h-12 px-6 py-3 border-2 border-slate-300 rounded-xl font-bold bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  >
-                    <Folder className="h-5 w-5 text-[#881337] dark:text-rose-400" />
-                    <span>Browse Market Scoping File</span>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="min-h-[140px] rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 p-6 dark:border-emerald-700 dark:bg-emerald-950/30 flex flex-col items-center justify-center text-center transition-all">
-                <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-                <p className="mt-3 max-w-xl truncate text-lg font-bold text-slate-900 dark:text-slate-100" title={marketScopingFile.name}>
-                  {marketScopingFile.name}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  {(marketScopingFile.size / (1024 * 1024)).toFixed(2)} MB · Verified Market Scoping Document (RA 12009 Art. II)
-                </p>
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => marketScopingFileInputRef.current?.click()}
-                    className="min-h-11 border-2 border-emerald-500 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-600 dark:bg-slate-900 dark:text-emerald-300"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>Change File</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={removeMarketScopingFile}
-                    className="min-h-11 border-2 border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-800 hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-900 dark:text-rose-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span>Remove and choose another file</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Optional Signatories */}
-          <div className="grid gap-4 pt-2 sm:grid-cols-2">
+          {/* Signatories */}
+          <div className="grid gap-4 sm:grid-cols-2 pt-2">
             <div>
-              <Label htmlFor="pr-requested-by" className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <Label htmlFor="pr-requested-by" className="text-sm font-bold text-slate-800 dark:text-slate-200">
                 Requested By (Optional Signatory)
               </Label>
               <Input
                 id="pr-requested-by"
                 list="pr-requested-signatories"
                 value={requestedSignatoryChoice}
-                onChange={(event) => setRequestedSignatoryChoice(event.target.value)}
+                onChange={(e) => setRequestedSignatoryChoice(e.target.value)}
                 placeholder="Select or leave blank for your account name"
-                className="mt-2"
+                className="mt-1.5"
               />
               <datalist id="pr-requested-signatories">
-                {requesterSignatories.map((signatory) => (
-                  <option key={signatory.id} value={signatoryLabel(signatory)} />
+                {requesterSignatories.map((sig) => (
+                  <option key={sig.id} value={signatoryLabel(sig)} />
                 ))}
               </datalist>
             </div>
 
             <div>
-              <Label htmlFor="pr-approved-by" className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <Label htmlFor="pr-approved-by" className="text-sm font-bold text-slate-800 dark:text-slate-200">
                 Approved By (HoPE / Authorized Approver)
               </Label>
               <Input
                 id="pr-approved-by"
                 list="pr-approved-signatories"
                 value={approvedSignatoryChoice}
-                onChange={(event) => setApprovedSignatoryChoice(event.target.value)}
+                onChange={(e) => setApprovedSignatoryChoice(e.target.value)}
                 placeholder="Select authorized approving official"
-                className="mt-2"
+                className="mt-1.5"
               />
               <datalist id="pr-approved-signatories">
-                {approverSignatories.map((signatory) => (
-                  <option key={signatory.id} value={signatoryLabel(signatory)} />
+                {approverSignatories.map((sig) => (
+                  <option key={sig.id} value={signatoryLabel(sig)} />
                 ))}
               </datalist>
             </div>
@@ -2025,29 +2069,23 @@ function PurchaseRequestForm({
             <Button
               type="button"
               variant="outline"
+              disabled={isSaving}
               onClick={() => setCurrentStep(2)}
-              className="min-h-12"
+              className="min-h-12 border-2"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>Back to Step 2 (Items)</span>
+              <span>← Back to Step 2 (Category &amp; Items)</span>
             </Button>
 
             <Button
               type="button"
-              disabled={purpose.trim().length < 10 || !marketScopingFile}
+              disabled={purpose.trim().length < 10}
               onClick={handleAdvanceFromStep3}
               className={`min-h-12 text-white ${
-                purpose.trim().length < 10 || !marketScopingFile
+                purpose.trim().length < 10
                   ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
                   : "bg-[#881337] hover:bg-[#70102e]"
               }`}
-              title={
-                !marketScopingFile
-                  ? "Market Scoping document is mandatory under RA 12009 Art. II before proceeding"
-                  : purpose.trim().length < 10
-                  ? "Purpose explanation is required"
-                  : undefined
-              }
             >
               <span>Next Step: Review &amp; Submit</span>
               <ArrowRight className="h-5 w-5" />
@@ -2057,7 +2095,7 @@ function PurchaseRequestForm({
       )}
 
       {/* ===================================================================== */}
-      {/* STEP 4 OF 4: SUMMARY, SUBMISSION & EMAIL NOTIFICATION CONFIRMATION    */}
+      {/* STEP 4 OF 4: REVIEW YOUR REQUEST BEFORE SUBMITTING                    */}
       {/* ===================================================================== */}
       {currentStep === 4 && (
         <section className="rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 space-y-6">
@@ -2067,243 +2105,52 @@ function PurchaseRequestForm({
                 Step 4 of 4: Review Your Request Before Submitting
               </h2>
               <p className="mt-1.5 text-base text-slate-700 dark:text-slate-300">
-                Check your attached PPMP plan, item category, line items, and purpose before sending your request.
+                Verify all details, attached documents, and line items before submitting to Procurement.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <QuietCompliancePill
-                stepNumber="Step 5.1"
-                annexForm="Appendix 60 & Annex B"
-                procedureRef="BSC – PRO -QP- 95 – 1"
-                role="End-User"
-              />
+            <QuietCompliancePill
+              stepNumber="Step 5.1"
+              annexForm="Appendix 60, Annex B & D"
+              procedureRef="BSC – PRO -QP- 95 – 1"
+              role="End-User"
+            />
+          </div>
+
+          {/* Attached Documents Verified List */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Attached Procurement Documents (3/3)
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-3 text-xs">
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="truncate">PPMP: <strong>{uploadedFile?.name || "Verified"}</strong></span>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="truncate">Market Scoping: <strong>{marketScopingFile?.name || "Verified"}</strong></span>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="truncate">Pre-Canvass Form: <strong>{preCanvassFile?.name || "Verified"}</strong></span>
+              </div>
             </div>
           </div>
 
-          <AuditHistoryDrawer
-            procedureCode="BSC – PRO -QP- 95 – 1 (Rev. 00)"
-            mandatedStep="Step 5.1 · End-User Submission"
-            standardAttachment="Annex A (PR), Annex B (PPMP) & Market Scoping"
-            historyEvents={[
-              {
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                actor: `${user?.name || "End-User"} (End-User)`,
-                action: `Attached PPMP: ${uploadedFile?.name || "Approved Department PPMP"} (Verified PDF/Excel <= 10MB)`,
-              },
-              {
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                actor: `${user?.name || "End-User"} (End-User)`,
-                action: `Attached Market Scoping: ${marketScopingFile?.name || "Market Scoping Analysis"} (RA 12009 Art. II Verified)`,
-              },
-              {
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                actor: `${user?.name || "End-User"} (End-User)`,
-                action: `Selected Category: ${selectedCategory} (${items.length} item${items.length === 1 ? "" : "s"}) — Clause 5.1.1 Verified`,
-              },
-            ]}
-          />
-
-          {/* Summary Review Card */}
-          <div className="rounded-2xl border-2 border-slate-300 bg-slate-50/70 p-6 dark:border-slate-700 dark:bg-slate-800/40 space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Attached PPMP Budget File
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                  <span className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
-                    {uploadedFile?.name || "Approved Department PPMP"}
-                  </span>
-                </div>
-                {uploadedFile && (
-                  <span className="mt-1 inline-block rounded-lg bg-emerald-100 px-2.5 py-0.5 text-sm font-semibold text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
-                    {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
-                  </span>
-                )}
-              </div>
-
-              <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Attached Market Scoping File
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                  <span className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
-                    {marketScopingFile?.name || "No file attached"}
-                  </span>
-                </div>
-                {marketScopingFile && (
-                  <span className="mt-1 inline-block rounded-lg bg-emerald-100 px-2.5 py-0.5 text-sm font-semibold text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
-                    {(marketScopingFile.size / (1024 * 1024)).toFixed(2)} MB · RA 12009 Verified
-                  </span>
-                )}
-              </div>
-
-              <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Selected Item Category
-                </p>
-                <p className="mt-2 text-base font-bold text-slate-900 dark:text-slate-100">
-                  {selectedCategory}
-                </p>
-                <span className="mt-1 inline-block text-sm font-medium text-slate-600 dark:text-slate-300">
-                  Clause 5.1.1 Single-Category Verified
-                </span>
-              </div>
-
-              <div className={`rounded-xl border-2 p-4 ${
-                isOverBudget
-                  ? "border-rose-400 bg-rose-50/70 dark:border-rose-800 dark:bg-rose-950/40"
-                  : "border-[#881337]/30 bg-rose-50/60 dark:border-rose-800 dark:bg-rose-950/30"
-              }`}>
-                <p className={`text-sm font-bold uppercase tracking-wide ${
-                  isOverBudget ? "text-rose-700 dark:text-rose-300" : "text-[#881337] dark:text-rose-300"
-                }`}>
-                  Total Estimated Budget
-                </p>
-                <p className={`mt-2 text-2xl font-extrabold ${
-                  isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-[#881337] dark:text-rose-300"
-                }`}>
-                  ₱ {total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-xs">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Ceiling: ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span className={`font-semibold ${
-                    isOverBudget ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-400"
-                  }`}>
-                    {isOverBudget ? `Over by ₱${overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₱${remainingBudget.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} left`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Formatted Line Items Table */}
-            <div className="overflow-x-auto rounded-xl border-2 border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
-              <table className="w-full text-left text-base">
-                <thead className="border-b-2 border-slate-300 bg-slate-100 text-sm font-bold uppercase text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">#</th>
-                    <th className="px-4 py-3">Item Name &amp; Specification</th>
-                    <th className="px-4 py-3">Unit</th>
-                    <th className="px-4 py-3 text-right">Quantity</th>
-                    <th className="px-4 py-3 text-right">Unit Price</th>
-                    <th className="px-4 py-3 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {items.map((item, idx) => {
-                    const lineTotal =
-                      (Number(item.quantity) || 0) * (Number(item.estimatedUnitCost) || 0);
-                    return (
-                      <tr key={idx} className="text-base text-slate-900 dark:text-slate-100">
-                        <td className="px-4 py-3 font-semibold">{idx + 1}</td>
-                        <td className="px-4 py-3 font-semibold">{item.description}</td>
-                        <td className="px-4 py-3">{item.unit}</td>
-                        <td className="px-4 py-3 text-right font-semibold">{item.quantity}</td>
-                        <td className="px-4 py-3 text-right">
-                          ₱{Number(item.estimatedUnitCost || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold">
-                          ₱{lineTotal.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="border-t-2 border-slate-300 bg-slate-50 font-bold dark:border-slate-700 dark:bg-slate-800/80">
-                  {activeBudgetCeiling > 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-2 text-right text-sm text-slate-600 dark:text-slate-400">
-                        Approved PPMP Budget Ceiling:
-                      </td>
-                      <td className="px-4 py-2 text-right text-base font-bold text-slate-800 dark:text-slate-200">
-                        ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-right text-base text-slate-900 dark:text-slate-100">
-                      Total Estimated Budget:
-                    </td>
-                    <td className={`px-4 py-3 text-right text-lg font-extrabold ${
-                      isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-[#881337] dark:text-rose-400"
-                    }`}>
-                      ₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                  {activeBudgetCeiling > 0 && (
-                    <tr className="border-t border-slate-200 dark:border-slate-700">
-                      <td colSpan={5} className="px-4 py-2 text-right text-sm text-slate-600 dark:text-slate-400">
-                        {isOverBudget ? "Exceeded Budget Ceiling By:" : "Remaining PPMP Budget:"}
-                      </td>
-                      <td className={`px-4 py-2 text-right text-sm font-bold ${
-                        isOverBudget ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"
-                      }`}>
-                        {isOverBudget ? "+" : ""}₱{Math.abs(activeBudgetCeiling - total).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  )}
-                </tfoot>
-              </table>
-            </div>
-
-            {/* Stated Purpose */}
-            <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <p className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Stated Purpose of Request
-              </p>
-              <p className="mt-1.5 text-base font-medium text-slate-900 dark:text-slate-100">
-                {purpose}
-              </p>
-            </div>
-
-            {/* Optional Collapsible Official Appendix 60 Form Preview */}
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAppendixPreview((prev) => !prev)}
-                className="min-h-12"
-              >
-                <FileText className="h-5 w-5" />
-                <span>
-                  {showAppendixPreview
-                    ? "Hide Official Appendix 60 Form Preview"
-                    : "Preview Official Appendix 60 Printable Form"}
-                </span>
-              </Button>
-              {showAppendixPreview && (
-                <div className="mt-4">
-                  <OfficialPurchaseRequestCanvas
-                    entityName={setup?.settings?.entityName || "Batanes State College"}
-                    fundCluster={fundCluster}
-                    officeSection={
-                      selectedOffice
-                        ? `${selectedOffice.code} — ${selectedOffice.name}`
-                        : user?.officeName || ""
-                    }
-                    responsibilityCenterCode={responsibilityCenterCode}
-                    items={items}
-                    purpose={purpose}
-                    requestedByName={selectedRequestedSignatory?.fullName || user?.name || ""}
-                    requestedByDesignation={selectedRequestedSignatory?.designation || ""}
-                    approvedByName={
-                      selectedApprovedSignatory?.fullName ||
-                      setup?.settings?.authorizedOfficialName ||
-                      ""
-                    }
-                    approvedByDesignation={
-                      selectedApprovedSignatory?.designation ||
-                      setup?.settings?.authorizedOfficialDesignation ||
-                      ""
-                    }
-                  />
-                </div>
-              )}
-            </div>
+          {/* Canvas Preview */}
+          <div className="rounded-xl border-2 border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <OfficialPurchaseRequestCanvas
+              entityName={setup?.settings?.entityName || "Batanes State College"}
+              fundCluster={fundCluster}
+              officeSection={selectedOffice ? `${selectedOffice.code} — ${selectedOffice.name}` : user?.officeName || ""}
+              responsibilityCenterCode={responsibilityCenterCode}
+              items={items}
+              purpose={purpose}
+              requestedByName={selectedRequestedSignatory?.fullName || user?.name || ""}
+              requestedByDesignation={selectedRequestedSignatory?.designation || ""}
+              approvedByName={selectedApprovedSignatory?.fullName || setup?.settings?.authorizedOfficialName || ""}
+              approvedByDesignation={selectedApprovedSignatory?.designation || setup?.settings?.authorizedOfficialDesignation || ""}
+            />
           </div>
 
           {/* Budget Limiter Over-Ceiling Blocker Banner */}
@@ -2316,19 +2163,18 @@ function PurchaseRequestForm({
               <div>
                 <p className="font-bold">Cannot Submit: Approved PPMP Budget Ceiling Exceeded</p>
                 <p className="text-sm font-normal">
-                  Total Estimated Cost (₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) exceeds the Approved PPMP Budget Ceiling of ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} by ₱{overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Under BSC Budgetary Control rules, requests exceeding the approved ceiling cannot be submitted. Please click "Go Back and Edit" to reduce item quantities or prices.
+                  Total Estimated Cost (₱{total.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) exceeds the Approved PPMP Budget Ceiling of ₱{activeBudgetCeiling.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} by ₱{overBudgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Please return to Step 2 to adjust line items.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Automated Email Notification Notice Banner */}
-          <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-base text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+          {/* Notification Info Banner */}
+          <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-xs sm:text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
             <div className="flex items-start gap-3">
-              <MailCheck className="mt-0.5 h-6 w-6 shrink-0 text-blue-800 dark:text-blue-300" />
+              <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-800 dark:text-blue-300" />
               <p className="font-medium leading-relaxed">
-                <strong>Automated Email Notice:</strong> Upon clicking Submit, an official confirmation and tracking copy will be emailed immediately to your BSC email (
-                <strong>{user?.email || "your registered BSC email"}</strong>), and an alert will be sent to the Procurement Office for Step 5.1 verification.
+                Upon submission, your Purchase Request and 3 attached documents will be forwarded directly to the Procurement Officer for Step 5.1 verification and supplier canvassing.
               </p>
             </div>
           </div>
@@ -2340,27 +2186,20 @@ function PurchaseRequestForm({
               variant="outline"
               disabled={isSaving}
               onClick={() => setCurrentStep(3)}
-              className="min-h-12 px-6 py-3"
+              className="min-h-12 px-6 py-3 border-2"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>Go Back and Edit</span>
+              <span>← Back to Step 3 (Purpose &amp; Signatories)</span>
             </Button>
 
             <Button
               type="submit"
-              disabled={isSaving || isOverBudget || !marketScopingFile}
+              disabled={isSaving || isOverBudget}
               className={`min-h-12 px-6 py-3 text-base font-bold text-white ${
-                isOverBudget || !marketScopingFile
+                isOverBudget
                   ? "bg-slate-400 cursor-not-allowed opacity-60 dark:bg-slate-700 hover:bg-slate-400"
                   : "bg-[#881337] hover:bg-[#70102e]"
               }`}
-              title={
-                !marketScopingFile
-                  ? "Cannot submit: Market Scoping document is mandatory under RA 12009 Art. II"
-                  : isOverBudget
-                  ? "Cannot submit: Total Estimated Cost exceeds Approved PPMP Budget Ceiling"
-                  : undefined
-              }
             >
               {isSaving ? (
                 <LoaderCircle className="h-5 w-5 animate-spin text-white" />

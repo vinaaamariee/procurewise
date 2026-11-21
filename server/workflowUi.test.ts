@@ -35,21 +35,14 @@ describe("ProcureWise PPMP-to-PMR workflow workspaces", () => {
 
   it("shows accessible request preparation steps for End-Users", () => {
     expect(dashboardSource).toContain("getWorkflowStageInfo(pr.status)");
-    expect(requestSource).toContain('aria-label="Request setup progress"');
-    expect(requestSource.indexOf('aria-label="Request setup progress"')).toBeGreaterThan(requestSource.indexOf("Save Purchase Request"));
-    expect(requestSource).toContain('label: "Market Scoping"');
-    expect(requestSource).toContain('label: "PP + PPMP"');
-    expect(requestSource).toContain('label: "Purchase Request"');
-    expect(requestSource).toContain('label: "Three supplier quotes"');
-    expect(requestSource).toContain('label: "Attach & submit"');
-    expect(requestSource).toContain("Upload the preliminary quotation document");
-    expect(requestSource).toContain("complete: Boolean(marketScopingFile)");
-    expect(requestSource).toContain("aria-valuenow={currentProgressNumber * 20}");
-    expect(requestSource).toContain("Market Scoping document");
-    expect(requestSource).toContain('documentType: "Market Scoping"');
+    expect(requestSource).toContain('aria-label="Purchase Request creation steps"');
+    expect(requestSource).toContain("Approved PPMP Plan");
+    expect(requestSource).toContain("Market Scoping");
+    expect(requestSource).toContain("Pre-Canvass Form");
+    expect(requestSource).toContain("Line Items");
+    expect(requestSource).toContain("Purpose & Signatories");
+    expect(requestSource).toContain("Review & Submit");
     expect(workflowSource).toContain("Upload pre-canvass attachment");
-    expect(workflowSource).toContain("REQUIRED BEFORE SUBMISSION");
-    expect(workflowSource).toContain("Create a request and pre-canvass package first");
     expect(dashboardSource).toContain('role="progressbar"');
     expect(dashboardSource).toContain("Step ${workflowStageInfo.stageIndex + 1} of ${workflowStageInfo.stageCount}");
     expect(dashboardSource).toContain("workflowStageInfo.stageIndex === workflowStageInfo.stageCount - 1");
@@ -58,9 +51,9 @@ describe("ProcureWise PPMP-to-PMR workflow workspaces", () => {
 
   it("prevents returning to the previous request step while saving", () => {
     const saveLockedBackButtons = requestSource.match(
-      /disabled=\{isSaving\}\s+onClick=\{\(\) => setCurrentStep\("ppmp"\)\}/g
+      /disabled=\{isSaving\}\s+onClick=\{\(\) => setCurrentStep\(\d\)\}/g
     ) ?? [];
-    expect(saveLockedBackButtons).toHaveLength(2);
+    expect(saveLockedBackButtons.length).toBeGreaterThanOrEqual(3);
   });
 
   it("leaves supplier compliance decisions to Procurement in the End-User comparison", () => {

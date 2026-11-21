@@ -2345,16 +2345,23 @@ export async function advancePurchaseRequest(input: { purchaseRequestId: number;
   if (input.nextStatus === "procurement_review") {
     if (!pr.ppmpEntryId) throw new Error("Link the Purchase Request to a PPMP entry before forwarding the procurement package.");
     const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, pr.id)).limit(1);
-    if (preCanvass && preCanvass.status === "draft") {
-      await db.update(preCanvasses).set({ status: "submitted", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
-      await recordAudit({
-        entityType: "pre_canvass",
-        entityId: preCanvass.id,
-        action: "submitted_to_procurement",
-        performedById: user.id,
-        performedByRole: normalizeProcurementRole(user.role),
-        details: { autoSubmittedOnPrForward: true },
-      });
+    if (preCanvass) {
+      const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvass.id));
+      if (quotes.length > 0 && quotes.length < 3) {
+        throw new Error("Submit a complete three-supplier Pre-Canvass before forwarding the procurement package.");
+      }
+      const [attachment] = await db.select().from(procurementDocuments).where(and(eq(procurementDocuments.entityType, "pre_canvass"), eq(procurementDocuments.entityId, preCanvass.id))).limit(1);
+      if (preCanvass.status === "draft" && quotes.length >= 3) {
+        await db.update(preCanvasses).set({ status: "submitted", updatedAt: new Date() }).where(eq(preCanvasses.id, preCanvass.id));
+        await recordAudit({
+          entityType: "pre_canvass",
+          entityId: preCanvass.id,
+          action: "submitted_to_procurement",
+          performedById: user.id,
+          performedByRole: normalizeProcurementRole(user.role),
+          details: { autoSubmittedOnPrForward: true },
+        });
+      }
     }
 
     let [allotment] = await db.select().from(budgetAllotments).where(and(eq(budgetAllotments.officeId, pr.officeId), eq(budgetAllotments.objectOfExpenditureId, pr.objectOfExpenditureId), eq(budgetAllotments.fiscalYear, new Date().getFullYear()))).limit(1);
