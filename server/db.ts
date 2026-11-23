@@ -2413,6 +2413,40 @@ export async function verifyPurchaseRequestPackage(
     throw new Error("Draft Purchase Requests must be submitted by the End-User before officer verification.");
   }
 
+  // Mandatory Step 5.1 Pre-Canvass & 3 Quotes requirement
+  const [linkedPreCanvass] = await db
+    .select()
+    .from(preCanvasses)
+    .where(eq(preCanvasses.purchaseRequestId, pr.id))
+    .limit(1);
+  if (!linkedPreCanvass) {
+    throw new Error(
+      `Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes must be performed before proceeding to the next step. Please initialize Pre-Canvass and record at least ${MIN_PRE_CANVASS_QUOTES} valid supplier quotations.`
+    );
+  }
+  const rawQuotes = await db
+    .select()
+    .from(preCanvassQuotes)
+    .where(eq(preCanvassQuotes.preCanvassId, linkedPreCanvass.id));
+  const validQuotes = getValidPreCanvassQuotes(rawQuotes, linkedPreCanvass.id);
+  if (!hasRequiredSupplierQuotations(validQuotes.length)) {
+    throw new Error(
+      `Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes must be performed before proceeding to the next step. At least ${MIN_PRE_CANVASS_QUOTES} valid supplier quotations are required (${validQuotes.length}/${MIN_PRE_CANVASS_QUOTES} recorded).`
+    );
+  }
+  if (validQuotes.length > MAX_PRE_CANVASS_QUOTES) {
+    throw new Error(
+      `A maximum of ${MAX_PRE_CANVASS_QUOTES} supplier quotations is allowed per Pre-Canvass (${validQuotes.length} recorded).`
+    );
+  }
+
+  if (linkedPreCanvass.status === "draft") {
+    await db
+      .update(preCanvasses)
+      .set({ status: "submitted", updatedAt: new Date() })
+      .where(eq(preCanvasses.id, linkedPreCanvass.id));
+  }
+
   await db.update(purchaseRequests).set({ procurementReviewedById: user.id, updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
   await recordAudit({
     entityType: "purchase_request",
@@ -2425,6 +2459,9 @@ export async function verifyPurchaseRequestPackage(
       verifiedById: user.id,
       categorySegregationVerified: options?.categorySegregationVerified ?? true,
       section511Compliant: true,
+      preCanvassId: linkedPreCanvass.id,
+      preCanvassNumber: linkedPreCanvass.preCanvassNumber,
+      validPreCanvassQuotesCount: validQuotes.length,
     },
   });
   return { ...pr, procurementReviewedById: user.id };

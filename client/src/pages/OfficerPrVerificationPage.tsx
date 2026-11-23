@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
 import {
+  countValidPreCanvassQuotes,
   detectMixedCategories,
+  hasValidSupplierQuotationCount,
+  MAX_PRE_CANVASS_QUOTES,
+  MIN_PRE_CANVASS_QUOTES,
   normalizeProcurementRole,
   SECTION_5_1_1_CATEGORIES,
 } from "../../../shared/procurementRules";
@@ -111,8 +115,8 @@ export function OfficerPrVerificationPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  // Review & Verification Modal
-  const [selectedVerificationItem, setSelectedVerificationItem] = useState<any | null>(null);
+  // Review & Verification Modal (track PR ID so the modal reflects live refetches after quoting)
+  const [selectedVerificationPrId, setSelectedVerificationPrId] = useState<number | null>(null);
   const [canvassModalPr, setCanvassModalPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string } | null>(null);
   const [categorySegregationConfirmed, setCategorySegregationConfirmed] = useState(false);
 
@@ -138,10 +142,11 @@ export function OfficerPrVerificationPage() {
   const verifyMutation = trpc.procurement.officer.prVerification.verify.useMutation({
     onSuccess: () => {
       toast.success("PR & PPMP package successfully verified under Section 5.1.1. Advanced to Procurement Staff for PMR recording.");
-      setSelectedVerificationItem(null);
+      setSelectedVerificationPrId(null);
       setCategorySegregationConfirmed(false);
       void utils.procurement.officer.prVerification.list.invalidate();
       void utils.procurement.purchaseRequests.list.invalidate();
+      void utils.procurement.dashboard.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -150,7 +155,7 @@ export function OfficerPrVerificationPage() {
     onSuccess: () => {
       toast.success("Purchase Request returned to End-User for revision with Section 5.1.1 remarks.");
       setReturnModalOpen(false);
-      setSelectedVerificationItem(null);
+      setSelectedVerificationPrId(null);
       setCategorySegregationConfirmed(false);
       setReturnRemarks("");
       void utils.procurement.officer.prVerification.list.invalidate();
@@ -168,6 +173,27 @@ export function OfficerPrVerificationPage() {
         b.purchaseRequest.id - a.purchaseRequest.id
     );
   }, [verificationsQuery.data]);
+
+  const selectedVerificationItem = useMemo(
+    () =>
+      selectedVerificationPrId === null
+        ? null
+        : allRecords.find((item) => item.purchaseRequest.id === selectedVerificationPrId) ?? null,
+    [allRecords, selectedVerificationPrId]
+  );
+
+  const validPreCanvassQuoteCount = useMemo(() => {
+    if (!selectedVerificationItem?.linkedPreCanvass) return 0;
+    return countValidPreCanvassQuotes(
+      selectedVerificationItem.linkedQuotes ?? [],
+      selectedVerificationItem.linkedPreCanvass.id
+    );
+  }, [selectedVerificationItem]);
+
+  const isPreCanvassComplete = Boolean(
+    selectedVerificationItem?.linkedPreCanvass &&
+      hasValidSupplierQuotationCount(validPreCanvassQuoteCount)
+  );
 
   // Summary Metrics
   const metrics = useMemo(() => {
@@ -233,7 +259,7 @@ export function OfficerPrVerificationPage() {
   );
 
   const handleOpenReview = (item: any) => {
-    setSelectedVerificationItem(item);
+    setSelectedVerificationPrId(item.purchaseRequest.id);
     // If already verified, default to true; otherwise default to false requiring active officer confirmation
     setCategorySegregationConfirmed(item.isVerified);
     // Reset the document review checklist for the newly opened package
@@ -241,7 +267,8 @@ export function OfficerPrVerificationPage() {
   };
 
   // Opens the in-app document preview and records the document as reviewed by the officer
-  const openDocPreview = (docKey: string, doc: { storageUrl: string; originalFileName: string; mimeType: string }) => {
+  const openDocPreview = (docKey: string, doc: { storageUrl: string; originalFileName: string; mimeType: string } | null | undefined) => {
+    if (!doc) return;
     setReviewedDocs((prev) => ({ ...prev, [docKey]: true }));
     setPreviewDoc({
       url: doc.storageUrl,
@@ -252,6 +279,12 @@ export function OfficerPrVerificationPage() {
 
   const handleProceedVerification = () => {
     if (!selectedVerificationItem) return;
+    if (!isPreCanvassComplete) {
+      toast.error(
+        `Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes must be performed before proceeding. Please record at least ${MIN_PRE_CANVASS_QUOTES} valid supplier quotations (${validPreCanvassQuoteCount}/${MIN_PRE_CANVASS_QUOTES} recorded).`
+      );
+      return;
+    }
     if (!categorySegregationConfirmed) {
       toast.error("You must confirm Section 5.1.1 category segregation before proceeding.");
       return;
@@ -661,7 +694,7 @@ export function OfficerPrVerificationPage() {
 
       {/* Review & Verification Modal */}
       {selectedVerificationItem && (
-        <Dialog open={Boolean(selectedVerificationItem)} onOpenChange={(open) => !open && setSelectedVerificationItem(null)}>
+        <Dialog open={Boolean(selectedVerificationItem)} onOpenChange={(open) => !open && setSelectedVerificationPrId(null)}>
           <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-4 sm:max-w-[min(96vw,1280px)] sm:p-6">
             <DialogHeader className="shrink-0">
               <div className="flex items-center gap-2">
@@ -734,8 +767,8 @@ export function OfficerPrVerificationPage() {
                     <Badge variant="outline" className="text-[10px] border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {(selectedVerificationItem.allDocuments?.length ?? 0)} attached file(s)
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${(selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3 ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" : "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"}`}>
-                      {(selectedVerificationItem.linkedQuotes?.length ?? 0) < 3 ? `${(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3 quotes (min 3)` : `${(selectedVerificationItem.linkedQuotes?.length ?? 0)}/10 quotes recorded`}
+                    <Badge variant="outline" className={`text-[10px] ${isPreCanvassComplete ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" : "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"}`}>
+                      {!isPreCanvassComplete ? `${validPreCanvassQuoteCount}/${MIN_PRE_CANVASS_QUOTES} quotes (min ${MIN_PRE_CANVASS_QUOTES} required)` : `${validPreCanvassQuoteCount}/${MAX_PRE_CANVASS_QUOTES} quotes recorded`}
                     </Badge>
                   </div>
                 </div>
@@ -948,23 +981,25 @@ export function OfficerPrVerificationPage() {
 
                   {/* Card 3: Pre-Canvass Attachment & Preliminary Quotes */}
                   <div className={`rounded-lg border p-3.5 flex flex-col justify-between ${
-                    selectedVerificationItem.preCanvassDoc || (selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3
+                    isPreCanvassComplete
                       ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20"
-                      : "border-indigo-200 bg-indigo-50/40 dark:border-indigo-900/50 dark:bg-indigo-950/20"
+                      : "border-amber-300 bg-amber-50/40 dark:border-amber-800/70 dark:bg-amber-950/20"
                   }`}>
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="font-bold text-xs flex items-center gap-1.5 text-slate-900 dark:text-white">
-                          <FileText className={`h-4 w-4 ${selectedVerificationItem.preCanvassDoc ? "text-indigo-600 dark:text-indigo-400" : "text-amber-600 dark:text-amber-400"}`} />
+                          <FileText className={`h-4 w-4 ${isPreCanvassComplete ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`} />
                           Pre-Canvass &amp; 3 Quotes
                         </span>
-                        {selectedVerificationItem.preCanvassDoc ? (
-                          <Badge variant="outline" className="border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 text-[10px]">
-                            AOQ Attached
+                        {isPreCanvassComplete ? (
+                          <Badge variant="outline" className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
+                            {selectedVerificationItem.preCanvassDoc
+                              ? `AOQ · ${validPreCanvassQuoteCount} Quotes`
+                              : `${validPreCanvassQuoteCount} Quotes`}
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px]">
-                            {(selectedVerificationItem.linkedQuotes?.length ?? 0)} Quotes
+                          <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                            Required · {validPreCanvassQuoteCount}/{MIN_PRE_CANVASS_QUOTES} Quotes
                           </Badge>
                         )}
                       </div>
@@ -1007,6 +1042,12 @@ export function OfficerPrVerificationPage() {
                           </p>
                         </div>
                       )}
+
+                      {!isPreCanvassComplete && (
+                        <div className="mt-2 rounded-md border border-amber-300/80 bg-amber-100/60 px-2.5 py-2 text-[10px] text-amber-900 dark:border-amber-800/70 dark:bg-amber-950/50 dark:text-amber-200">
+                          <span className="font-semibold">Required to proceed:</span> Perform Pre-Canvass and record at least {MIN_PRE_CANVASS_QUOTES} valid supplier quotations ({validPreCanvassQuoteCount}/{MIN_PRE_CANVASS_QUOTES} recorded) before advancing to the next step.
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800">
@@ -1026,7 +1067,7 @@ export function OfficerPrVerificationPage() {
                         className="h-8 w-full rounded-[4px] bg-[#881337] text-white hover:bg-[#70102b] text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm mb-2"
                       >
                         <FileSearch className="h-3.5 w-3.5" />
-                        <span>Record / Manage Supplier Quotes ({(selectedVerificationItem.linkedQuotes?.length ?? 0)}/10 · min 3)</span>
+                        <span>Record / Manage Supplier Quotes ({validPreCanvassQuoteCount}/{MAX_PRE_CANVASS_QUOTES} · min {MIN_PRE_CANVASS_QUOTES})</span>
                       </Button>
                     </div>
 
@@ -1270,6 +1311,41 @@ export function OfficerPrVerificationPage() {
                 </div>
               )}
 
+              {/* Mandatory Pre-Canvass Gate Notice */}
+              {!isPreCanvassComplete && !selectedVerificationItem.isVerified && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 dark:border-amber-800 dark:bg-amber-950/30">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <div className="text-xs text-amber-900 dark:text-amber-200">
+                        <div className="font-bold">Pre-Canvass &amp; {MIN_PRE_CANVASS_QUOTES} Quotes Required Before Proceeding</div>
+                        <div className="mt-0.5">
+                          You must complete the <span className="font-semibold">Pre-Canvass &amp; {MIN_PRE_CANVASS_QUOTES} Quotes</span> section with at least {MIN_PRE_CANVASS_QUOTES} valid supplier quotations ({validPreCanvassQuoteCount}/{MIN_PRE_CANVASS_QUOTES} recorded) before <span className="font-semibold">Verify &amp; Proceed to Next Step</span> can be executed.
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() =>
+                        setCanvassModalPr({
+                          id: selectedVerificationItem.purchaseRequest.id,
+                          prNumber: selectedVerificationItem.purchaseRequest.prNumber,
+                          purpose: selectedVerificationItem.purchaseRequest.purpose,
+                          totalEstimate: selectedVerificationItem.purchaseRequest.totalEstimate,
+                          officeId: selectedVerificationItem.purchaseRequest.officeId,
+                          status: selectedVerificationItem.purchaseRequest.status,
+                        })
+                      }
+                      className="h-8 shrink-0 rounded-[4px] bg-[#881337] text-white hover:bg-[#70102b] text-xs font-semibold gap-1.5"
+                    >
+                      <FileSearch className="h-3.5 w-3.5" />
+                      <span>Record Quotes ({validPreCanvassQuoteCount}/{MIN_PRE_CANVASS_QUOTES})</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Category Segregation Checklist Toggle */}
               <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
                 <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-2">
@@ -1294,7 +1370,7 @@ export function OfficerPrVerificationPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedVerificationItem(null)}
+                onClick={() => setSelectedVerificationPrId(null)}
                 className="text-xs"
               >
                 Close
@@ -1313,9 +1389,16 @@ export function OfficerPrVerificationPage() {
                 <Button
                   type="button"
                   size="sm"
-                  disabled={!categorySegregationConfirmed || verifyMutation.isPending}
+                  disabled={!categorySegregationConfirmed || !isPreCanvassComplete || verifyMutation.isPending}
                   onClick={handleProceedVerification}
-                  className="text-xs bg-[#881337] hover:bg-[#70102e] text-white disabled:opacity-50"
+                  title={
+                    !isPreCanvassComplete
+                      ? `Complete Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes (${validPreCanvassQuoteCount}/${MIN_PRE_CANVASS_QUOTES} recorded) before proceeding.`
+                      : !categorySegregationConfirmed
+                      ? "Confirm Section 5.1.1 category segregation before proceeding."
+                      : undefined
+                  }
+                  className="text-xs bg-[#881337] hover:bg-[#70102e] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {verifyMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
@@ -1533,8 +1616,13 @@ export function OfficerPrVerificationPage() {
       {canvassModalPr && (
         <IntegratedPreCanvassModal
           open={Boolean(canvassModalPr)}
+          mode="officer_review"
           onOpenChange={(open) => {
-            if (!open) setCanvassModalPr(null);
+            if (!open) {
+              setCanvassModalPr(null);
+              void utils.procurement.officer.prVerification.list.invalidate();
+              void utils.procurement.dashboard.invalidate();
+            }
           }}
           purchaseRequest={canvassModalPr}
           onCompleted={() => {

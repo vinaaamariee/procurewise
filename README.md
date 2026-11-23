@@ -20,7 +20,7 @@ ProcureWise is designed as an internal operational system. It presents a flat in
 | Stage | Responsible role | Result |
 |---|---|---|
 | PPMP and Purchase Request | End-User | A planned procurement and itemized request are recorded. |
-| Pre-Canvass | End-User | Three supplier quotations are captured and forwarded for review. |
+| Pre-Canvass & Step 5.1 Verification | End-User / Procurement Officer | At least three (3) valid supplier quotations (up to 10) must be recorded in Pre-Canvass before the Procurement Officer can verify the PR & PPMP package and proceed to Staff PMR recording. |
 | Abstract of Canvass | Procurement Officer | The lowest compliant supplier is recommended from the recorded quotes. |
 | Administrative decision | Administrative Approver | The Abstract is approved, rejected, or returned with mandatory correction comments. |
 | Purchase Order to PMR | Procurement Officer | A Purchase Order is issued, delivery is recorded, and the PMR closes the package. |

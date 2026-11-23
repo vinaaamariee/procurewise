@@ -75,4 +75,17 @@ describe("Procurement Officer Attachment Transparency and Correction Capabilitie
     expect(pmrSource).toContain("preCanvassDoc");
     expect(pmrSource).toContain("preCanvassQuotes");
   });
+
+  it("blocks Procurement Officer from proceeding in Step 5.1 until Pre-Canvass & 3 Quotes is performed", () => {
+    const pageSource = readFileSync(
+      new URL("../client/src/pages/OfficerPrVerificationPage.tsx", import.meta.url),
+      "utf8"
+    );
+    const dbSource = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+
+    expect(pageSource).toContain("isPreCanvassComplete");
+    expect(pageSource).toContain("disabled={!categorySegregationConfirmed || !isPreCanvassComplete || verifyMutation.isPending}");
+    expect(pageSource).toContain('mode="officer_review"');
+    expect(dbSource).toContain("Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes must be performed before proceeding to the next step.");
+  });
 });

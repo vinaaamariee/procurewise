@@ -240,6 +240,7 @@ export const appRouter = router({
         assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "admin"]);
         const result = await verifyPurchaseRequestPackage(input.purchaseRequestId, ctx.user, { categorySegregationVerified: input.categorySegregationVerified });
         void publishProcurementRealtimeUpdate("purchase_request");
+        void publishProcurementRealtimeUpdate("pre_canvass");
         return result;
       }),
       returnForRevision: protectedProcedure.input(z.object({
@@ -697,6 +698,7 @@ export const appRouter = router({
           assertRole(normalizeProcurementRole(ctx.user.role), ["procurement_officer", "admin"]);
           const result = await verifyPurchaseRequestPackage(input.purchaseRequestId, ctx.user, { categorySegregationVerified: input.categorySegregationVerified });
           void publishProcurementRealtimeUpdate("purchase_request");
+          void publishProcurementRealtimeUpdate("pre_canvass");
           return result;
         }),
         returnForRevision: protectedProcedure.input(z.object({

@@ -6,7 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { trpc } from "@/lib/trpc";
-import { normalizeProcurementRole } from "../../../shared/procurementRules";
+import {
+  countValidPreCanvassQuotes,
+  hasValidSupplierQuotationCount,
+  MIN_PRE_CANVASS_QUOTES,
+  normalizeProcurementRole,
+} from "../../../shared/procurementRules";
 import {
   AlertCircle,
   BookOpenCheck,
@@ -1053,18 +1058,34 @@ export function PmrRegistryPage() {
               Close
             </Button>
             <div className="flex items-center gap-2">
-              {isOfficerOrAdmin && prDetailQuery.data && !prDetailQuery.data.purchaseRequest.procurementReviewedById && (
-                <Button
-                  size="sm"
-                  disabled={verifyMutation.isPending}
-                  onClick={() => verifyMutation.mutate({ purchaseRequestId: prDetailQuery.data.purchaseRequest.id })}
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
-                >
-                  {verifyMutation.isPending && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Verify PR &amp; PPMP
-                </Button>
-              )}
+              {isOfficerOrAdmin && prDetailQuery.data && !prDetailQuery.data.purchaseRequest.procurementReviewedById && (() => {
+                const validQuoteCount = prDetailQuery.data.preCanvass
+                  ? countValidPreCanvassQuotes(
+                      prDetailQuery.data.preCanvassQuotes ?? [],
+                      prDetailQuery.data.preCanvass.id
+                    )
+                  : 0;
+                const isPreCanvassReady = Boolean(
+                  prDetailQuery.data.preCanvass && hasValidSupplierQuotationCount(validQuoteCount)
+                );
+                return (
+                  <Button
+                    size="sm"
+                    disabled={verifyMutation.isPending || !isPreCanvassReady}
+                    title={
+                      !isPreCanvassReady
+                        ? `Complete Pre-Canvass & ${MIN_PRE_CANVASS_QUOTES} Quotes (${validQuoteCount}/${MIN_PRE_CANVASS_QUOTES} recorded) in Step 5.1 before verifying.`
+                        : undefined
+                    }
+                    onClick={() => verifyMutation.mutate({ purchaseRequestId: prDetailQuery.data.purchaseRequest.id })}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 disabled:opacity-50"
+                  >
+                    {verifyMutation.isPending && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Verify PR &amp; PPMP
+                  </Button>
+                );
+              })()}
 
               {isStaffOrOfficer && prDetailQuery.data && (
                 <Button

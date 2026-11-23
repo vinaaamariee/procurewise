@@ -23,6 +23,7 @@ interface IntegratedPreCanvassModalProps {
     officeId?: number;
     status: string;
   };
+  mode?: "end_user" | "officer_review";
   onCompleted?: () => void;
 }
 
@@ -30,8 +31,10 @@ export function IntegratedPreCanvassModal({
   open,
   onOpenChange,
   purchaseRequest,
+  mode = "end_user",
   onCompleted,
 }: IntegratedPreCanvassModalProps) {
+  const isOfficerReviewMode = mode === "officer_review";
   const utils = trpc.useUtils();
   const dashboard = trpc.procurement.dashboard.useQuery(undefined, { retry: false });
   const setup = trpc.procurement.setup.details.useQuery(undefined, { retry: false });
@@ -88,6 +91,7 @@ export function IntegratedPreCanvassModal({
     onSuccess: (created) => {
       toast.success("Pre-Canvass package initialized. You can now record supplier quotes (min 3, max 10).");
       void utils.procurement.dashboard.invalidate();
+      void utils.procurement.officer.prVerification.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -100,6 +104,7 @@ export function IntegratedPreCanvassModal({
       setQuotationReference("");
       setSupplierRepresentative("");
       void utils.procurement.dashboard.invalidate();
+      void utils.procurement.officer.prVerification.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -108,6 +113,7 @@ export function IntegratedPreCanvassModal({
     onSuccess: () => {
       toast.success("Supplier quote removed.");
       void utils.procurement.dashboard.invalidate();
+      void utils.procurement.officer.prVerification.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -116,6 +122,7 @@ export function IntegratedPreCanvassModal({
     onSuccess: () => {
       toast.success("Complete procurement package forwarded to the Procurement Officer!");
       void utils.procurement.purchaseRequests.list.invalidate();
+      void utils.procurement.officer.prVerification.list.invalidate();
       void utils.procurement.dashboard.invalidate();
       onOpenChange(false);
       onCompleted?.();
@@ -124,10 +131,15 @@ export function IntegratedPreCanvassModal({
   });
   const attachDocumentMutation = trpc.procurement.documents.attach.useMutation({
     onSuccess: () => {
-      toast.success("Pre-canvass attachment uploaded. The package is ready to forward.");
+      toast.success(
+        isOfficerReviewMode
+          ? "Pre-canvass attachment uploaded."
+          : "Pre-canvass attachment uploaded. The package is ready to forward."
+      );
       setPreliminaryAoqFile(null);
       if (preliminaryAoqInputRef.current) preliminaryAoqInputRef.current.value = "";
       void utils.procurement.dashboard.invalidate();
+      void utils.procurement.officer.prVerification.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -580,10 +592,16 @@ export function IntegratedPreCanvassModal({
                   <CheckCircle2 className="h-5 w-5 text-[#27633b] shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-bold text-[#1f4e2f] dark:text-[#a3e3b7]">
-                      {canForward ? "Pre-Canvass complete & ready to forward" : `Minimum 3 supplier quotes satisfied (${quotesCount} recorded)`}
+                      {isOfficerReviewMode
+                        ? `Pre-Canvass complete (${quotesCount} valid quotes recorded)`
+                        : canForward
+                        ? "Pre-Canvass complete & ready to forward"
+                        : `Minimum 3 supplier quotes satisfied (${quotesCount} recorded)`}
                     </p>
                     <p className="mt-1 leading-5 text-[#2e5d3c] dark:text-[#c4ecd2]">
-                      {canForward
+                      {isOfficerReviewMode
+                        ? `All required supplier quotes (${quotesCount}) are recorded. You may optionally attach a preliminary quotation document, then return to PR & PPMP Package Review to verify and proceed.`
+                        : canForward
                         ? `Your ${quotesCount} quotes and preliminary attachment are ready. Forward the complete package to Procurement for review.`
                         : `Upload the preliminary quotation worksheet or document showing your ${quotesCount} supplier quotes before forwarding this package.`}
                     </p>
@@ -731,26 +749,43 @@ export function IntegratedPreCanvassModal({
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenChange(false)}
-                    className="h-8 text-xs"
-                  >
-                    Keep as Draft
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={submitPackageMutation.isPending || !canForward}
-                    onClick={handleForwardToProcurement}
-                    className="h-8 rounded-[4px] bg-[#27633b] text-xs text-white hover:bg-[#1f4e2f]"
-                  >
-                    {submitPackageMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                    <Send className="mr-1.5 h-3.5 w-3.5" />
-                    Forward Complete Package to Procurement
-                  </Button>
+                  {isOfficerReviewMode ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        onCompleted?.();
+                        onOpenChange(false);
+                      }}
+                      className="h-8 rounded-[4px] bg-[#27633b] text-xs text-white hover:bg-[#1f4e2f]"
+                    >
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                      Done — Return to Package Review
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onOpenChange(false)}
+                        className="h-8 text-xs"
+                      >
+                        Keep as Draft
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={submitPackageMutation.isPending || !canForward}
+                        onClick={handleForwardToProcurement}
+                        className="h-8 rounded-[4px] bg-[#27633b] text-xs text-white hover:bg-[#1f4e2f]"
+                      >
+                        {submitPackageMutation.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        <Send className="mr-1.5 h-3.5 w-3.5" />
+                        Forward Complete Package to Procurement
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}

@@ -261,15 +261,26 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
       expect(hardwareFoodCheck.detectedCategories).toContain("food_ingredients");
     });
 
-    it("verifies and clears compliant PR package for Staff PMR recording", async () => {
+    it("verifies and clears compliant PR package for Staff PMR recording when Pre-Canvass & 3 quotes are completed", async () => {
       const pr = {
         id: 501,
         prNumber: "PR-2026-00085",
         status: "procurement_review",
         procurementReviewedById: null,
       };
+      const preCanvass = {
+        id: 601,
+        preCanvassNumber: "PC-2026-0000601",
+        purchaseRequestId: 501,
+        status: "draft",
+      };
+      const validQuotes = [
+        { id: 1, preCanvassId: 601, supplierId: 10, totalPrice: "83500.00", deliveryDays: 7, isCompliant: 1 },
+        { id: 2, preCanvassId: 601, supplierId: 11, totalPrice: "84200.00", deliveryDays: 5, isCompliant: 1 },
+        { id: 3, preCanvassId: 601, supplierId: 12, totalPrice: "85000.00", deliveryDays: 10, isCompliant: 1 },
+      ];
 
-      const fake = fakeDb([[pr]]);
+      const fake = fakeDb([[pr], [preCanvass], validQuotes]);
 
       const verified = await verifyPurchaseRequestPackage(501, officer, {
         db: fake.db as never,
@@ -279,6 +290,9 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
 
       expect(verified.procurementReviewedById).toBe(officer.id);
       expect(fake.updates).toContainEqual(
+        expect.objectContaining({ status: "submitted" })
+      );
+      expect(fake.updates).toContainEqual(
         expect.objectContaining({ procurementReviewedById: officer.id })
       );
       expect(fake.auditLogs).toContainEqual(
@@ -287,9 +301,62 @@ describe("Automated End-to-End Procurement Lifecycle & Workflow Audit", () => {
           details: expect.objectContaining({
             categorySegregationVerified: true,
             section511Compliant: true,
+            preCanvassId: 601,
+            validPreCanvassQuotesCount: 3,
           }),
         })
       );
+    });
+
+    it("blocks PR verification when Pre-Canvass has not been initialized", async () => {
+      const pr = {
+        id: 501,
+        prNumber: "PR-2026-00085",
+        status: "procurement_review",
+        procurementReviewedById: null,
+      };
+
+      const fake = fakeDb([[pr], []]);
+
+      await expect(
+        verifyPurchaseRequestPackage(501, officer, {
+          db: fake.db as never,
+          recordAudit: fake.recordAudit,
+          categorySegregationVerified: true,
+        })
+      ).rejects.toThrow("Pre-Canvass & 3 Quotes must be performed before proceeding to the next step.");
+      expect(fake.updates).toHaveLength(0);
+    });
+
+    it("blocks PR verification when Pre-Canvass has fewer than 3 valid supplier quotations", async () => {
+      const pr = {
+        id: 501,
+        prNumber: "PR-2026-00085",
+        status: "procurement_review",
+        procurementReviewedById: null,
+      };
+      const preCanvass = {
+        id: 601,
+        preCanvassNumber: "PC-2026-0000601",
+        purchaseRequestId: 501,
+        status: "draft",
+      };
+      const insufficientQuotes = [
+        { id: 1, preCanvassId: 601, supplierId: 10, totalPrice: "83500.00", deliveryDays: 7, isCompliant: 1 },
+        { id: 2, preCanvassId: 601, supplierId: 11, totalPrice: "84200.00", deliveryDays: 5, isCompliant: 1 },
+        { id: 3, preCanvassId: 601, supplierId: 12, totalPrice: "0.00", deliveryDays: 10, isCompliant: 1 }, // invalid price
+      ];
+
+      const fake = fakeDb([[pr], [preCanvass], insufficientQuotes]);
+
+      await expect(
+        verifyPurchaseRequestPackage(501, officer, {
+          db: fake.db as never,
+          recordAudit: fake.recordAudit,
+          categorySegregationVerified: true,
+        })
+      ).rejects.toThrow("At least 3 valid supplier quotations are required (2/3 recorded).");
+      expect(fake.updates).toHaveLength(0);
     });
 
     it("returns non-compliant (mixed category) PR back to End-User with remarks", async () => {
