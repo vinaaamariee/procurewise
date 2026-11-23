@@ -11,7 +11,7 @@ import { storagePut } from "./storage";
 import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
 import { deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses, type SupplierEvaluationAudience } from "../shared/supplierEvaluationForm";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
-import { sendPrSubmissionNotifications, validatePpmpFileUpload } from "./services/emailService";
+import { sendPrSubmissionNotifications, validatePpmpFileUpload, sendWorkflowNotificationEmail } from "./services/emailService";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -1960,6 +1960,29 @@ async function assertDocumentAccess(entityType: DocumentEntityType, entityId: nu
 export async function createWorkflowNotification(input: { recipientUserId: number; kind: WorkflowNotificationKind; title: string; body: string; entityType: string; entityId: number }) {
   const db = await requireDb();
   await db.insert(workflowNotifications).values(input);
+
+  // Non-blocking email dispatch to the recipient's personal account
+  try {
+    const [recipient] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, input.recipientUserId))
+      .limit(1);
+
+    if (recipient?.email) {
+      void sendWorkflowNotificationEmail({
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
+        title: input.title,
+        body: input.body,
+        kind: input.kind,
+        entityType: input.entityType,
+        entityId: input.entityId,
+      });
+    }
+  } catch (err) {
+    console.warn("[ProcureWise Notification Warning] Failed to dispatch workflow email:", err);
+  }
 }
 
 export async function notifyRoles(roles: ProcurementRole[], input: Omit<Parameters<typeof createWorkflowNotification>[0], "recipientUserId">) {

@@ -608,3 +608,109 @@ export async function sendPrSubmissionNotifications(
   }
 }
 
+export interface WorkflowUpdateEmailPayload {
+  recipientEmail: string;
+  recipientName?: string | null;
+  title: string;
+  body: string;
+  kind?: string;
+  entityType?: string;
+  entityId?: number;
+}
+
+export function buildWorkflowUpdateEmailHtml(payload: WorkflowUpdateEmailPayload): string {
+  const safeName = escapeHtml(payload.recipientName || "ProcureWise User");
+  const safeTitle = escapeHtml(payload.title);
+  const safeBody = escapeHtml(payload.body).replace(/\n/g, "<br />");
+  const safeKind = escapeHtml((payload.kind || "System Notification").replace(/_/g, " ").toUpperCase());
+  const baseUrl = process.env.VITE_APP_URL || process.env.APP_URL || "https://procurewise-ruddy.vercel.app";
+  const actionUrl = `${baseUrl}/notifications`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[ProcureWise] ${safeTitle}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #0f172a; font-size: 16px; line-height: 1.6;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 16px; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #881337; padding: 24px 32px; color: #ffffff;">
+              <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fecdd3; margin-bottom: 6px;">
+                ${safeKind}
+              </div>
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.3; color: #ffffff;">
+                ${safeTitle}
+              </h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 28px 32px 24px 32px;">
+              <p style="margin: 0 0 16px 0; font-size: 16px; color: #1e293b;">
+                Hello <strong>${safeName}</strong>,
+              </p>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #881337; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; font-size: 15px; color: #334155; line-height: 1.6;">
+                ${safeBody}
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="${actionUrl}" style="display: inline-block; min-height: 44px; line-height: 44px; background-color: #881337; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 0 28px; border-radius: 10px;">
+                      Open ProcureWise Workspace
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 32px; font-size: 13px; color: #64748b;">
+              <strong>Batanes State College · ProcureWise</strong><br />
+              This is an automated workflow notification sent to your personal account.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendWorkflowNotificationEmail(payload: WorkflowUpdateEmailPayload): Promise<void> {
+  const recipientEmail = payload.recipientEmail?.trim();
+  if (!recipientEmail || !/^\S+@\S+\.\S+$/.test(recipientEmail)) return;
+
+  const fromAddress =
+    process.env.SMTP_FROM || "Batanes State College ProcureWise <no-reply@bsc.edu.ph>";
+  const subject = `[ProcureWise] ${payload.title}`;
+  const html = buildWorkflowUpdateEmailHtml(payload);
+  const text = [
+    `[ProcureWise] ${payload.title}`,
+    `Good day, ${payload.recipientName || "ProcureWise User"},`,
+    ``,
+    payload.body,
+    ``,
+    `View in your workspace: ${process.env.VITE_APP_URL || process.env.APP_URL || "https://procurewise-ruddy.vercel.app"}/notifications`,
+  ].join("\n");
+
+  try {
+    await dispatchSingleEmail({
+      from: fromAddress,
+      to: recipientEmail,
+      subject,
+      html,
+      text,
+    });
+  } catch (err) {
+    console.warn(`[ProcureWise Email Warning] Could not deliver notification email to ${recipientEmail}:`, err);
+  }
+}
+

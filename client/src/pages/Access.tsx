@@ -192,45 +192,6 @@ export default function Access() {
     }
   };
 
-  const activateAccount = async () => {
-    setTouched((current) => ({ ...current, email: true }));
-    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
-      toast.error("Enter your registered email address first.");
-      return;
-    }
-    setIsRecovering(true);
-    try {
-      const res = await confirmUserMutation.mutateAsync({
-        email: email.trim(),
-        password: password.length >= 6 ? password : undefined,
-      });
-      toast.success(res.message || "Account activated! Signing you in...");
-      if (password.length >= 6) {
-        const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (!signInError) {
-          let refreshed = await refresh();
-          if (!refreshed.data) {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            refreshed = await refresh();
-          }
-          if (refreshed.data) {
-            utils.auth.me.setData(undefined, refreshed.data);
-            setLocation("/dashboard");
-            return;
-          }
-        }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not activate account.";
-      toast.error(msg);
-    } finally {
-      setIsRecovering(false);
-    }
-  };
-
   const recoverPassword = async () => {
     setTouched((current) => ({ ...current, email: true }));
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
@@ -428,20 +389,11 @@ export default function Access() {
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={activateAccount}
-                    disabled={isRecovering || isSubmitting}
-                    className="flex w-full items-center justify-center text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400 focus:outline-none"
-                  >
-                    {confirmUserMutation.isPending && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                    Didn&apos;t receive confirmation email? Activate account instantly
-                  </button>
-                  <button
-                    type="button"
                     onClick={recoverPassword}
                     disabled={isRecovering || isSubmitting}
                     className="flex w-full items-center justify-center text-xs font-semibold text-primary hover:underline dark:text-[#eb766a] focus:outline-none"
                   >
-                    {isRecovering && !confirmUserMutation.isPending && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    {isRecovering && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
                     Forgot password?
                   </button>
                 </div>
