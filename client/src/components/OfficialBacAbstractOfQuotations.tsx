@@ -229,7 +229,7 @@ export function OfficialBacAbstractOfQuotations({
                         : "text-[10px]"
                     }
                   >
-                    {quotes.length}/3 Quotes Canvassed
+                    {quotes.length < 3 ? `${quotes.length}/3 Quotes (Min 3)` : `${quotes.length}/10 Quotes Canvassed`}
                   </Badge>
                 )}
               </div>

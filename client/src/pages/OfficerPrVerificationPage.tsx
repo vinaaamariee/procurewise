@@ -734,8 +734,8 @@ export function OfficerPrVerificationPage() {
                     <Badge variant="outline" className="text-[10px] border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {(selectedVerificationItem.allDocuments?.length ?? 0)} attached file(s)
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${(selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3 ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"}`}>
-                      {(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3 quotes recorded
+                    <Badge variant="outline" className={`text-[10px] ${(selectedVerificationItem.linkedQuotes?.length ?? 0) >= 3 ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300" : "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"}`}>
+                      {(selectedVerificationItem.linkedQuotes?.length ?? 0) < 3 ? `${(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3 quotes (min 3)` : `${(selectedVerificationItem.linkedQuotes?.length ?? 0)}/10 quotes recorded`}
                     </Badge>
                   </div>
                 </div>
@@ -1026,7 +1026,7 @@ export function OfficerPrVerificationPage() {
                         className="h-8 w-full rounded-[4px] bg-[#881337] text-white hover:bg-[#70102b] text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm mb-2"
                       >
                         <FileSearch className="h-3.5 w-3.5" />
-                        <span>Record / Manage Supplier Quotes ({(selectedVerificationItem.linkedQuotes?.length ?? 0)}/3)</span>
+                        <span>Record / Manage Supplier Quotes ({(selectedVerificationItem.linkedQuotes?.length ?? 0)}/10 · min 3)</span>
                       </Button>
                     </div>
 
@@ -1077,7 +1077,7 @@ export function OfficerPrVerificationPage() {
                 {selectedVerificationItem.linkedQuotes && selectedVerificationItem.linkedQuotes.length > 0 && (
                   <div className="rounded-lg border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900 mt-3">
                     <div className="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 dark:bg-slate-800/60 dark:text-slate-200 flex justify-between items-center">
-                      <span>End-User Preliminary Supplier Quotes ({selectedVerificationItem.linkedQuotes.length}/3 collected)</span>
+                      <span>End-User Preliminary Supplier Quotes ({selectedVerificationItem.linkedQuotes.length}/10 collected · min 3)</span>
                       <span className="text-[10px] text-slate-500">Market Sounding Prior to Official RFQ</span>
                     </div>
                     <div className="overflow-x-auto">

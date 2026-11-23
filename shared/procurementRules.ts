@@ -142,10 +142,17 @@ export function countValidPreCanvassQuotes(quotes: PreCanvassQuoteCandidate[], p
 
 /**
  * Submission guard: Verifies whether the pre-canvass has met or exceeded
- * the required quotation threshold (quotes >= 3, allowing 3 or more quotes).
+ * the required quotation threshold (minimum 3 suppliers, maximum 10).
  */
+export const MIN_PRE_CANVASS_QUOTES = 3;
+export const MAX_PRE_CANVASS_QUOTES = 10;
+
 export function hasRequiredSupplierQuotations(quoteCount: number): boolean {
-  return quoteCount >= 3;
+  return quoteCount >= MIN_PRE_CANVASS_QUOTES;
+}
+
+export function hasValidSupplierQuotationCount(quoteCount: number): boolean {
+  return quoteCount >= MIN_PRE_CANVASS_QUOTES && quoteCount <= MAX_PRE_CANVASS_QUOTES;
 }
 
 export function canReserveBudget(allottedAmount: number | string, committedAmount: number | string, requestAmount: number | string) {

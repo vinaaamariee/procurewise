@@ -4,7 +4,7 @@ import { and, desc, eq, ilike, inArray, isNull, like, or, sql } from "drizzle-or
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { abstractsOfCanvass, appPpmpEntries, auditTrails, bacTransmittals, bestValuePolicies, bestValuePolicyCriteria, budgetAllotments, deliveryReceipts, formTemplates, historicalPrices, InsertUser, lettersOfNotice, mcdmRecommendations, objectsOfExpenditure, offices, pmrHistoricalRecords, pmrLogs, preCanvassQuotes, preCanvasses, procurementCatalogFavorites, procurementCatalogItems, procurementCatalogSavedItems, procurementDocuments, procurementSettings, procurementSignatories, purchaseOrders, purchaseRequestDecisions, purchaseRequestItems, purchaseRequests, quotationAbstracts, rfqNumberAssignments, rfqs, supplierEvaluationApprovals, supplierEvaluations, supplierQuotations, suppliers, supplierTagAssignments, supplierTags, testRecordArchives, User, users, workflowCorrections, workflowNotifications } from "../drizzle/schema";
-import { areUnitsCompatible, countValidPreCanvassQuotes, detectMixedCategories, getEmployeePrStatus, getValidPreCanvassQuotes, hasRequiredSupplierQuotations, isValidPreCanvassQuote, normalizeProcurementRole, OFFICIAL_ROLE_LABELS, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
+import { areUnitsCompatible, countValidPreCanvassQuotes, detectMixedCategories, getEmployeePrStatus, getValidPreCanvassQuotes, hasRequiredSupplierQuotations, isValidPreCanvassQuote, MAX_PRE_CANVASS_QUOTES, MIN_PRE_CANVASS_QUOTES, normalizeProcurementRole, OFFICIAL_ROLE_LABELS, roleCanAct, selectLowestCompliantQuote, type ProcurementRole, type PrStatus } from "../shared/procurementRules";
 import { ENV } from "./_core/env";
 import { validatePoBudgetGeneration, validatePrBudgetSubmission } from "./procurementValidation";
 import { storagePut } from "./storage";
@@ -3031,8 +3031,30 @@ export async function addPreCanvassQuote(input: { preCanvassId: number; supplier
   const actorRole = normalizeProcurementRole(user.role);
   const isOfficerOrAdmin = roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
   if (!preCanvass || (preCanvass.preparedById !== user.id && !isOfficerOrAdmin)) throw new Error("You are not authorized to enter supplier quotes for this Pre-Canvass.");
+
+  const existingQuotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, input.preCanvassId));
+  if (existingQuotes.length >= MAX_PRE_CANVASS_QUOTES) {
+    throw new Error(`A maximum of ${MAX_PRE_CANVASS_QUOTES} supplier quotes can be quoted.`);
+  }
+  if (existingQuotes.some((q) => q.supplierId === input.supplierId)) {
+    throw new Error("This supplier has already provided a quote for this Pre-Canvass.");
+  }
+
   await db.insert(preCanvassQuotes).values({ ...input, totalPrice: input.totalPrice.toFixed(2), isCompliant: input.isCompliant ? 1 : 0, quotationReference: input.quotationReference || null, supplierRepresentative: input.supplierRepresentative || null, acknowledgedAt: input.acknowledgedAt ?? null, receivedBy: input.receivedBy || null, notes: input.notes || null });
   await writeAuditEvent({ entityType: "pre_canvass", entityId: input.preCanvassId, action: "supplier_quote_added", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { supplierId: input.supplierId } });
+}
+
+export async function deletePreCanvassQuote(quoteId: number, user: User) {
+  const db = await requireDb();
+  const [quote] = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.id, quoteId)).limit(1);
+  if (!quote) throw new Error("Quote not found.");
+  const [preCanvass] = await db.select().from(preCanvasses).where(eq(preCanvasses.id, quote.preCanvassId)).limit(1);
+  const actorRole = normalizeProcurementRole(user.role);
+  const isOfficerOrAdmin = roleCanAct(actorRole, ["procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "admin"]);
+  if (!preCanvass || (preCanvass.preparedById !== user.id && !isOfficerOrAdmin)) throw new Error("You are not authorized to remove quotes for this Pre-Canvass.");
+  if (preCanvass.status !== "draft" && !isOfficerOrAdmin) throw new Error("Cannot remove quotes from a submitted Pre-Canvass.");
+  await db.delete(preCanvassQuotes).where(eq(preCanvassQuotes.id, quoteId));
+  await writeAuditEvent({ entityType: "pre_canvass", entityId: quote.preCanvassId, action: "supplier_quote_deleted", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { quoteId, supplierId: quote.supplierId } });
 }
 
 export async function submitPreCanvass(preCanvassId: number, user: User, options?: ProcurementWorkflowOptions) {
@@ -3044,7 +3066,8 @@ export async function submitPreCanvass(preCanvassId: number, user: User, options
   if (!preCanvass || (preCanvass.preparedById !== user.id && !isOfficerOrAdmin)) throw new Error("This Pre-Canvass cannot be submitted by the current user.");
   const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
   const validQuotes = getValidPreCanvassQuotes(quotes);
-  if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("Three supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
+  if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("A minimum of three (3) supplier quotes are required before forwarding the Pre-Canvass to the Procurement Officer.");
+  if (validQuotes.length > MAX_PRE_CANVASS_QUOTES) throw new Error(`A maximum of ${MAX_PRE_CANVASS_QUOTES} supplier quotes can be submitted.`);
   await requirePreliminaryQuotationAttachment(db, preCanvassId);
   await db.update(preCanvasses).set({ status: "submitted" }).where(eq(preCanvasses.id, preCanvassId));
   await recordAudit({ entityType: "pre_canvass", entityId: preCanvassId, action: "submitted_to_procurement", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { quoteCount: validQuotes.length } });
@@ -3056,11 +3079,11 @@ export async function createAbstractOfCanvass(preCanvassId: number, user: User) 
   if (!preCanvass || preCanvass.status !== "submitted") throw new Error("A submitted Pre-Canvass is required before an Abstract of Canvass can be generated.");
   const quotes = await db.select().from(preCanvassQuotes).where(eq(preCanvassQuotes.preCanvassId, preCanvassId));
   const validQuotes = getValidPreCanvassQuotes(quotes);
-  if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("Three supplier quotes are required before an Abstract of Canvass can be generated.");
+  if (!hasRequiredSupplierQuotations(validQuotes.length)) throw new Error("A minimum of three (3) supplier quotes are required before an Abstract of Canvass can be generated.");
   const recommendation = selectLowestCompliantQuote(validQuotes.map((quote) => ({ ...quote, isCompliant: quote.isCompliant === 1 })));
   if (!recommendation) throw new Error("No compliant supplier quote is available for recommendation.");
   const abstractNumber = `AOC-${new Date().getFullYear()}-${Date.now().toString().slice(-7)}`;
-  await db.insert(abstractsOfCanvass).values({ abstractNumber, preCanvassId, recommendedSupplierId: recommendation.supplierId, recommendationReason: "Lowest compliant supplier selected from the End-User's mandatory three-supplier Pre-Canvass.", preparedById: user.id });
+  await db.insert(abstractsOfCanvass).values({ abstractNumber, preCanvassId, recommendedSupplierId: recommendation.supplierId, recommendationReason: "Lowest compliant supplier selected from the End-User's Pre-Canvass supplier quotations (minimum 3).", preparedById: user.id });
   await db.update(preCanvasses).set({ status: "abstracted" }).where(eq(preCanvasses.id, preCanvassId));
   await writeAuditEvent({ entityType: "abstract_of_canvass", entityId: preCanvassId, action: "recommended", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { abstractNumber, recommendedSupplierId: recommendation.supplierId } });
 }
@@ -3309,6 +3332,13 @@ export async function addSupplierQuotation(input: { rfqId: number; supplierId: n
       })
       .where(eq(supplierQuotations.id, existing.id));
   } else {
+    const currentQuotes = await db
+      .select()
+      .from(supplierQuotations)
+      .where(eq(supplierQuotations.rfqId, input.rfqId));
+    if (currentQuotes.length >= MAX_PRE_CANVASS_QUOTES) {
+      throw new Error(`A maximum of ${MAX_PRE_CANVASS_QUOTES} supplier quotations can be quoted for this RFQ.`);
+    }
     await db.insert(supplierQuotations).values({
       ...input,
       totalPrice: input.totalPrice.toFixed(2),

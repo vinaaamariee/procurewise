@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReserveBudget, countValidPreCanvassQuotes, getNextPrStatus, getValidPreCanvassQuotes, hasRequiredSupplierQuotations, hasReservedBudgetCommitment, isValidPreCanvassQuote, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote } from "../shared/procurementRules";
+import { canReserveBudget, countValidPreCanvassQuotes, getNextPrStatus, getValidPreCanvassQuotes, hasRequiredSupplierQuotations, hasReservedBudgetCommitment, hasValidSupplierQuotationCount, isValidPreCanvassQuote, MAX_PRE_CANVASS_QUOTES, MIN_PRE_CANVASS_QUOTES, normalizeProcurementRole, roleCanAct, selectLowestCompliantQuote } from "../shared/procurementRules";
 
 describe("ProcureWise workflow rules", () => {
   it("only advances a PR through the role assigned to the current gate", () => {
@@ -22,7 +22,19 @@ describe("ProcureWise workflow rules", () => {
     expect(hasRequiredSupplierQuotations(3)).toBe(true);
     expect(hasRequiredSupplierQuotations(4)).toBe(true);
     expect(hasRequiredSupplierQuotations(5)).toBe(true);
+    expect(hasRequiredSupplierQuotations(10)).toBe(true);
     expect(winner?.id).toBe(3);
+  });
+
+  it("enforces minimum of 3 suppliers and maximum of 10 suppliers threshold", () => {
+    expect(MIN_PRE_CANVASS_QUOTES).toBe(3);
+    expect(MAX_PRE_CANVASS_QUOTES).toBe(10);
+    expect(hasValidSupplierQuotationCount(0)).toBe(false);
+    expect(hasValidSupplierQuotationCount(2)).toBe(false);
+    expect(hasValidSupplierQuotationCount(3)).toBe(true);
+    expect(hasValidSupplierQuotationCount(7)).toBe(true);
+    expect(hasValidSupplierQuotationCount(10)).toBe(true);
+    expect(hasValidSupplierQuotationCount(11)).toBe(false);
   });
 
   it("validates and counts valid pre-canvass quotes consistently", () => {

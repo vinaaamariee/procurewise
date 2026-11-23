@@ -86,7 +86,7 @@ export function IntegratedPreCanvassModal({
   // Mutations
   const createPreCanvassMutation = trpc.procurement.preCanvasses.create.useMutation({
     onSuccess: (created) => {
-      toast.success("Pre-Canvass package initialized. You can now record 3 supplier quotes.");
+      toast.success("Pre-Canvass package initialized. You can now record supplier quotes (min 3, max 10).");
       void utils.procurement.dashboard.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -99,6 +99,14 @@ export function IntegratedPreCanvassModal({
       setTotalPrice("");
       setQuotationReference("");
       setSupplierRepresentative("");
+      void utils.procurement.dashboard.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteQuoteMutation = trpc.procurement.preCanvasses.deleteQuote.useMutation({
+    onSuccess: () => {
+      toast.success("Supplier quote removed.");
       void utils.procurement.dashboard.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -139,6 +147,10 @@ export function IntegratedPreCanvassModal({
   const handleAddQuote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!existingPreCanvass) return;
+    if (existingQuotes.length >= 10) {
+      toast.error("A maximum of 10 supplier quotes can be quoted.");
+      return;
+    }
     if (!supplierId || Number(totalPrice) <= 0) {
       toast.error("Please select a supplier and enter a valid quoted price.");
       return;
@@ -236,12 +248,12 @@ export function IntegratedPreCanvassModal({
                   Complete Supplier Canvass: {purchaseRequest.prNumber}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Follow government procurement guidelines: enter at least 3 supplier quotations before forwarding to Procurement.
+                  Follow government procurement guidelines: enter at least 3 supplier quotations (minimum 3, maximum 10) before forwarding to Procurement.
                 </DialogDescription>
               </div>
             </div>
             <StatusBadge tone={quotesCount >= 3 ? "approved" : "pending"}>
-              {quotesCount}/3 Quotes
+              {quotesCount < 3 ? `${quotesCount}/3 Quotes (Min 3)` : `${quotesCount}/10 Quotes (${quotesCount >= 10 ? "Max" : "Min Met"})`}
             </StatusBadge>
           </div>
         </DialogHeader>
@@ -273,7 +285,7 @@ export function IntegratedPreCanvassModal({
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#f5f3ee] dark:bg-[#232c35]">
               {quotesCount >= 3 ? "✓" : "2"}
             </span>
-            <span>2. 3 Supplier Quotes ({quotesCount}/3)</span>
+            <span>2. Supplier Quotes ({quotesCount}/10 · Min 3)</span>
           </div>
           <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground" />
           <div className={`shrink-0 flex items-center gap-1.5 ${canForward ? "text-[#27633b] font-bold" : isReadyToForward ? "text-[#27633b] font-semibold" : "text-muted-foreground"}`}>
@@ -289,7 +301,7 @@ export function IntegratedPreCanvassModal({
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Quotes and attachment progress</span>
             <span className="font-semibold text-foreground">
-              {canForward ? "Ready to submit" : isReadyToForward ? (hasPreliminaryAoq ? "Attachment verified" : preliminaryAoqFile ? "Uploading attachment..." : "Attachment required") : `${quotesCount}/3 quotes recorded`}
+              {canForward ? "Ready to submit" : isReadyToForward ? (hasPreliminaryAoq ? "Attachment verified" : preliminaryAoqFile ? "Uploading attachment..." : "Attachment required") : `${quotesCount}/3 quotes recorded (minimum 3 required, max 10)`}
             </span>
           </div>
           <Progress value={modalProgress} className="h-1.5" />
@@ -356,24 +368,24 @@ export function IntegratedPreCanvassModal({
             </div>
           </div>
         ) : (
-          /* Step 2: Record 3 Supplier Quotes */
+          /* Step 2: Record Supplier Quotes (Min 3, Max 10) */
           <div className="mt-4 space-y-5">
             {/* List of current recorded quotes */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">
-                  Recorded Supplier Quotes ({quotesCount}/3 required):
+                  Recorded Supplier Quotes ({quotesCount}/10 · Min 3 required):
                 </span>
                 {quotesCount >= 3 && (
                   <span className="text-[11px] font-semibold text-[#27633b] flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Ready to submit
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Minimum 3 quotes satisfied ({quotesCount} recorded)
                   </span>
                 )}
               </div>
 
               {quotesCount === 0 ? (
                 <div className="rounded-[4px] border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                  No quotes recorded yet. Use the form below to enter quotes from 3 accredited suppliers.
+                  No quotes recorded yet. Use the form below to enter quotes from accredited suppliers (minimum 3, maximum 10).
                 </div>
               ) : (
                 <div className="grid gap-2">
@@ -410,6 +422,17 @@ export function IntegratedPreCanvassModal({
                           <StatusBadge tone={quote.isCompliant ? "approved" : "returned"}>
                             {quote.isCompliant ? "COMPLIANT" : "NON-COMPLIANT"}
                           </StatusBadge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            title="Remove this quote"
+                            disabled={deleteQuoteMutation.isPending}
+                            onClick={() => deleteQuoteMutation.mutate({ quoteId: quote.id })}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     );
@@ -418,12 +441,19 @@ export function IntegratedPreCanvassModal({
               )}
             </div>
 
-            {/* Quote entry form (if less than 3 or adding more) */}
-            {quotesCount < 3 && (
+            {/* Quote entry form (if less than 10 or adding more) */}
+            {quotesCount < 10 ? (
               <form onSubmit={handleAddQuote} className="rounded-[4px] border border-border bg-[#faf9f6] p-4 text-xs dark:border-[#46515c] dark:bg-[#20272f]">
-                <div className="flex items-center gap-1.5 font-semibold text-foreground mb-3">
-                  <Plus className="h-4 w-4 text-[#7b1e1e]" />
-                  <span>Add Supplier Quote #{quotesCount + 1}</span>
+                <div className="flex items-center justify-between font-semibold text-foreground mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Plus className="h-4 w-4 text-[#7b1e1e]" />
+                    <span>Add Supplier Quote #{quotesCount + 1} (Max 10)</span>
+                  </div>
+                  <span className="text-[11px] font-normal text-muted-foreground">
+                    {quotesCount < 3
+                      ? `${3 - quotesCount} more required to reach minimum of 3`
+                      : `${10 - quotesCount} remaining quote slot(s) available`}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -536,6 +566,11 @@ export function IntegratedPreCanvassModal({
                   </Button>
                 </div>
               </form>
+            ) : (
+              <div className="rounded-[4px] border border-border bg-[#f8f9fa] dark:bg-[#20272f] p-3 text-center text-xs text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-[#27633b] inline-block mr-1.5" />
+                Maximum of 10 supplier quotations reached. You have recorded all 10 allowable quotes.
+              </div>
             )}
 
             {/* Step 3: Attach the preliminary quotation document and forward */}
@@ -545,12 +580,12 @@ export function IntegratedPreCanvassModal({
                   <CheckCircle2 className="h-5 w-5 text-[#27633b] shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-bold text-[#1f4e2f] dark:text-[#a3e3b7]">
-                      {canForward ? "Pre-Canvass complete" : `All ${quotesCount} supplier quotes recorded`}
+                      {canForward ? "Pre-Canvass complete & ready to forward" : `Minimum 3 supplier quotes satisfied (${quotesCount} recorded)`}
                     </p>
                     <p className="mt-1 leading-5 text-[#2e5d3c] dark:text-[#c4ecd2]">
                       {canForward
-                        ? "Your quotes and preliminary attachment are ready. Forward the complete package to Procurement for review."
-                        : "Upload the preliminary quotation worksheet or document showing your three supplier quotes before forwarding this package."}
+                        ? `Your ${quotesCount} quotes and preliminary attachment are ready. Forward the complete package to Procurement for review.`
+                        : `Upload the preliminary quotation worksheet or document showing your ${quotesCount} supplier quotes before forwarding this package.`}
                     </p>
                   </div>
                 </div>
@@ -572,7 +607,7 @@ export function IntegratedPreCanvassModal({
                   <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
                     {hasPreliminaryAoq
                       ? "An attachment is uploaded. Choose a replacement only if needed. Excel or PDF, maximum size: 10 MB."
-                      : "Upload the Excel or PDF worksheet that documents your three supplier quotes. Maximum size: 10 MB."}
+                      : `Upload the Excel or PDF worksheet that documents your ${quotesCount} supplier quotes (minimum 3, maximum 10). Maximum size: 10 MB.`}
                   </p>
 
                   <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
