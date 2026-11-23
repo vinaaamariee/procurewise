@@ -137,7 +137,7 @@ function registerStorageProxy(app2) {
 }
 
 // server/routers.ts
-import { TRPCError as TRPCError3 } from "@trpc/server";
+import { TRPCError as TRPCError4 } from "@trpc/server";
 import { z as z2 } from "zod";
 
 // server/_core/systemRouter.ts
@@ -5918,6 +5918,232 @@ async function publishProcurementRealtimeUpdate(recordType) {
   }
 }
 
+// server/supabaseAuth.ts
+import { createClient as createClient3 } from "@supabase/supabase-js";
+import { TRPCError as TRPCError3 } from "@trpc/server";
+function getBearerToken(req) {
+  const headers = req.headers ?? {};
+  const authHeader = Object.entries(headers).find(([k]) => k.toLowerCase() === "authorization")?.[1];
+  const authStr = Array.isArray(authHeader) ? authHeader[0] : typeof authHeader === "string" ? authHeader : null;
+  if (!authStr) return null;
+  const match = authStr.match(/^bearer\s+(\S+)$/i);
+  return match ? match[1].trim() : null;
+}
+function getAuthClient() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    console.warn("[Supabase Auth] Missing server Supabase configuration", {
+      hasUrl: Boolean(url),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY),
+      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY)
+    });
+    return null;
+  }
+  return createClient3(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+async function authenticateSupabaseRequestWithDiagnostic(req) {
+  const token = getBearerToken(req);
+  const client = getAuthClient();
+  if (!token) {
+    return { user: null, diagnostic: { code: "MISSING_SESSION", message: "No bearer token found in request headers." } };
+  }
+  if (!client) {
+    console.error("[Supabase Auth] Configuration missing: ensure Supabase project URL and key are configured.");
+    return { user: null, diagnostic: { code: "CONFIG_MISSING", message: "Server Supabase configuration is missing." } };
+  }
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) {
+    const errorMsg = error?.message ?? "Supabase returned no user";
+    console.warn("[Supabase Auth] Access token verification failed:", errorMsg);
+    return { user: null, diagnostic: { code: "TOKEN_REJECTED", message: errorMsg } };
+  }
+  const fullName = typeof data.user.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : typeof data.user.user_metadata?.name === "string" ? data.user.user_metadata.name : null;
+  const officeName = typeof data.user.user_metadata?.office_name === "string" ? data.user.user_metadata.office_name : null;
+  try {
+    const user = await upsertSupabaseAuthUser({
+      openId: data.user.id,
+      email: data.user.email ?? null,
+      name: fullName,
+      officeName
+    });
+    return { user, diagnostic: { code: "AUTHENTICATED", message: "User authenticated successfully." } };
+  } catch (error2) {
+    const rawMessage = error2 instanceof Error ? error2.message : "Unknown profile bridge error";
+    const cause = error2 instanceof Error && "cause" in error2 ? error2.cause : void 0;
+    const causeMessage = typeof cause?.message === "string" ? cause.message : "";
+    const causeCode = typeof cause?.code === "string" ? cause.code : typeof error2?.code === "string" ? error2.code : "";
+    const combinedError = `${rawMessage} ${causeMessage} ${causeCode}`.toLowerCase();
+    let code = "PROFILE_FAILED";
+    let userFacingMessage = "Database operation failed while loading profile.";
+    if (causeCode === "42P01" || combinedError.includes("does not exist") || combinedError.includes("42p01")) {
+      code = "MISSING_TABLE";
+      userFacingMessage = "The workspace users table does not exist in the configured database.";
+    } else if (causeCode === "28P01" || causeCode === "XX000" || causeCode === "ECONNREFUSED" || causeCode === "ETIMEDOUT" || combinedError.includes("database is unavailable") || combinedError.includes("econnrefused") || combinedError.includes("etimedout") || combinedError.includes("password authentication failed") || combinedError.includes("tenant")) {
+      code = "DATABASE_UNAVAILABLE";
+      userFacingMessage = "Database connection failed. Please verify that the production database URL and credentials are valid and reachable.";
+    }
+    console.error("[Supabase Auth] Profile bridge failed", {
+      code,
+      message: userFacingMessage,
+      causeCode,
+      causeMessage,
+      userId: data.user.id,
+      email: data.user.email ? `${data.user.email.slice(0, 2)}***@***` : null
+    });
+    return { user: null, diagnostic: { code, message: userFacingMessage } };
+  }
+}
+function getSupabaseAdminClient() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+  if (!url || !serviceKey) {
+    return null;
+  }
+  return createClient3(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+async function registerEndUser(input) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new TRPCError3({
+      code: "PRECONDITION_FAILED",
+      message: "Server admin configuration (SUPABASE_SERVICE_ROLE_KEY) is not set on this environment."
+    });
+  }
+  const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1e3 });
+  const existingUser = listData?.users.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+  if (existingUser) {
+    if (!existingUser.email_confirmed_at) {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        existingUser.id,
+        {
+          email_confirm: true,
+          password: input.password,
+          user_metadata: {
+            full_name: input.fullName.trim(),
+            office_name: input.officeName?.trim() || null,
+            role: "end_user"
+          }
+        }
+      );
+      if (updateError) {
+        throw new TRPCError3({
+          code: "INTERNAL_SERVER_ERROR",
+          message: updateError.message
+        });
+      }
+      await upsertSupabaseAuthUser({
+        openId: existingUser.id,
+        email: normalizedEmail,
+        name: input.fullName.trim(),
+        officeName: input.officeName?.trim() || null
+      });
+      return {
+        success: true,
+        autoConfirmed: true,
+        message: "Your account has been confirmed and activated. You can now sign in."
+      };
+    } else {
+      throw new TRPCError3({
+        code: "CONFLICT",
+        message: "An account with this email is already registered and verified. Please sign in with your password."
+      });
+    }
+  }
+  const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email: normalizedEmail,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: input.fullName.trim(),
+      office_name: input.officeName?.trim() || null,
+      role: "end_user"
+    }
+  });
+  if (createError) {
+    throw new TRPCError3({
+      code: "BAD_REQUEST",
+      message: createError.message
+    });
+  }
+  if (!createData.user) {
+    throw new TRPCError3({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Supabase did not return the created user identity."
+    });
+  }
+  await upsertSupabaseAuthUser({
+    openId: createData.user.id,
+    email: normalizedEmail,
+    name: input.fullName.trim(),
+    officeName: input.officeName?.trim() || null
+  });
+  return {
+    success: true,
+    autoConfirmed: true,
+    message: "End-User account created and verified successfully."
+  };
+}
+async function confirmUnconfirmedUser(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new TRPCError3({
+      code: "PRECONDITION_FAILED",
+      message: "Server admin configuration (SUPABASE_SERVICE_ROLE_KEY) is not set on this environment."
+    });
+  }
+  const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1e3 });
+  if (listError) {
+    throw new TRPCError3({
+      code: "INTERNAL_SERVER_ERROR",
+      message: listError.message
+    });
+  }
+  const targetUser = listData?.users.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+  if (!targetUser) {
+    throw new TRPCError3({
+      code: "NOT_FOUND",
+      message: "No registered account found with that email address. Please create an account first."
+    });
+  }
+  if (!targetUser.email_confirmed_at) {
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetUser.id,
+      { email_confirm: true }
+    );
+    if (updateError) {
+      throw new TRPCError3({
+        code: "INTERNAL_SERVER_ERROR",
+        message: updateError.message
+      });
+    }
+    await upsertSupabaseAuthUser({
+      openId: targetUser.id,
+      email: normalizedEmail,
+      name: targetUser.user_metadata?.full_name || targetUser.user_metadata?.name || null,
+      officeName: targetUser.user_metadata?.office_name || null
+    });
+    return {
+      success: true,
+      confirmed: true,
+      message: "Account email confirmed successfully! You can now sign in."
+    };
+  }
+  return {
+    success: true,
+    confirmed: false,
+    message: "Account is already confirmed. Please sign in with your password."
+  };
+}
+
 // server/excelTemplateEngine.ts
 import ExcelJS from "exceljs";
 var SUPPORTED_FORM_TEMPLATES = {
@@ -7161,14 +7387,14 @@ function assertRole(userRole, permittedRoles) {
   if (userRole === "admin" || norm === "admin" || permittedRoles.includes(userRole) || permittedRoles.includes(norm) || allowsDecisionAccess) {
     return;
   }
-  throw new TRPCError3({ code: "FORBIDDEN", message: "This procurement action is not permitted for your assigned role." });
+  throw new TRPCError4({ code: "FORBIDDEN", message: "This procurement action is not permitted for your assigned role." });
 }
 var appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(({ ctx }) => {
       if (!ctx.user && ctx.authDiagnostic && ctx.authDiagnostic.code !== "MISSING_SESSION") {
-        throw new TRPCError3({
+        throw new TRPCError4({
           code: ctx.authDiagnostic.code === "TOKEN_REJECTED" ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
           message: `[${ctx.authDiagnostic.code}] ${ctx.authDiagnostic.message}`
         });
@@ -7176,6 +7402,15 @@ var appRouter = router({
       return ctx.user;
     }),
     logout: publicProcedure.mutation(() => ({ success: true })),
+    register: publicProcedure.input(
+      z2.object({
+        email: z2.string().email(),
+        password: z2.string().min(6),
+        fullName: z2.string().min(2),
+        officeName: z2.string().optional()
+      })
+    ).mutation(async ({ input }) => registerEndUser(input)),
+    confirmUnconfirmedUser: publicProcedure.input(z2.object({ email: z2.string().email() })).mutation(async ({ input }) => confirmUnconfirmedUser(input.email)),
     updateMyOffice: protectedProcedure.input(z2.object({ officeName: z2.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user))
   }),
   procurement: router({
@@ -7347,10 +7582,10 @@ var appRouter = router({
         const role = normalizeProcurementRole(ctx.user.role);
         const records = await listPurchaseRequests(role === "end_user" ? ctx.user : { ...ctx.user, role: "admin" });
         const pr = records.find((record) => record.id === input.purchaseRequestId);
-        if (!pr) throw new TRPCError3({ code: "NOT_FOUND", message: "Purchase Request not found." });
-        if (role === "end_user" && pr.requestedById !== ctx.user.id) throw new TRPCError3({ code: "FORBIDDEN", message: "End-Users may act only on their own Purchase Requests." });
+        if (!pr) throw new TRPCError4({ code: "NOT_FOUND", message: "Purchase Request not found." });
+        if (role === "end_user" && pr.requestedById !== ctx.user.id) throw new TRPCError4({ code: "FORBIDDEN", message: "End-Users may act only on their own Purchase Requests." });
         const nextStatus = getNextPrStatus(pr.status, role);
-        if (!nextStatus) throw new TRPCError3({ code: "CONFLICT", message: "The Purchase Request cannot advance at your role or its current workflow stage." });
+        if (!nextStatus) throw new TRPCError4({ code: "CONFLICT", message: "The Purchase Request cannot advance at your role or its current workflow stage." });
         return advancePurchaseRequest({ purchaseRequestId: pr.id, nextStatus }, ctx.user);
       }),
       reject: protectedProcedure.input(z2.object({
@@ -7690,7 +7925,7 @@ var appRouter = router({
       downloadMasterXlsx: protectedProcedure.input(z2.object({ templateKey: z2.string() })).mutation(async ({ input }) => {
         const key = input.templateKey;
         const meta = SUPPORTED_FORM_TEMPLATES[key];
-        if (!meta) throw new TRPCError3({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
+        if (!meta) throw new TRPCError4({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
         const wb = await createMasterExcelWorkbook(key);
         const buffer = Buffer.from(await wb.xlsx.writeBuffer());
         return {
@@ -7742,7 +7977,7 @@ var appRouter = router({
       })).query(async ({ input }) => {
         const key = input.templateKey;
         const meta = SUPPORTED_FORM_TEMPLATES[key];
-        if (!meta) throw new TRPCError3({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
+        if (!meta) throw new TRPCError4({ code: "BAD_REQUEST", message: `Unsupported form template key: ${input.templateKey}` });
         let templateBuffer;
         let activeRecord = null;
         if (input.templateId) {
@@ -8105,82 +8340,6 @@ var appRouter = router({
     publicTracking: router({ lookup: publicProcedure.input(z2.object({ token: z2.string().min(16).max(48) })).query(({ input }) => getPublicPurchaseRequestTracking(input.token)) })
   })
 });
-
-// server/supabaseAuth.ts
-import { createClient as createClient3 } from "@supabase/supabase-js";
-function getBearerToken(req) {
-  const headers = req.headers ?? {};
-  const authHeader = Object.entries(headers).find(([k]) => k.toLowerCase() === "authorization")?.[1];
-  const authStr = Array.isArray(authHeader) ? authHeader[0] : typeof authHeader === "string" ? authHeader : null;
-  if (!authStr) return null;
-  const match = authStr.match(/^bearer\s+(\S+)$/i);
-  return match ? match[1].trim() : null;
-}
-function getAuthClient() {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) {
-    console.warn("[Supabase Auth] Missing server Supabase configuration", {
-      hasUrl: Boolean(url),
-      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY),
-      hasAnonKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY)
-    });
-    return null;
-  }
-  return createClient3(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-async function authenticateSupabaseRequestWithDiagnostic(req) {
-  const token = getBearerToken(req);
-  const client = getAuthClient();
-  if (!token) {
-    return { user: null, diagnostic: { code: "MISSING_SESSION", message: "No bearer token found in request headers." } };
-  }
-  if (!client) {
-    console.error("[Supabase Auth] Configuration missing: ensure Supabase project URL and key are configured.");
-    return { user: null, diagnostic: { code: "CONFIG_MISSING", message: "Server Supabase configuration is missing." } };
-  }
-  const { data, error } = await client.auth.getUser(token);
-  if (error || !data.user) {
-    const errorMsg = error?.message ?? "Supabase returned no user";
-    console.warn("[Supabase Auth] Access token verification failed:", errorMsg);
-    return { user: null, diagnostic: { code: "TOKEN_REJECTED", message: errorMsg } };
-  }
-  const fullName = typeof data.user.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : typeof data.user.user_metadata?.name === "string" ? data.user.user_metadata.name : null;
-  const officeName = typeof data.user.user_metadata?.office_name === "string" ? data.user.user_metadata.office_name : null;
-  try {
-    const user = await upsertSupabaseAuthUser({
-      openId: data.user.id,
-      email: data.user.email ?? null,
-      name: fullName,
-      officeName
-    });
-    return { user, diagnostic: { code: "AUTHENTICATED", message: "User authenticated successfully." } };
-  } catch (error2) {
-    const rawMessage = error2 instanceof Error ? error2.message : "Unknown profile bridge error";
-    const cause = error2 instanceof Error && "cause" in error2 ? error2.cause : void 0;
-    const causeMessage = typeof cause?.message === "string" ? cause.message : "";
-    const causeCode = typeof cause?.code === "string" ? cause.code : typeof error2?.code === "string" ? error2.code : "";
-    const combinedError = `${rawMessage} ${causeMessage} ${causeCode}`.toLowerCase();
-    let code = "PROFILE_FAILED";
-    let userFacingMessage = "Database operation failed while loading profile.";
-    if (causeCode === "42P01" || combinedError.includes("does not exist") || combinedError.includes("42p01")) {
-      code = "MISSING_TABLE";
-      userFacingMessage = "The workspace users table does not exist in the configured database.";
-    } else if (causeCode === "28P01" || causeCode === "XX000" || causeCode === "ECONNREFUSED" || causeCode === "ETIMEDOUT" || combinedError.includes("database is unavailable") || combinedError.includes("econnrefused") || combinedError.includes("etimedout") || combinedError.includes("password authentication failed") || combinedError.includes("tenant")) {
-      code = "DATABASE_UNAVAILABLE";
-      userFacingMessage = "Database connection failed. Please verify that the production database URL and credentials are valid and reachable.";
-    }
-    console.error("[Supabase Auth] Profile bridge failed", {
-      code,
-      message: userFacingMessage,
-      causeCode,
-      causeMessage,
-      userId: data.user.id,
-      email: data.user.email ? `${data.user.email.slice(0, 2)}***@***` : null
-    });
-    return { user: null, diagnostic: { code, message: userFacingMessage } };
-  }
-}
 
 // server/_core/context.ts
 async function createContext(opts) {

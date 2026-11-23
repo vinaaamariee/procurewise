@@ -17,6 +17,8 @@ type AccessMode = "sign-in" | "register";
 export default function Access() {
   const { user, loading, refresh } = useAuth();
   const utils = trpc.useUtils();
+  const registerMutation = trpc.auth.register.useMutation();
+  const confirmUserMutation = trpc.auth.confirmUnconfirmedUser.useMutation();
   const [, setLocation] = useLocation();
   const requestedMode = new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "sign-in";
   const [mode, setMode] = useState<AccessMode>(requestedMode);
@@ -46,8 +48,25 @@ export default function Access() {
     setIsSubmitting(true);
     try {
       if (mode === "sign-in") {
-        const { error } = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
-        if (error) throw error;
+        let { error } = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) {
+          // If Supabase rejected sign-in because email is not confirmed, auto-confirm via server admin and retry
+          const isUnconfirmed = error.message.toLowerCase().includes("email not confirmed") || error.message.toLowerCase().includes("not confirmed");
+          if (isUnconfirmed) {
+            try {
+              toast.info("Account pending confirmation. Activating your account now...");
+              await confirmUserMutation.mutateAsync({ email: email.trim() });
+              const retry = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
+              if (retry.error) throw retry.error;
+              error = null;
+            } catch (autoErr: unknown) {
+              const autoErrMsg = autoErr instanceof Error ? autoErr.message : "";
+              throw new Error(autoErrMsg || (error ? error.message : "Sign-in could not be completed."));
+            }
+          } else {
+            throw error;
+          }
+        }
         let refreshed = await refresh();
         if (!refreshed.data) {
           await new Promise((resolve) => setTimeout(resolve, 200));
@@ -61,20 +80,56 @@ export default function Access() {
         setLocation("/dashboard");
         return;
       }
-      const { data, error } = await supabaseAuth.auth.signUp({
+
+      // Mode === "register":
+      // 1. Attempt server-side admin provisioning with email_confirm: true (bypasses failed Supabase email sending)
+      try {
+        await registerMutation.mutateAsync({
+          email: email.trim(),
+          password,
+          fullName: fullName.trim(),
+          officeName: officeName.trim() || undefined,
+        });
+      } catch (regError: unknown) {
+        const regMsg = regError instanceof Error ? regError.message : "";
+        if (regMsg.includes("already registered and verified") || regMsg.includes("already exists and is active")) {
+          toast.info("An account with this email is already registered and verified. Please sign in with your password.");
+          setMode("sign-in");
+          return;
+        }
+        // Fallback to client-side Supabase signUp
+        console.warn("Server admin registration note:", regError);
+        const { data, error } = await supabaseAuth.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { data: { full_name: fullName.trim(), office_name: officeName.trim() }, emailRedirectTo: `${window.location.origin}/access` },
+        });
+        if (error) throw error;
+        if (!data.session) {
+          try {
+            await confirmUserMutation.mutateAsync({ email: email.trim() });
+          } catch {
+            toast.success("Check your email to confirm the new account, then sign in.");
+            setMode("sign-in");
+            return;
+          }
+        }
+      }
+
+      // 2. Immediately sign in with the user's credentials so no email confirmation step is needed
+      const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
         email: email.trim(),
         password,
-        options: { data: { full_name: fullName.trim(), office_name: officeName.trim() }, emailRedirectTo: `${window.location.origin}/access` },
       });
-      if (error) throw error;
-      if (!data.session) {
-        toast.success("Check your email to confirm the new account, then sign in.");
+      if (signInError) {
+        toast.success("Account created and activated! Please sign in with your password.");
         setMode("sign-in");
         return;
       }
+
       let refreshed = await refresh();
       if (!refreshed.data) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 300));
         refreshed = await refresh();
       }
       if (!refreshed.data) {
@@ -82,6 +137,7 @@ export default function Access() {
         throw new Error(`Your account was created, but ProcureWise could not load your workspace profile.${failureDetail} Please sign in again after the account is provisioned.`);
       }
       utils.auth.me.setData(undefined, refreshed.data);
+      toast.success("Account created and activated! Welcome to ProcureWise.");
       setLocation("/dashboard");
     } catch (error) {
       const message = error instanceof TypeError && error.message.toLowerCase().includes("fetch")
@@ -90,6 +146,24 @@ export default function Access() {
       toast.error(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const activateAccount = async () => {
+    setTouched((current) => ({ ...current, email: true }));
+    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast.error("Enter your registered email address first.");
+      return;
+    }
+    setIsRecovering(true);
+    try {
+      const res = await confirmUserMutation.mutateAsync({ email: email.trim() });
+      toast.success(res.message || "Account activated! You can now sign in with your password.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not activate account.";
+      toast.error(msg);
+    } finally {
+      setIsRecovering(false);
     }
   };
 
@@ -267,10 +341,26 @@ export default function Access() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               {!registration && (
-                <button type="button" onClick={recoverPassword} disabled={isRecovering || isSubmitting} className="mt-4 flex w-full items-center justify-center text-xs font-semibold text-primary hover:underline dark:text-[#eb766a] focus:outline-none">
-                  {isRecovering && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                  Forgot password?
-                </button>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={activateAccount}
+                    disabled={isRecovering || isSubmitting}
+                    className="flex w-full items-center justify-center text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400 focus:outline-none"
+                  >
+                    {confirmUserMutation.isPending && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Didn&apos;t receive confirmation email? Activate account instantly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={recoverPassword}
+                    disabled={isRecovering || isSubmitting}
+                    className="flex w-full items-center justify-center text-xs font-semibold text-primary hover:underline dark:text-[#eb766a] focus:outline-none"
+                  >
+                    {isRecovering && !confirmUserMutation.isPending && <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Forgot password?
+                  </button>
+                </div>
               )}
             </form>
             <p className="mt-6 border-t border-border pt-4 text-center text-[11px] leading-5 text-muted-foreground">

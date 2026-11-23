@@ -5,6 +5,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementCatalogItem, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, deletePreCanvassQuote, directLetterOfApprovalToPo, endorseBacResolution, forwardRfqToBacForAoq, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, importPreCanvassQuotesToRfq, listAdminTestRecordPackages, listBacTransmittals, listDeliveryMonitoring, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listOfficerPrVerifications, listOfficerPurchaseOrders, listPendingSupplierEvaluationApprovals, listPhilgepsPostings, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listRfqDistributions, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordInspectionMilestone, recordPhilgepsPosting, recordPreCanvassResubmission, recordPurchaseRequestToPmr, recordRfqQuotationOpening, releasePurchaseOrder, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, returnPurchaseRequestForRevision, saveBestValuePolicy, serveLetterOfNotice, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signPurchaseOrderContract, signSupplierEvaluation, submitPreCanvass, transmitRfqToBac, updateProcurementSettings, updateRfqDistribution, updateSupplierEvaluation, updateUserProcurementRole, updateUserOffice, updateMyOffice, verifyPurchaseRequestPackage } from "./db";
 import { activateFormTemplate, assignPurchaseRequestOfficer, assignRfqNumber, getActiveFormTemplate, getEndUserPerformanceAnalytics, getHistoricalPriceAnalytics, getHistoricalPmrSummary, getPmrStatus, getPurchaseRequestHistory, listAuditTrails, listFormTemplates, listHistoricalPmrRecords, rejectPreCanvass, rejectPurchaseRequest, rejectRfq, restoreFormTemplateVersion, resubmitPurchaseRequest, returnPurchaseRequestForCorrection, saveFormTemplateDraft } from "./db";
 import { getSupabaseRealtimePublicConfig, publishProcurementRealtimeUpdate } from "./supabaseRealtime";
+import { confirmUnconfirmedUser, registerEndUser } from "./supabaseAuth";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole, type PersistedUserRole } from "../shared/procurementRules";
 import { BEST_VALUE_CRITERION_KEYS } from "../shared/bestValuePolicy";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
@@ -48,6 +49,19 @@ export const appRouter = router({
       return ctx.user;
     }),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
+    register: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(6),
+          fullName: z.string().min(2),
+          officeName: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => registerEndUser(input)),
+    confirmUnconfirmedUser: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => confirmUnconfirmedUser(input.email)),
     updateMyOffice: protectedProcedure.input(z.object({ officeName: z.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user)),
   }),
   procurement: router({

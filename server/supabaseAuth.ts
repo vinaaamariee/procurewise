@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { TRPCError } from "@trpc/server";
 import type { User } from "../drizzle/schema";
 import { upsertSupabaseAuthUser } from "./db";
 
@@ -143,4 +144,189 @@ export async function authenticateSupabaseRequestWithDiagnostic(req: AuthRequest
 export async function authenticateSupabaseRequest(req: AuthRequest): Promise<User | null> {
   const result = await authenticateSupabaseRequestWithDiagnostic(req);
   return result.user;
+}
+
+export function getSupabaseAdminClient() {
+  const url =
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+  if (!url || !serviceKey) {
+    return null;
+  }
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+export async function registerEndUser(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  officeName?: string;
+}) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Server admin configuration (SUPABASE_SERVICE_ROLE_KEY) is not set on this environment.",
+    });
+  }
+
+  // 1. Try finding existing user first to handle previously stuck / unconfirmed accounts
+  const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  const existingUser = listData?.users.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+
+  if (existingUser) {
+    if (!existingUser.email_confirmed_at) {
+      // User registered previously but confirmation email was never delivered.
+      // Auto-confirm the account and sync their latest password and metadata!
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        existingUser.id,
+        {
+          email_confirm: true,
+          password: input.password,
+          user_metadata: {
+            full_name: input.fullName.trim(),
+            office_name: input.officeName?.trim() || null,
+            role: "end_user",
+          },
+        }
+      );
+      if (updateError) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: updateError.message,
+        });
+      }
+
+      await upsertSupabaseAuthUser({
+        openId: existingUser.id,
+        email: normalizedEmail,
+        name: input.fullName.trim(),
+        officeName: input.officeName?.trim() || null,
+      });
+
+      return {
+        success: true,
+        autoConfirmed: true,
+        message: "Your account has been confirmed and activated. You can now sign in.",
+      };
+    } else {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "An account with this email is already registered and verified. Please sign in with your password.",
+      });
+    }
+  }
+
+  // 2. Create new user with email_confirm: true so no third-party email delivery is required
+  const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email: normalizedEmail,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: input.fullName.trim(),
+      office_name: input.officeName?.trim() || null,
+      role: "end_user",
+    },
+  });
+
+  if (createError) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: createError.message,
+    });
+  }
+
+  if (!createData.user) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Supabase did not return the created user identity.",
+    });
+  }
+
+  await upsertSupabaseAuthUser({
+    openId: createData.user.id,
+    email: normalizedEmail,
+    name: input.fullName.trim(),
+    officeName: input.officeName?.trim() || null,
+  });
+
+  return {
+    success: true,
+    autoConfirmed: true,
+    message: "End-User account created and verified successfully.",
+  };
+}
+
+export async function confirmUnconfirmedUser(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Server admin configuration (SUPABASE_SERVICE_ROLE_KEY) is not set on this environment.",
+    });
+  }
+
+  const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  if (listError) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: listError.message,
+    });
+  }
+
+  const targetUser = listData?.users.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+
+  if (!targetUser) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "No registered account found with that email address. Please create an account first.",
+    });
+  }
+
+  if (!targetUser.email_confirmed_at) {
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetUser.id,
+      { email_confirm: true }
+    );
+    if (updateError) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: updateError.message,
+      });
+    }
+
+    await upsertSupabaseAuthUser({
+      openId: targetUser.id,
+      email: normalizedEmail,
+      name:
+        (targetUser.user_metadata?.full_name as string) ||
+        (targetUser.user_metadata?.name as string) ||
+        null,
+      officeName: (targetUser.user_metadata?.office_name as string) || null,
+    });
+
+    return {
+      success: true,
+      confirmed: true,
+      message: "Account email confirmed successfully! You can now sign in.",
+    };
+  }
+
+  return {
+    success: true,
+    confirmed: false,
+    message: "Account is already confirmed. Please sign in with your password.",
+  };
 }
