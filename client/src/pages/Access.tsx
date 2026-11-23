@@ -19,6 +19,7 @@ export default function Access() {
   const utils = trpc.useUtils();
   const registerMutation = trpc.auth.register.useMutation();
   const confirmUserMutation = trpc.auth.confirmUnconfirmedUser.useMutation();
+  const resetPasswordMutation = trpc.auth.resetPasswordDirect.useMutation();
   const [, setLocation] = useLocation();
   const requestedMode = new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "sign-in";
   const [mode, setMode] = useState<AccessMode>(requestedMode);
@@ -29,6 +30,7 @@ export default function Access() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
+  const [credentialMismatch, setCredentialMismatch] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
 
   useEffect(() => { setMode(requestedMode); }, [requestedMode]);
@@ -40,6 +42,47 @@ export default function Access() {
   const passwordError = touched.password && password.length < 6
     ? "Password must contain at least 6 characters."
     : "";
+
+  const syncPasswordAndSignIn = async () => {
+    setTouched({ email: true, password: true });
+    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast.error("Enter your registered work email address first.");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("Password must contain at least 6 characters.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      toast.info("Synchronizing account password...");
+      await resetPasswordMutation.mutateAsync({
+        email: email.trim(),
+        password,
+      });
+      const { error: signInErr } = await supabaseAuth.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInErr) throw signInErr;
+      let refreshed = await refresh();
+      if (!refreshed.data) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        refreshed = await refresh();
+      }
+      if (!refreshed.data) {
+        throw new Error("Signed in, but could not load workspace profile. Please refresh.");
+      }
+      utils.auth.me.setData(undefined, refreshed.data);
+      toast.success("Account password updated and verified! Welcome to ProcureWise.");
+      setLocation("/dashboard");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not synchronize password.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -55,7 +98,7 @@ export default function Access() {
           if (isUnconfirmed) {
             try {
               toast.info("Account pending confirmation. Activating your account now...");
-              await confirmUserMutation.mutateAsync({ email: email.trim() });
+              await confirmUserMutation.mutateAsync({ email: email.trim(), password });
               const retry = await supabaseAuth.auth.signInWithPassword({ email: email.trim(), password });
               if (retry.error) throw retry.error;
               error = null;
@@ -64,6 +107,7 @@ export default function Access() {
               throw new Error(autoErrMsg || (error ? error.message : "Sign-in could not be completed."));
             }
           } else {
+            setCredentialMismatch(true);
             throw error;
           }
         }
@@ -92,9 +136,8 @@ export default function Access() {
         });
       } catch (regError: unknown) {
         const regMsg = regError instanceof Error ? regError.message : "";
-        if (regMsg.includes("already registered and verified") || regMsg.includes("already exists and is active")) {
-          toast.info("An account with this email is already registered and verified. Please sign in with your password.");
-          setMode("sign-in");
+        if (regMsg.includes("elevated") || regMsg.includes("Elevated")) {
+          toast.error(regMsg);
           return;
         }
         // Fallback to client-side Supabase signUp
@@ -107,7 +150,7 @@ export default function Access() {
         if (error) throw error;
         if (!data.session) {
           try {
-            await confirmUserMutation.mutateAsync({ email: email.trim() });
+            await confirmUserMutation.mutateAsync({ email: email.trim(), password });
           } catch {
             toast.success("Check your email to confirm the new account, then sign in.");
             setMode("sign-in");
@@ -157,8 +200,29 @@ export default function Access() {
     }
     setIsRecovering(true);
     try {
-      const res = await confirmUserMutation.mutateAsync({ email: email.trim() });
-      toast.success(res.message || "Account activated! You can now sign in with your password.");
+      const res = await confirmUserMutation.mutateAsync({
+        email: email.trim(),
+        password: password.length >= 6 ? password : undefined,
+      });
+      toast.success(res.message || "Account activated! Signing you in...");
+      if (password.length >= 6) {
+        const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (!signInError) {
+          let refreshed = await refresh();
+          if (!refreshed.data) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            refreshed = await refresh();
+          }
+          if (refreshed.data) {
+            utils.auth.me.setData(undefined, refreshed.data);
+            setLocation("/dashboard");
+            return;
+          }
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Could not activate account.";
       toast.error(msg);
@@ -170,23 +234,21 @@ export default function Access() {
   const recoverPassword = async () => {
     setTouched((current) => ({ ...current, email: true }));
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
-      toast.error("Enter your email address first so Supabase can send the recovery link.");
+      toast.error("Enter your email address first.");
       return;
     }
-    setIsRecovering(true);
+    if (password.length >= 6) {
+      await syncPasswordAndSignIn();
+      return;
+    }
+    setCredentialMismatch(true);
+    toast.info("Please enter your desired new password (at least 6 characters) in the password field, then click 'Sync entered password & sign in now'.");
     try {
-      const { error } = await supabaseAuth.auth.resetPasswordForEmail(email.trim(), {
+      await supabaseAuth.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/access?mode=reset`,
       });
-      if (error) throw error;
-      toast.success("Password recovery email sent. Check your inbox for the reset link.");
-    } catch (error) {
-      const message = error instanceof TypeError && error.message.toLowerCase().includes("fetch")
-        ? "Unable to reach Supabase Auth. Check your connection and try again."
-        : error instanceof Error ? error.message : "Password recovery could not be completed.";
-      toast.error(message);
-    } finally {
-      setIsRecovering(false);
+    } catch {
+      // background reset fallback
     }
   };
 
@@ -340,6 +402,28 @@ export default function Access() {
                 {isSubmitting ? "Signing in…" : registration ? "Create End-User account" : "Sign in securely"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
+              {!registration && credentialMismatch && (
+                <div className="mt-4 rounded-[4px] border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">Password mismatch or login issues?</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                        If you previously registered or your password isn&apos;t matching what was saved, you can set your account password directly to what you typed above and sign in now.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={syncPasswordAndSignIn}
+                    disabled={isSubmitting || isRecovering}
+                    className="mt-3 h-8 w-full rounded-[4px] bg-amber-700 text-xs font-semibold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-700 focus:outline-none"
+                  >
+                    {(isSubmitting || isRecovering) ? <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
+                    Sync entered password & sign in now
+                  </Button>
+                </div>
+              )}
               {!registration && (
                 <div className="mt-4 flex flex-col gap-2">
                   <button

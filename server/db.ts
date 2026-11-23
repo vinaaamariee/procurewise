@@ -440,6 +440,14 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1);
+  return result[0];
+}
+
 async function requireDb() {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable. Configure the database before processing procurement records.");

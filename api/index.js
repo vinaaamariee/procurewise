@@ -2205,6 +2205,13 @@ async function upsertSupabaseAuthUser(input) {
     throw err;
   }
 }
+async function getUserByEmail(email) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = await db.select().from(users).where(sql`lower(trim(${users.email})) = ${normalizedEmail}`).limit(1);
+  return result[0];
+}
 async function requireDb() {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable. Configure the database before processing procurement records.");
@@ -6042,42 +6049,43 @@ async function registerEndUser(input) {
     (u) => u.email?.toLowerCase() === normalizedEmail
   );
   if (existingUser) {
-    if (!existingUser.email_confirmed_at) {
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.id,
-        {
-          email_confirm: true,
-          password: input.password,
-          user_metadata: {
-            full_name: input.fullName.trim(),
-            office_name: input.officeName?.trim() || null,
-            role: "end_user"
-          }
-        }
-      );
-      if (updateError) {
-        throw new TRPCError3({
-          code: "INTERNAL_SERVER_ERROR",
-          message: updateError.message
-        });
-      }
-      await upsertSupabaseAuthUser({
-        openId: existingUser.id,
-        email: normalizedEmail,
-        name: input.fullName.trim(),
-        officeName: input.officeName?.trim() || null
-      });
-      return {
-        success: true,
-        autoConfirmed: true,
-        message: "Your account has been confirmed and activated. You can now sign in."
-      };
-    } else {
+    const existingDbUser = await getUserByEmail(normalizedEmail);
+    if (existingDbUser && existingDbUser.role && existingDbUser.role !== "end_user") {
       throw new TRPCError3({
-        code: "CONFLICT",
-        message: "An account with this email is already registered and verified. Please sign in with your password."
+        code: "FORBIDDEN",
+        message: "An account with this email exists with an elevated procurement role. Elevated roles cannot be modified via End-User registration."
       });
     }
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      existingUser.id,
+      {
+        email_confirm: true,
+        password: input.password,
+        user_metadata: {
+          ...existingUser.user_metadata || {},
+          full_name: input.fullName.trim(),
+          office_name: input.officeName?.trim() || null,
+          role: "end_user"
+        }
+      }
+    );
+    if (updateError) {
+      throw new TRPCError3({
+        code: "INTERNAL_SERVER_ERROR",
+        message: updateError.message
+      });
+    }
+    await upsertSupabaseAuthUser({
+      openId: existingUser.id,
+      email: normalizedEmail,
+      name: input.fullName.trim(),
+      officeName: input.officeName?.trim() || null
+    });
+    return {
+      success: true,
+      autoConfirmed: true,
+      message: "Your End-User account has been activated and updated. You can now sign in."
+    };
   }
   const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email: normalizedEmail,
@@ -6113,7 +6121,7 @@ async function registerEndUser(input) {
     message: "End-User account created and verified successfully."
   };
 }
-async function confirmUnconfirmedUser(email) {
+async function confirmUnconfirmedUser(email, password) {
   const normalizedEmail = email.trim().toLowerCase();
   const supabaseAdmin = getSupabaseAdminClient();
   if (!supabaseAdmin) {
@@ -6138,33 +6146,101 @@ async function confirmUnconfirmedUser(email) {
       message: "No registered account found with that email address. Please create an account first."
     });
   }
-  if (!targetUser.email_confirmed_at) {
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      targetUser.id,
-      { email_confirm: true }
-    );
-    if (updateError) {
+  const updatePayload = {
+    email_confirm: true
+  };
+  if (password && password.length >= 6) {
+    const existingDbUser = await getUserByEmail(normalizedEmail);
+    if (existingDbUser && existingDbUser.role && existingDbUser.role !== "end_user") {
       throw new TRPCError3({
-        code: "INTERNAL_SERVER_ERROR",
-        message: updateError.message
+        code: "FORBIDDEN",
+        message: "Password updates for elevated roles must be performed by an administrator."
       });
     }
-    await upsertSupabaseAuthUser({
-      openId: targetUser.id,
-      email: normalizedEmail,
-      name: targetUser.user_metadata?.full_name || targetUser.user_metadata?.name || null,
-      officeName: targetUser.user_metadata?.office_name || null
-    });
-    return {
-      success: true,
-      confirmed: true,
-      message: "Account email confirmed successfully! You can now sign in."
-    };
+    updatePayload.password = password;
   }
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    targetUser.id,
+    updatePayload
+  );
+  if (updateError) {
+    throw new TRPCError3({
+      code: "INTERNAL_SERVER_ERROR",
+      message: updateError.message
+    });
+  }
+  await upsertSupabaseAuthUser({
+    openId: targetUser.id,
+    email: normalizedEmail,
+    name: targetUser.user_metadata?.full_name || targetUser.user_metadata?.name || null,
+    officeName: targetUser.user_metadata?.office_name || null
+  });
   return {
     success: true,
-    confirmed: false,
-    message: "Account is already confirmed. Please sign in with your password."
+    confirmed: true,
+    message: password && password.length >= 6 ? "Account activated and password updated successfully! You can now sign in." : "Account email confirmed successfully! You can now sign in."
+  };
+}
+async function resetPasswordDirect(email, newPassword) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!newPassword || newPassword.length < 6) {
+    throw new TRPCError3({
+      code: "BAD_REQUEST",
+      message: "Password must be at least 6 characters long."
+    });
+  }
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new TRPCError3({
+      code: "PRECONDITION_FAILED",
+      message: "Server admin configuration (SUPABASE_SERVICE_ROLE_KEY) is not set on this environment."
+    });
+  }
+  const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1e3 });
+  if (listError) {
+    throw new TRPCError3({
+      code: "INTERNAL_SERVER_ERROR",
+      message: listError.message
+    });
+  }
+  const targetUser = listData?.users.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+  if (!targetUser) {
+    throw new TRPCError3({
+      code: "NOT_FOUND",
+      message: "No registered account found with this email. Please check your email or create an End-User account."
+    });
+  }
+  const existingDbUser = await getUserByEmail(normalizedEmail);
+  if (existingDbUser && existingDbUser.role && existingDbUser.role !== "end_user") {
+    throw new TRPCError3({
+      code: "FORBIDDEN",
+      message: "Elevated procurement accounts (PO, Staff, BAC, HoPE, Budget, Admin) cannot reset passwords through public End-User recovery. Please contact your system administrator."
+    });
+  }
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    targetUser.id,
+    {
+      password: newPassword,
+      email_confirm: true
+    }
+  );
+  if (updateError) {
+    throw new TRPCError3({
+      code: "INTERNAL_SERVER_ERROR",
+      message: updateError.message
+    });
+  }
+  await upsertSupabaseAuthUser({
+    openId: targetUser.id,
+    email: normalizedEmail,
+    name: targetUser.user_metadata?.full_name || targetUser.user_metadata?.name || null,
+    officeName: targetUser.user_metadata?.office_name || null
+  });
+  return {
+    success: true,
+    message: "Password reset and account confirmed successfully! You can now sign in."
   };
 }
 
@@ -7434,7 +7510,8 @@ var appRouter = router({
         officeName: z2.string().optional()
       })
     ).mutation(async ({ input }) => registerEndUser(input)),
-    confirmUnconfirmedUser: publicProcedure.input(z2.object({ email: z2.string().email() })).mutation(async ({ input }) => confirmUnconfirmedUser(input.email)),
+    confirmUnconfirmedUser: publicProcedure.input(z2.object({ email: z2.string().email(), password: z2.string().min(6).optional() })).mutation(async ({ input }) => confirmUnconfirmedUser(input.email, input.password)),
+    resetPasswordDirect: publicProcedure.input(z2.object({ email: z2.string().email(), password: z2.string().min(6) })).mutation(async ({ input }) => resetPasswordDirect(input.email, input.password)),
     updateMyOffice: protectedProcedure.input(z2.object({ officeName: z2.string().max(180) })).mutation(({ ctx, input }) => updateMyOffice(input.officeName, ctx.user))
   }),
   procurement: router({
