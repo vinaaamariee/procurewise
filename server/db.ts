@@ -11,7 +11,7 @@ import { storagePut } from "./storage";
 import { BEST_VALUE_CRITERIA, BEST_VALUE_POLICY_CODE, validateBestValueCriteria, type BestValueCriterionWeight } from "../shared/bestValuePolicy";
 import { deriveSupplierEvaluationSummary, validateSupplierEvaluationResponses, type SupplierEvaluationAudience } from "../shared/supplierEvaluationForm";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
-import { sendPrSubmissionNotifications, validatePpmpFileUpload, sendWorkflowNotificationEmail } from "./services/emailService";
+import { sendPrSubmissionNotifications, validatePpmpFileUpload, sendWorkflowNotificationEmail, registerEmailSettingsResolver } from "./services/emailService";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -478,6 +478,98 @@ export async function ensureInstitutionalOfficesSeeded() {
     console.error("Failed to seed institutional offices:", err);
   }
 }
+
+export async function getSystemEmailSettings() {
+  const db = await getDb();
+  const dbConfig: Record<string, string> = {};
+  if (db) {
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS procurewise.system_email_config (
+          key text PRIMARY KEY,
+          value text NOT NULL
+        )
+      `);
+      const rows = await db.execute(sql`SELECT key, value FROM procurewise.system_email_config`);
+      for (const row of rows.rows as Array<{ key: string; value: string }>) {
+        dbConfig[row.key] = row.value;
+      }
+    } catch {
+      // Table creation or read failed gracefully
+    }
+  }
+
+  const resendApiKey = dbConfig.resend_api_key || process.env.RESEND_API_KEY?.trim() || "";
+  const brevoApiKey = dbConfig.brevo_api_key || process.env.BREVO_API_KEY?.trim() || "";
+  const smtpHost = dbConfig.smtp_host || process.env.SMTP_HOST?.trim() || "";
+  const smtpPort = Number(dbConfig.smtp_port || process.env.SMTP_PORT || "465");
+  const smtpUser = dbConfig.smtp_user || process.env.SMTP_USER?.trim() || "";
+  const smtpPass = dbConfig.smtp_pass || process.env.SMTP_PASS?.trim() || "";
+  const smtpFrom = dbConfig.smtp_from || process.env.SMTP_FROM?.trim() || (smtpUser ? `Batanes State College ProcureWise <${smtpUser}>` : "Batanes State College ProcureWise <no-reply@bsc.edu.ph>");
+
+  const isConfigured = Boolean(resendApiKey || brevoApiKey || (smtpHost && smtpUser && smtpPass));
+  let provider = "none";
+  if (resendApiKey) provider = "Resend API";
+  else if (brevoApiKey) provider = "Brevo API";
+  else if (smtpHost) provider = `SMTP (${smtpHost}:${smtpPort})`;
+
+  return {
+    resendApiKey,
+    brevoApiKey,
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    smtpFrom,
+    isConfigured,
+    provider,
+  };
+}
+
+export async function updateSystemEmailSettings(input: {
+  resendApiKey?: string;
+  brevoApiKey?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFrom?: string;
+}) {
+  const db = await requireDb();
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS procurewise.system_email_config (
+      key text PRIMARY KEY,
+      value text NOT NULL
+    )
+  `);
+
+  const pairs: [string, string | undefined][] = [
+    ["resend_api_key", input.resendApiKey],
+    ["brevo_api_key", input.brevoApiKey],
+    ["smtp_host", input.smtpHost],
+    ["smtp_port", input.smtpPort !== undefined ? String(input.smtpPort) : undefined],
+    ["smtp_user", input.smtpUser],
+    ["smtp_pass", input.smtpPass],
+    ["smtp_from", input.smtpFrom],
+  ];
+
+  for (const [k, v] of pairs) {
+    if (v !== undefined) {
+      if (v.trim() === "") {
+        await db.execute(sql`DELETE FROM procurewise.system_email_config WHERE key = ${k}`);
+      } else {
+        await db.execute(sql`
+          INSERT INTO procurewise.system_email_config (key, value)
+          VALUES (${k}, ${v.trim()})
+          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        `);
+      }
+    }
+  }
+}
+
+// Connect the database email settings resolver to the email service
+registerEmailSettingsResolver(getSystemEmailSettings);
 
 export async function getWorkspaceSetup() {
   const db = await requireDb();
@@ -1970,15 +2062,20 @@ export async function createWorkflowNotification(input: { recipientUserId: numbe
       .limit(1);
 
     if (recipient?.email) {
-      void sendWorkflowNotificationEmail({
-        recipientEmail: recipient.email,
-        recipientName: recipient.name,
-        title: input.title,
-        body: input.body,
-        kind: input.kind,
-        entityType: input.entityType,
-        entityId: input.entityId,
-      });
+      await Promise.race([
+        sendWorkflowNotificationEmail({
+          recipientEmail: recipient.email,
+          recipientName: recipient.name,
+          title: input.title,
+          body: input.body,
+          kind: input.kind,
+          entityType: input.entityType,
+          entityId: input.entityId,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Email dispatch timed out after 6 seconds")), 6000)
+        ),
+      ]);
     }
   } catch (err) {
     console.warn("[ProcureWise Notification Warning] Failed to dispatch workflow email:", err);
@@ -2527,8 +2624,31 @@ export async function returnPurchaseRequestForRevision(
     },
   });
 
-  await notifyRoles(["end_user"], {
-    kind: "action_required",
+  // 1. Specifically notify the requester who created this PR
+  if (pr.requestedById) {
+    await createWorkflowNotification({
+      recipientUserId: pr.requestedById,
+      kind: "action_required",
+      title: `Purchase Request ${pr.prNumber} Returned for Revision`,
+      body: input.remarks || input.reason || "Your Purchase Request was returned for revision.",
+      entityType: "purchase_request",
+      entityId: pr.id,
+    });
+
+    await db.insert(workflowCorrections).values({
+      entityType: "purchase_request",
+      entityId: pr.id,
+      requestedById: user.id,
+      assignedToId: pr.requestedById,
+      reason: input.reason.trim(),
+      status: "open",
+      createdAt: new Date(),
+    });
+  }
+
+  // 2. Also broadcast role notification to active procurement officers and staff
+  await notifyRoles(["procurement_staff"], {
+    kind: "status_change",
     title: `Purchase Request ${pr.prNumber} Returned for Revision`,
     body: input.remarks || input.reason,
     entityType: "purchase_request",

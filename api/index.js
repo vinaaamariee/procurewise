@@ -1743,17 +1743,49 @@ function buildProcurementOfficerAlertEmailText(payload) {
     `Open Verification Workbench (Step 5.1): ${verificationUrl}`
   ].join("\n");
 }
+var _settingsResolver = null;
+function registerEmailSettingsResolver(resolver) {
+  _settingsResolver = resolver;
+}
+async function getActiveEmailConfig() {
+  if (_settingsResolver) {
+    try {
+      return await _settingsResolver();
+    } catch {
+    }
+  }
+  const resendApiKey = process.env.RESEND_API_KEY?.trim() || "";
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || "";
+  const smtpHost = process.env.SMTP_HOST?.trim() || "";
+  const smtpPort = Number(process.env.SMTP_PORT || "465");
+  const smtpUser = process.env.SMTP_USER?.trim() || "";
+  const smtpPass = process.env.SMTP_PASS?.trim() || "";
+  const smtpFrom = process.env.SMTP_FROM?.trim() || (smtpUser ? `Batanes State College ProcureWise <${smtpUser}>` : "Batanes State College ProcureWise <no-reply@bsc.edu.ph>");
+  const isConfigured = Boolean(resendApiKey || brevoApiKey || smtpHost && smtpUser && smtpPass);
+  return {
+    resendApiKey,
+    brevoApiKey,
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    smtpFrom,
+    isConfigured,
+    provider: resendApiKey ? "Resend API" : brevoApiKey ? "Brevo API" : smtpHost ? `SMTP (${smtpHost}:${smtpPort})` : "none"
+  };
+}
 async function dispatchSingleEmail(message) {
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  if (resendApiKey) {
+  const config = await getActiveEmailConfig();
+  if (config.resendApiKey) {
+    const fromAddr = config.smtpFrom || message.from;
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${resendApiKey}`,
+        Authorization: `Bearer ${config.resendApiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        from: message.from,
+        from: fromAddr,
         to: [message.to],
         subject: message.subject,
         html: message.html,
@@ -1762,20 +1794,42 @@ async function dispatchSingleEmail(message) {
     });
     if (!response.ok) {
       const errBody = await response.text().catch(() => "");
-      throw new Error(`Resend API responded with HTTP ${response.status}: ${errBody}`);
+      throw new Error(`Resend API HTTP ${response.status}: ${errBody}`);
     }
     return "resend_api";
   }
-  const smtpHost = process.env.SMTP_HOST?.trim();
-  const smtpPort = Number(process.env.SMTP_PORT || "587");
-  if (smtpHost) {
+  if (config.brevoApiKey) {
+    const fromAddr = config.smtpFrom || message.from;
+    const fromEmail = fromAddr.match(/<([^>]+)>/)?.[1] || fromAddr;
+    const fromName = fromAddr.match(/^"?([^"<]+)"?\s*</)?.[1] || "ProcureWise";
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": config.brevoApiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: message.to }],
+        subject: message.subject,
+        htmlContent: message.html,
+        textContent: message.text
+      })
+    });
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      throw new Error(`Brevo API HTTP ${response.status}: ${errBody}`);
+    }
+    return "brevo_api";
+  }
+  if (config.smtpHost && config.smtpUser && config.smtpPass) {
     await sendRawSmtpEmail({
-      host: smtpHost,
-      port: smtpPort,
-      secure: process.env.SMTP_SECURE === "true" || smtpPort === 465,
-      user: process.env.SMTP_USER?.trim(),
-      pass: process.env.SMTP_PASS?.trim(),
-      from: message.from,
+      host: config.smtpHost,
+      port: config.smtpPort || 465,
+      secure: config.smtpPort === 465,
+      user: config.smtpUser,
+      pass: config.smtpPass,
+      from: config.smtpFrom || message.from,
       to: message.to,
       subject: message.subject,
       html: message.html,
@@ -1784,14 +1838,15 @@ async function dispatchSingleEmail(message) {
     return "smtp";
   }
   console.info(
-    `[ProcureWise Email Dispatch] To: ${message.to} | Subject: ${message.subject}`
+    `[ProcureWise Email Dispatch (Unconfigured)] To: ${message.to} | Subject: ${message.subject}`
   );
   return "development_log";
 }
 async function sendRawSmtpEmail(config) {
   return new Promise((resolve, reject) => {
-    const socket = config.secure ? tls.connect({ host: config.host, port: config.port, rejectUnauthorized: false }) : net.createConnection({ host: config.host, port: config.port });
-    socket.setTimeout(8e3);
+    const isDirectSsl = config.secure || config.port === 465;
+    const socket = isDirectSsl ? tls.connect({ host: config.host, port: config.port, rejectUnauthorized: false }) : net.createConnection({ host: config.host, port: config.port });
+    socket.setTimeout(1e4);
     const boundary = `----=_ProcureWise_${Date.now().toString(16)}`;
     const mimeBody = [
       `From: ${config.from}`,
@@ -1816,35 +1871,72 @@ async function sendRawSmtpEmail(config) {
       `.`,
       `QUIT`
     ].join("\r\n");
-    let step = 0;
-    socket.on("data", () => {
+    let stage = "init";
+    let buffer = "";
+    function onLines(chunk) {
+      buffer += chunk;
+      const lines = buffer.split("\r\n");
+      if (lines.length < 2) return;
+      const completeLines = lines.slice(0, -1);
+      const lastLine = completeLines[completeLines.length - 1];
+      const match = lastLine.match(/^(\d{3})(?:([ -])(.*))?$/);
+      if (!match) return;
+      const code = parseInt(match[1], 10);
+      const isContinuation = match[2] === "-";
+      if (isContinuation) {
+        return;
+      }
+      buffer = lines[lines.length - 1];
+      if (code >= 400) {
+        socket.destroy();
+        reject(new Error(`SMTP server error [${code}]: ${match[3] || lastLine}`));
+        return;
+      }
       try {
-        if (step === 0) {
-          step = 1;
+        if (stage === "init") {
+          stage = "ehlo";
           socket.write(`EHLO procurewise.bsc.edu.ph\r
 `);
-        } else if (step === 1 && config.user && config.pass) {
-          step = 2;
-          const authToken = Buffer.from(`\0${config.user}\0${config.pass}`).toString("base64");
-          socket.write(`AUTH PLAIN ${authToken}\r
+        } else if (stage === "ehlo") {
+          if (config.user && config.pass) {
+            stage = "auth";
+            socket.write(`AUTH LOGIN\r
 `);
-        } else if (step <= 2) {
-          step = 3;
+          } else {
+            stage = "from";
+            const fromAddr = config.from.match(/<([^>]+)>/)?.[1] || config.from;
+            socket.write(`MAIL FROM:<${fromAddr}>\r
+`);
+          }
+        } else if (stage === "auth") {
+          stage = "user";
+          const b64User = Buffer.from(config.user || "").toString("base64");
+          socket.write(`${b64User}\r
+`);
+        } else if (stage === "user") {
+          stage = "pass";
+          const b64Pass = Buffer.from(config.pass || "").toString("base64");
+          socket.write(`${b64Pass}\r
+`);
+        } else if (stage === "pass") {
+          stage = "from";
           const fromAddr = config.from.match(/<([^>]+)>/)?.[1] || config.from;
           socket.write(`MAIL FROM:<${fromAddr}>\r
 `);
-        } else if (step === 3) {
-          step = 4;
+        } else if (stage === "from") {
+          stage = "rcpt";
           socket.write(`RCPT TO:<${config.to}>\r
 `);
-        } else if (step === 4) {
-          step = 5;
+        } else if (stage === "rcpt") {
+          stage = "data";
           socket.write(`DATA\r
 `);
-        } else if (step === 5) {
-          step = 6;
+        } else if (stage === "data") {
+          stage = "body";
           socket.write(`${mimeBody}\r
 `);
+        } else if (stage === "body") {
+          stage = "done";
           socket.end();
           resolve();
         }
@@ -1852,16 +1944,77 @@ async function sendRawSmtpEmail(config) {
         socket.destroy();
         reject(err);
       }
-    });
+    }
+    socket.on("data", (data) => onLines(data.toString("utf8")));
     socket.on("timeout", () => {
       socket.destroy();
-      reject(new Error("SMTP connection timed out."));
+      reject(new Error("SMTP connection timed out after 10 seconds."));
     });
     socket.on("error", (err) => {
       socket.destroy();
       reject(err);
     });
   });
+}
+async function sendTestWorkflowEmail(recipientEmail) {
+  const normalizedEmail = recipientEmail.trim();
+  if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+    throw new Error("Invalid email address provided.");
+  }
+  const config = await getActiveEmailConfig();
+  if (!config.isConfigured) {
+    return {
+      success: false,
+      transport: "none",
+      message: "No outbound email provider is configured yet. Enter a Resend API Key or Gmail App Password in Settings to enable delivery to your Gmail."
+    };
+  }
+  const subject = `[ProcureWise Test Alert] Personal notification system check`;
+  const html = `<!DOCTYPE html>
+<html>
+<body style="font-family: 'Segoe UI', Tahoma, sans-serif; padding: 24px; color: #1e293b; background: #f8fafc;">
+  <div style="max-width: 560px; margin: 0 auto; background: white; border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden;">
+    <div style="background: #881337; color: white; padding: 20px 24px;">
+      <h2 style="margin: 0; font-size: 20px;">ProcureWise Email Test</h2>
+      <p style="margin: 4px 0 0 0; color: #fecdd3; font-size: 13px;">Batanes State College Procurement Management</p>
+    </div>
+    <div style="padding: 24px;">
+      <p style="font-size: 16px;">Hello,</p>
+      <p style="font-size: 15px; line-height: 1.5;">This confirms that your personal account (<strong>${escapeHtml(normalizedEmail)}</strong>) is connected to ProcureWise. You will receive system notifications whenever your Purchase Requests are returned, advanced, or approved.</p>
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 6px; padding: 12px 16px; margin: 20px 0; font-size: 14px; color: #166534;">
+        Active Transport: <strong>${config.provider}</strong> \xB7 Sent at ${(/* @__PURE__ */ new Date()).toLocaleString("en-PH")}
+      </div>
+      <p style="font-size: 13px; color: #64748b;">If you see this email, personal Gmail notifications are 100% active and working.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+  const text2 = `[ProcureWise Test Alert] Personal notification system check
+
+Hello,
+This confirms that your personal account (${normalizedEmail}) is connected to ProcureWise. Provider: ${config.provider}`;
+  try {
+    const transport = await dispatchSingleEmail({
+      from: config.smtpFrom || "Batanes State College ProcureWise <no-reply@bsc.edu.ph>",
+      to: normalizedEmail,
+      subject,
+      html,
+      text: text2
+    });
+    return {
+      success: true,
+      transport,
+      message: `Test email successfully dispatched via ${transport} to ${normalizedEmail}! Please check your Inbox (and Spam/Junk folder).`
+    };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      transport: "failed",
+      message: `Email dispatch failed: ${errorMsg}`,
+      error: errorMsg
+    };
+  }
 }
 async function sendPrSubmissionNotifications(payload) {
   const fromAddress = process.env.SMTP_FROM || "Batanes State College ProcureWise <no-reply@bsc.edu.ph>";
@@ -2330,6 +2483,80 @@ async function ensureInstitutionalOfficesSeeded() {
     console.error("Failed to seed institutional offices:", err);
   }
 }
+async function getSystemEmailSettings() {
+  const db = await getDb();
+  const dbConfig = {};
+  if (db) {
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS procurewise.system_email_config (
+          key text PRIMARY KEY,
+          value text NOT NULL
+        )
+      `);
+      const rows = await db.execute(sql`SELECT key, value FROM procurewise.system_email_config`);
+      for (const row of rows.rows) {
+        dbConfig[row.key] = row.value;
+      }
+    } catch {
+    }
+  }
+  const resendApiKey = dbConfig.resend_api_key || process.env.RESEND_API_KEY?.trim() || "";
+  const brevoApiKey = dbConfig.brevo_api_key || process.env.BREVO_API_KEY?.trim() || "";
+  const smtpHost = dbConfig.smtp_host || process.env.SMTP_HOST?.trim() || "";
+  const smtpPort = Number(dbConfig.smtp_port || process.env.SMTP_PORT || "465");
+  const smtpUser = dbConfig.smtp_user || process.env.SMTP_USER?.trim() || "";
+  const smtpPass = dbConfig.smtp_pass || process.env.SMTP_PASS?.trim() || "";
+  const smtpFrom = dbConfig.smtp_from || process.env.SMTP_FROM?.trim() || (smtpUser ? `Batanes State College ProcureWise <${smtpUser}>` : "Batanes State College ProcureWise <no-reply@bsc.edu.ph>");
+  const isConfigured = Boolean(resendApiKey || brevoApiKey || smtpHost && smtpUser && smtpPass);
+  let provider = "none";
+  if (resendApiKey) provider = "Resend API";
+  else if (brevoApiKey) provider = "Brevo API";
+  else if (smtpHost) provider = `SMTP (${smtpHost}:${smtpPort})`;
+  return {
+    resendApiKey,
+    brevoApiKey,
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    smtpFrom,
+    isConfigured,
+    provider
+  };
+}
+async function updateSystemEmailSettings(input) {
+  const db = await requireDb();
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS procurewise.system_email_config (
+      key text PRIMARY KEY,
+      value text NOT NULL
+    )
+  `);
+  const pairs = [
+    ["resend_api_key", input.resendApiKey],
+    ["brevo_api_key", input.brevoApiKey],
+    ["smtp_host", input.smtpHost],
+    ["smtp_port", input.smtpPort !== void 0 ? String(input.smtpPort) : void 0],
+    ["smtp_user", input.smtpUser],
+    ["smtp_pass", input.smtpPass],
+    ["smtp_from", input.smtpFrom]
+  ];
+  for (const [k, v] of pairs) {
+    if (v !== void 0) {
+      if (v.trim() === "") {
+        await db.execute(sql`DELETE FROM procurewise.system_email_config WHERE key = ${k}`);
+      } else {
+        await db.execute(sql`
+          INSERT INTO procurewise.system_email_config (key, value)
+          VALUES (${k}, ${v.trim()})
+          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        `);
+      }
+    }
+  }
+}
+registerEmailSettingsResolver(getSystemEmailSettings);
 async function getWorkspaceSetup() {
   const db = await requireDb();
   try {
@@ -3536,15 +3763,20 @@ async function createWorkflowNotification(input) {
   try {
     const [recipient] = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.id, input.recipientUserId)).limit(1);
     if (recipient?.email) {
-      void sendWorkflowNotificationEmail({
-        recipientEmail: recipient.email,
-        recipientName: recipient.name,
-        title: input.title,
-        body: input.body,
-        kind: input.kind,
-        entityType: input.entityType,
-        entityId: input.entityId
-      });
+      await Promise.race([
+        sendWorkflowNotificationEmail({
+          recipientEmail: recipient.email,
+          recipientName: recipient.name,
+          title: input.title,
+          body: input.body,
+          kind: input.kind,
+          entityType: input.entityType,
+          entityId: input.entityId
+        }),
+        new Promise(
+          (_, reject) => setTimeout(() => reject(new Error("Email dispatch timed out after 6 seconds")), 6e3)
+        )
+      ]);
     }
   } catch (err) {
     console.warn("[ProcureWise Notification Warning] Failed to dispatch workflow email:", err);
@@ -4007,8 +4239,27 @@ async function returnPurchaseRequestForRevision(input, user, options) {
       section511NonCompliant: true
     }
   });
-  await notifyRoles(["end_user"], {
-    kind: "action_required",
+  if (pr.requestedById) {
+    await createWorkflowNotification({
+      recipientUserId: pr.requestedById,
+      kind: "action_required",
+      title: `Purchase Request ${pr.prNumber} Returned for Revision`,
+      body: input.remarks || input.reason || "Your Purchase Request was returned for revision.",
+      entityType: "purchase_request",
+      entityId: pr.id
+    });
+    await db.insert(workflowCorrections).values({
+      entityType: "purchase_request",
+      entityId: pr.id,
+      requestedById: user.id,
+      assignedToId: pr.requestedById,
+      reason: input.reason.trim(),
+      status: "open",
+      createdAt: /* @__PURE__ */ new Date()
+    });
+  }
+  await notifyRoles(["procurement_staff"], {
+    kind: "status_change",
     title: `Purchase Request ${pr.prNumber} Returned for Revision`,
     body: input.remarks || input.reason,
     entityType: "purchase_request",
@@ -7688,6 +7939,37 @@ var appRouter = router({
       updateUserOffice: protectedProcedure.input(z2.object({ userId: z2.number().int().positive(), officeName: z2.string().max(180) })).mutation(({ ctx, input }) => {
         assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
         return updateUserOffice(input.userId, input.officeName, ctx.user);
+      }),
+      emailStatus: protectedProcedure.query(async () => {
+        const config = await getSystemEmailSettings();
+        return {
+          isConfigured: config.isConfigured,
+          provider: config.provider,
+          smtpHost: config.smtpHost,
+          smtpPort: config.smtpPort,
+          smtpUser: config.smtpUser ? `${config.smtpUser.slice(0, 3)}***@***` : "",
+          smtpFrom: config.smtpFrom,
+          hasResendKey: Boolean(config.resendApiKey),
+          hasBrevoKey: Boolean(config.brevoApiKey)
+        };
+      }),
+      saveEmailSettings: protectedProcedure.input(
+        z2.object({
+          resendApiKey: z2.string().optional(),
+          brevoApiKey: z2.string().optional(),
+          smtpHost: z2.string().optional(),
+          smtpPort: z2.number().int().optional(),
+          smtpUser: z2.string().optional(),
+          smtpPass: z2.string().optional(),
+          smtpFrom: z2.string().optional()
+        })
+      ).mutation(async ({ ctx, input }) => {
+        assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
+        await updateSystemEmailSettings(input);
+        return { success: true, message: "Outbound email configuration saved." };
+      }),
+      sendTestEmail: protectedProcedure.input(z2.object({ recipientEmail: z2.string().email() })).mutation(async ({ input }) => {
+        return sendTestWorkflowEmail(input.recipientEmail);
       })
     }),
     bestValuePolicy: router({

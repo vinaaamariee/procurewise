@@ -3,9 +3,10 @@ import { z } from "zod";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { acknowledgeBacTransmittal, addPreCanvassQuote, addSupplierQuotation, advancePurchaseRequest, approveQuotationAbstract, archiveTestRecordPackage, cleanupArchivedTestRecordPackage, createAbstractOfCanvass, createAppPpmpEntry, createBacTransmittal, createBudgetAllotment, createLetterOfNotice, createMcdmRecommendation, createObjectOfExpenditure, createOffice, createPreCanvass, createProcurementCatalogItem, createProcurementDocument, createPurchaseOrder, createPurchaseOrderFromPreCanvass, createPurchaseRequest, createPurchaseRequestSignatory, createQuotationAbstract, createRfqFromPreCanvass, createRfqFromPurchaseRequest, createSupplier, createSupplierEvaluation, createSupplierEvaluationForm, createSupplierTag, decideAbstractOfCanvass, deletePreCanvassQuote, directLetterOfApprovalToPo, endorseBacResolution, forwardRfqToBacForAoq, getBestValuePolicy, getBestValuePolicyHistory, getBudgetUtilization, getProcurementCatalogItem, getProcurementDashboard, getProcurementForecast, getPublicPurchaseRequestTracking, getPurchaseRequestDetail, getSupplierTagData, getWorkspaceSetup, importPreCanvassQuotesToRfq, listAdminTestRecordPackages, listBacTransmittals, listDeliveryMonitoring, listEligibleSupplierEvaluationOrders, listLettersOfNotice, listOfficerPrVerifications, listOfficerPurchaseOrders, listPendingSupplierEvaluationApprovals, listPhilgepsPostings, listProcurementCatalogCodeFamilies, listProcurementCatalogFavorites, listProcurementCatalogItems, listProcurementCatalogSavedItems, listPurchaseRequestSignatories, listPurchaseRequests, listRfqDistributions, listSupplierEvaluations, listSupplierEvaluationsForEndUser, listUserProfiles, listWorkflowNotifications, logPmr, markWorkflowNotificationRead, notifyRoles, recordDelivery, recordHistoricalPrice, recordInspectionMilestone, recordPhilgepsPosting, recordPreCanvassResubmission, recordPurchaseRequestToPmr, recordRfqQuotationOpening, releasePurchaseOrder, requestAbstractCorrection, requestPreCanvassCorrection, requestPurchaseOrderCorrection, replaceProcurementCatalogSavedItems, resubmitAbstract, resubmitPurchaseOrder, returnPurchaseRequestForRevision, saveBestValuePolicy, serveLetterOfNotice, setProcurementCatalogFavorite, clearProcurementCatalogSavedItems, setSupplierTags, signPurchaseOrderContract, signSupplierEvaluation, submitPreCanvass, transmitRfqToBac, updateProcurementSettings, updateRfqDistribution, updateSupplierEvaluation, updateUserProcurementRole, updateUserOffice, updateMyOffice, verifyPurchaseRequestPackage } from "./db";
-import { activateFormTemplate, assignPurchaseRequestOfficer, assignRfqNumber, getActiveFormTemplate, getEndUserPerformanceAnalytics, getHistoricalPriceAnalytics, getHistoricalPmrSummary, getPmrStatus, getPurchaseRequestHistory, listAuditTrails, listFormTemplates, listHistoricalPmrRecords, rejectPreCanvass, rejectPurchaseRequest, rejectRfq, restoreFormTemplateVersion, resubmitPurchaseRequest, returnPurchaseRequestForCorrection, saveFormTemplateDraft } from "./db";
+import { activateFormTemplate, assignPurchaseRequestOfficer, assignRfqNumber, getActiveFormTemplate, getEndUserPerformanceAnalytics, getHistoricalPriceAnalytics, getHistoricalPmrSummary, getPmrStatus, getPurchaseRequestHistory, getSystemEmailSettings, listAuditTrails, listFormTemplates, listHistoricalPmrRecords, rejectPreCanvass, rejectPurchaseRequest, rejectRfq, restoreFormTemplateVersion, resubmitPurchaseRequest, returnPurchaseRequestForCorrection, saveFormTemplateDraft, updateSystemEmailSettings } from "./db";
 import { getSupabaseRealtimePublicConfig, publishProcurementRealtimeUpdate } from "./supabaseRealtime";
 import { confirmUnconfirmedUser, registerEndUser, resetPasswordDirect } from "./supabaseAuth";
+import { sendTestWorkflowEmail } from "./services/emailService";
 import { getNextPrStatus, normalizeProcurementRole, roleCanAct, type ProcurementRole, type PersistedUserRole } from "../shared/procurementRules";
 import { BEST_VALUE_CRITERION_KEYS } from "../shared/bestValuePolicy";
 import { INSTITUTIONAL_OFFICES } from "../shared/institutionalOffices";
@@ -108,6 +109,41 @@ export const appRouter = router({
       users: protectedProcedure.query(({ ctx }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["admin", "procurement_officer"]); return listUserProfiles(); }),
       updateUserRole: protectedProcedure.input(z.object({ userId: z.number().int().positive(), role: z.enum(["end_user", "procurement_officer", "procurement_officer_i", "procurement_officer_ii", "procurement_staff", "administrative_approver", "bac_secretariat", "bac", "hope", "budget_officer", "supplier_contractor", "admin"]) })).mutation(({ ctx, input }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]); return updateUserProcurementRole(input.userId, input.role, ctx.user); }),
       updateUserOffice: protectedProcedure.input(z.object({ userId: z.number().int().positive(), officeName: z.string().max(180) })).mutation(({ ctx, input }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]); return updateUserOffice(input.userId, input.officeName, ctx.user); }),
+      emailStatus: protectedProcedure.query(async () => {
+        const config = await getSystemEmailSettings();
+        return {
+          isConfigured: config.isConfigured,
+          provider: config.provider,
+          smtpHost: config.smtpHost,
+          smtpPort: config.smtpPort,
+          smtpUser: config.smtpUser ? `${config.smtpUser.slice(0, 3)}***@***` : "",
+          smtpFrom: config.smtpFrom,
+          hasResendKey: Boolean(config.resendApiKey),
+          hasBrevoKey: Boolean(config.brevoApiKey),
+        };
+      }),
+      saveEmailSettings: protectedProcedure
+        .input(
+          z.object({
+            resendApiKey: z.string().optional(),
+            brevoApiKey: z.string().optional(),
+            smtpHost: z.string().optional(),
+            smtpPort: z.number().int().optional(),
+            smtpUser: z.string().optional(),
+            smtpPass: z.string().optional(),
+            smtpFrom: z.string().optional(),
+          })
+        )
+        .mutation(async ({ ctx, input }) => {
+          assertRole(normalizeProcurementRole(ctx.user.role), ["admin"]);
+          await updateSystemEmailSettings(input);
+          return { success: true, message: "Outbound email configuration saved." };
+        }),
+      sendTestEmail: protectedProcedure
+        .input(z.object({ recipientEmail: z.string().email() }))
+        .mutation(async ({ input }) => {
+          return sendTestWorkflowEmail(input.recipientEmail);
+        }),
     }),
     bestValuePolicy: router({
       active: protectedProcedure.query(({ ctx }) => { assertRole(normalizeProcurementRole(ctx.user.role), ["admin", "procurement_officer"]); return getBestValuePolicy(); }),

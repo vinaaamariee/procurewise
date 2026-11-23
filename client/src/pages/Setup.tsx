@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { OfficeSelect } from "@/components/OfficeSelect";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle2, Circle, FileSignature, LoaderCircle, Settings2 } from "lucide-react";
+import { CheckCircle2, Circle, FileSignature, LoaderCircle, Mail, Send, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { OFFICIAL_ROLE_LABELS, normalizeProcurementRole } from "../../../shared/procurementRules";
@@ -32,6 +32,23 @@ export default function SetupPage() {
   const updateSettings = trpc.procurement.setup.updateSettings.useMutation({ onSuccess: () => { toast.success("Entity and signatory defaults saved."); refresh(); }, onError: (error) => toast.error(error.message) });
   const updateUserRole = trpc.procurement.setup.updateUserRole.useMutation({ onSuccess: () => { toast.success("Workflow role updated."); void utils.procurement.setup.users.invalidate(); }, onError: (error) => toast.error(error.message) });
   const updateUserOffice = trpc.procurement.setup.updateUserOffice.useMutation({ onSuccess: () => { toast.success("User office updated."); void utils.procurement.setup.users.invalidate(); }, onError: (error) => toast.error(error.message) });
+  const emailStatus = trpc.procurement.setup.emailStatus.useQuery(undefined, { retry: false });
+  const saveEmailSettings = trpc.procurement.setup.saveEmailSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Outbound email configuration saved.");
+      void utils.procurement.setup.emailStatus.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const sendTestEmail = trpc.procurement.setup.sendTestEmail.useMutation();
+  const [testEmailAddress, setTestEmailAddress] = useState("");
+  const [resendApiKey, setResendApiKey] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState(465);
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpFrom, setSmtpFrom] = useState("");
+  const [emailProviderTab, setEmailProviderTab] = useState<"resend" | "smtp">("smtp");
   const [officeCode, setOfficeCode] = useState("");
   const [officeName, setOfficeName] = useState("");
   const [objectCode, setObjectCode] = useState("");
@@ -75,6 +92,146 @@ export default function SetupPage() {
     </div>
     <section className="mt-7 flat-panel p-5"><div className="flex items-start gap-3"><FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-[#7b1e1e]" /><div><h2 className="text-sm font-semibold text-[#34404e]">Purchase Request authorized signatories</h2><p className="mt-1 text-[11px] leading-5 text-[#77818d]">Record only authorized names here. These names are the only choices shown in the external Requested by and Approved by selectors; ProcureWise does not fabricate signatories.</p></div></div><form onSubmit={(event) => { event.preventDefault(); createPurchaseRequestSignatory.mutate({ fullName: purchaseRequestSignatoryName.trim(), designation: purchaseRequestSignatoryDesignation.trim(), mayRequest: mayRequestPurchaseRequest, mayApprove: mayApprovePurchaseRequest }); }} className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]"><div><Label htmlFor="pr-signatory-name" className="text-[11px] font-semibold">Full name</Label><Input id="pr-signatory-name" value={purchaseRequestSignatoryName} onChange={(event) => setPurchaseRequestSignatoryName(event.target.value)} placeholder="Authorized signatory name" className="mt-1.5 h-9 text-xs" /></div><div><Label htmlFor="pr-signatory-designation" className="text-[11px] font-semibold">Designation</Label><Input id="pr-signatory-designation" value={purchaseRequestSignatoryDesignation} onChange={(event) => setPurchaseRequestSignatoryDesignation(event.target.value)} placeholder="Official designation" className="mt-1.5 h-9 text-xs" /></div><div className="grid content-end gap-2 sm:grid-cols-2"><label className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e1ddd5] px-2 text-[11px] text-[#4c5664]"><input type="checkbox" checked={mayRequestPurchaseRequest} onChange={(event) => setMayRequestPurchaseRequest(event.target.checked)} /> May request</label><label className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e1ddd5] px-2 text-[11px] text-[#4c5664]"><input type="checkbox" checked={mayApprovePurchaseRequest} onChange={(event) => setMayApprovePurchaseRequest(event.target.checked)} /> May approve</label></div><Button disabled={adminDisabled || createPurchaseRequestSignatory.isPending || purchaseRequestSignatoryName.trim().length < 3 || purchaseRequestSignatoryDesignation.trim().length < 2 || (!mayRequestPurchaseRequest && !mayApprovePurchaseRequest)} className="md:col-span-3 h-9 rounded-[4px] bg-[#7b1e1e] text-xs hover:bg-[#641818]">{createPurchaseRequestSignatory.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Add authorized signatory</Button></form><div className="mt-5 overflow-x-auto"><RecordTable className="min-w-[620px]"><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Designation</th><th className="px-4 py-3 font-semibold">PR authorization</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{purchaseRequestSignatories.data?.length ? purchaseRequestSignatories.data.map((signatory) => <tr key={signatory.id}><td className="px-4 py-3 font-semibold text-[#3f4a57]">{signatory.fullName}</td><td className="px-4 py-3 text-[#66717e]">{signatory.designation}</td><td className="px-4 py-3 text-[#66717e]">{[signatory.mayRequest ? "Requested by" : null, signatory.mayApprove ? "Approved by" : null].filter(Boolean).join(" · ")}</td></tr>) : <tr><td colSpan={3} className="px-4 py-6 text-center text-xs text-[#77818d]">No authorized Purchase Request signatories have been recorded.</td></tr>}</tbody></RecordTable></div></section>
     <div className="mt-7 flat-panel"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">Current configuration</p><p className="mt-1 text-[11px] text-[#77818d]">Only active records are made available to transactional forms.</p></div><RecordTable className="border-0"><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Requesting offices</th><th className="px-4 py-3 font-semibold">Objects of expenditure</th><th className="px-4 py-3 font-semibold">Supplier registry</th></tr></RecordTableHeader><tbody><tr><td className="px-4 py-4 align-top text-[#596574]">{setup.data?.offices.length ? setup.data.offices.map((office) => <p key={office.id} className="mb-1.5">{office.code} — {office.name}</p>) : "No offices configured."}</td><td className="px-4 py-4 align-top text-[#596574]">{setup.data?.objectsOfExpenditure.length ? setup.data.objectsOfExpenditure.map((object) => <p key={object.id} className="mb-1.5">{object.code} — {object.name}</p>) : "No expenditure objects configured."}</td><td className="px-4 py-4 align-top text-[#596574]">{setup.data?.suppliers.length ? `${setup.data.suppliers.length} active supplier record(s)` : "No suppliers registered."}</td></tr></tbody></RecordTable></div>
+    <section className="mt-7 flat-panel p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ece8df] pb-3">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-[#7b1e1e]" />
+          <div>
+            <h2 className="text-sm font-semibold text-[#34404e]">Personal Gmail &amp; Outbound Email Notifications</h2>
+            <p className="mt-0.5 text-[11px] text-[#77818d]">Send real-time updates directly to users&apos; registered Gmail accounts when PRs are returned, advanced, or approved.</p>
+          </div>
+        </div>
+        <span className={`inline-flex items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-[11px] font-semibold border ${
+          emailStatus.data?.isConfigured
+            ? "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+            : "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+        }`}>
+          {emailStatus.data?.isConfigured ? `Connected: ${emailStatus.data.provider}` : "Not Configured (Logs only)"}
+        </span>
+      </div>
+
+      {/* Live test notification dispatcher */}
+      <div className="mt-4 rounded-[4px] border border-[#e8dfcf] bg-[#fffcf5] p-4 dark:border-[#3a352c] dark:bg-[#1a1815]">
+        <p className="text-xs font-semibold text-[#34404e] dark:text-[#f3ede2]">Test Real-Time Notification Delivery</p>
+        <p className="mt-1 text-[11px] text-[#77818d]">Enter your personal Gmail to verify delivery right now:</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Input
+            value={testEmailAddress}
+            onChange={(e) => setTestEmailAddress(e.target.value)}
+            placeholder="e.g. cardonaangelo29@gmail.com"
+            className="h-9 flex-1 min-w-[240px] text-xs bg-background"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={async () => {
+              const target = testEmailAddress.trim() || user?.email || "";
+              if (!target) return toast.error("Enter a valid recipient email address first.");
+              toast.info(`Sending test notification to ${target}...`);
+              try {
+                const res = await sendTestEmail.mutateAsync({ recipientEmail: target });
+                if (res.success) {
+                  toast.success(res.message);
+                } else {
+                  toast.error(res.message);
+                }
+              } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Test email failed.";
+                toast.error(msg);
+              }
+            }}
+            disabled={sendTestEmail.isPending}
+            className="h-9 rounded-[4px] bg-[#7b1e1e] text-xs text-white hover:bg-[#641818]"
+          >
+            {sendTestEmail.isPending ? <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+            Send Test Notification Email
+          </Button>
+        </div>
+      </div>
+
+      {/* Admin Email Configuration Form */}
+      {isAdmin && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (emailProviderTab === "resend") {
+              saveEmailSettings.mutate({ resendApiKey: resendApiKey.trim(), smtpHost: "" });
+            } else {
+              saveEmailSettings.mutate({
+                smtpHost: smtpHost.trim(),
+                smtpPort,
+                smtpUser: smtpUser.trim(),
+                smtpPass: smtpPass.trim(),
+                smtpFrom: smtpFrom.trim() || undefined,
+                resendApiKey: "",
+              });
+            }
+          }}
+          className="mt-5 border-t border-[#ece8df] pt-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span className="text-xs font-semibold text-[#34404e] dark:text-[#f3ede2]">Configure Outbound Provider</span>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEmailProviderTab("smtp")}
+                className={`px-3 py-1 text-xs rounded-[4px] font-semibold border ${emailProviderTab === "smtp" ? "bg-[#7b1e1e] text-white border-[#7b1e1e]" : "bg-card border-border text-muted-foreground"}`}
+              >
+                Gmail SMTP / Custom SMTP
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailProviderTab("resend")}
+                className={`px-3 py-1 text-xs rounded-[4px] font-semibold border ${emailProviderTab === "resend" ? "bg-[#7b1e1e] text-white border-[#7b1e1e]" : "bg-card border-border text-muted-foreground"}`}
+              >
+                Resend API
+              </button>
+            </div>
+          </div>
+
+          {emailProviderTab === "smtp" ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-[11px] font-semibold">SMTP Host</Label>
+                <Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" className="h-8 text-xs mt-1" />
+              </div>
+              <div>
+                <Label className="text-[11px] font-semibold">Port (465 SSL or 587)</Label>
+                <Input type="number" value={smtpPort} onChange={(e) => setSmtpPort(Number(e.target.value))} placeholder="465" className="h-8 text-xs mt-1" />
+              </div>
+              <div>
+                <Label className="text-[11px] font-semibold">Sender Gmail / Username</Label>
+                <Input value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="your.email@gmail.com" className="h-8 text-xs mt-1" />
+              </div>
+              <div>
+                <Label className="text-[11px] font-semibold">Google App Password (16 chars)</Label>
+                <Input type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} placeholder="e.g. abcd efgh ijkl mnop" className="h-8 text-xs mt-1" />
+              </div>
+              <div className="sm:col-span-2 rounded bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground">How to use your personal Gmail:</span> In your Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords, generate a 16-character App Password named &quot;ProcureWise&quot; and paste it above.
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div>
+                <Label className="text-[11px] font-semibold">Resend API Key</Label>
+                <Input value={resendApiKey} onChange={(e) => setResendApiKey(e.target.value)} placeholder="re_123456789..." className="h-8 text-xs mt-1" />
+                <p className="text-[11px] text-muted-foreground mt-1.5">Free 3,000 emails/month from resend.com with instant API key.</p>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={saveEmailSettings.isPending}
+            className="mt-4 h-9 w-full rounded-[4px] bg-[#7b1e1e] text-xs font-semibold text-white hover:bg-[#641818]"
+          >
+            {saveEmailSettings.isPending && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Save Outbound Email Settings
+          </Button>
+        </form>
+      )}
+    </section>
     <div className="mt-7 flat-panel"><div className="border-b border-[#ece8df] px-5 py-4"><p className="text-sm font-semibold text-[#34404e]">User role assignment</p><p className="mt-1 text-[11px] text-[#77818d]">Assign the procurement workflow roles to authenticated accounts.</p></div>{authLoading ? <p className="px-5 py-7 text-center text-xs text-[#77818d]">Confirming administrator access…</p> : !isAdmin ? <p className="px-5 py-7 text-center text-xs text-[#77818d]">Only administrators can view or assign workflow roles.</p> : <RecordTable className="border-0"><RecordTableHeader><tr><th className="px-4 py-3 font-semibold">Account</th><th className="px-4 py-3 font-semibold">Email</th><th className="px-4 py-3 font-semibold">Assigned Office / Unit</th><th className="px-4 py-3 font-semibold">Workflow role</th><th className="px-4 py-3 font-semibold">Last sign-in</th></tr></RecordTableHeader><tbody className="divide-y divide-[#efebe4]">{users.isLoading ? <tr><td colSpan={5} className="px-4 py-7 text-center text-xs text-[#77818d]">Loading users…</td></tr> : users.data?.map((profile) => <tr key={profile.id}><td className="px-4 py-3 font-semibold text-[#3f4a57]">{profile.name || "Unnamed account"}</td><td className="px-4 py-3 text-[#6d7884]">{profile.email || "—"}</td><td className="px-4 py-2 min-w-56"><OfficeSelect value={profile.officeName || ""} valueMode="name" onChange={(val) => updateUserOffice.mutate({ userId: profile.id, officeName: val })} placeholder="Assign department..." triggerClassName="h-8 text-xs" /></td><td className="px-4 py-2"><Select value={profile.role === "user" ? "end_user" : profile.role} onValueChange={(role) => updateUserRole.mutate({ userId: profile.id, role: role as keyof typeof roleLabels })}><SelectTrigger className="h-8 w-44 rounded-[4px] text-xs"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(roleLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></td><td className="px-4 py-3 text-[#6d7884]">{new Date(profile.lastSignedIn).toLocaleDateString("en-PH")}</td></tr>)}</tbody></RecordTable>}</div>
   </div>;
 }
