@@ -12,13 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Upload,
   X,
   FileCheck2,
@@ -86,11 +79,9 @@ export function ResubmitPurchaseRequestModal({
 }: ResubmitPurchaseRequestModalProps) {
   // Map of category -> new replacement file
   const [replacementFiles, setReplacementFiles] = useState<Record<string, ReplacedFile>>({});
-  const [selectedTargetCategory, setSelectedTargetCategory] = useState<string>("Approved PPMP Plan");
   const [resubmitRemarks, setResubmitRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedSlot, setDraggedSlot] = useState<string | null>(null);
   const specificSlotInputRef = useRef<HTMLInputElement>(null);
   const [activeSlotForUpload, setActiveSlotForUpload] = useState<string | null>(null);
 
@@ -312,9 +303,22 @@ export function ResubmitPurchaseRequestModal({
                 return (
                   <div
                     key={slot.key}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDraggedSlot(slot.categoryName);
+                    }}
+                    onDragLeave={() => setDraggedSlot(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDraggedSlot(null);
+                      const dropped = e.dataTransfer.files?.[0];
+                      if (dropped) handleProcessFileForCategory(dropped, slot.categoryName);
+                    }}
                     className={cn(
                       "rounded-lg border p-3 transition-colors",
-                      replacement
+                      draggedSlot === slot.categoryName
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                        : replacement
                         ? "border-emerald-400 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30"
                         : currentDoc
                         ? "border-border bg-card"
@@ -441,88 +445,6 @@ export function ResubmitPurchaseRequestModal({
                   </div>
                 );
               })}
-            </div>
-          </div>
-
-          {/* Quick Upload Dropzone / Target Selector */}
-          <div className="space-y-3 rounded-lg border border-border p-3.5 bg-muted/20">
-            <p className="text-xs font-bold text-foreground">
-              Or Choose Document to Replace / Upload:
-            </p>
-
-            <div className="grid gap-2 sm:grid-cols-3">
-              <div className="sm:col-span-1">
-                <Label className="text-[11px] font-semibold text-muted-foreground">
-                  Target Document Type
-                </Label>
-                <Select value={selectedTargetCategory} onValueChange={setSelectedTargetCategory}>
-                  <SelectTrigger className="mt-1 h-8 text-xs bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STANDARD_DOCUMENT_SLOTS.map((cat) => (
-                      <SelectItem key={cat.categoryName} value={cat.categoryName} className="text-xs">
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="Corrected Attachment" className="text-xs">
-                      Corrected Supporting Document
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <Label className="text-[11px] font-semibold text-muted-foreground">
-                  Replacement File for &quot;{selectedTargetCategory}&quot;
-                </Label>
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragging(false);
-                    const dropped = e.dataTransfer.files?.[0];
-                    if (dropped) handleProcessFileForCategory(dropped, selectedTargetCategory);
-                  }}
-                  className={cn(
-                    "mt-1 flex items-center justify-between rounded-[4px] border-2 border-dashed px-3 py-2 text-xs transition-colors bg-background",
-                    isDragging
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate text-[11px] text-muted-foreground">
-                      Drag &amp; drop or browse new file (.pdf, .xlsx, .docx)
-                    </span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-7 text-xs shrink-0 ml-2"
-                  >
-                    Browse
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleProcessFileForCategory(file, selectedTargetCategory);
-                      e.target.value = "";
-                    }}
-                  />
-                </div>
-              </div>
             </div>
           </div>
 

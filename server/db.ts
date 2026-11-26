@@ -2701,7 +2701,18 @@ export async function returnPurchaseRequestForRevision(
   const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.purchaseRequestId)).limit(1);
   if (!pr) throw new Error("Purchase Request not found.");
 
-  await db.update(purchaseRequests).set({ status: "returned", updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+  await db.update(purchaseRequests).set({ status: "returned", procurementReviewedById: null, updatedAt: new Date() }).where(eq(purchaseRequests.id, pr.id));
+  await db.insert(purchaseRequestDecisions).values({
+    purchaseRequestId: pr.id,
+    decisionType: "returned",
+    fromStatus: pr.status,
+    toStatus: "returned",
+    reason: input.reason.trim(),
+    remarks: input.remarks?.trim() || null,
+    performedById: user.id,
+    performedByRole: actorRole,
+    createdAt: new Date(),
+  });
   await recordAudit({
     entityType: "purchase_request",
     entityId: pr.id,
@@ -2803,6 +2814,23 @@ export async function listOfficerPrVerifications(user: User) {
   const allOffices = await db.select().from(offices);
   const officeMap = new Map(allOffices.map((o) => [o.id, o]));
 
+  const allDecisions = prIds.length > 0
+    ? await db.select().from(purchaseRequestDecisions).where(inArray(purchaseRequestDecisions.purchaseRequestId, prIds))
+    : [];
+
+  const resubmitAudits = prIds.length > 0
+    ? await db
+        .select()
+        .from(auditTrails)
+        .where(
+          and(
+            eq(auditTrails.entityType, "purchase_request"),
+            inArray(auditTrails.entityId, prIds),
+            eq(auditTrails.action, "resubmitted")
+          )
+        )
+    : [];
+
   return allPrs.map((pr) => {
     const prItems = items.filter((item) => item.purchaseRequestId === pr.id);
     const linkedPpmp = ppmpEntries.find((e) => e.id === pr.ppmpEntryId) || null;
@@ -2883,6 +2911,14 @@ export async function listOfficerPrVerifications(user: User) {
 
     const segregationAnalysis = detectMixedCategories(prItems);
 
+    const prDecisions = allDecisions.filter((d) => d.purchaseRequestId === pr.id);
+    const prResubmitDecisions = prDecisions.filter((d) => d.decisionType === "resubmitted");
+    const prResubmitAudits = resubmitAudits.filter((a) => a.entityId === pr.id);
+    const hasResubmitted = prResubmitDecisions.length > 0 || prResubmitAudits.length > 0;
+    const latestResubmitDecision = prResubmitDecisions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const isResubmitted = pr.status !== "returned" && hasResubmitted;
+    const resubmitRemarks = latestResubmitDecision?.remarks || latestResubmitDecision?.reason || (prResubmitAudits[0]?.details as any)?.remarks || null;
+
     return {
       purchaseRequest: pr,
       items: prItems,
@@ -2899,6 +2935,8 @@ export async function listOfficerPrVerifications(user: User) {
       office: pr.officeId ? officeMap.get(pr.officeId) || null : null,
       segregationAnalysis,
       isVerified: Boolean(pr.procurementReviewedById),
+      isResubmitted,
+      resubmitRemarks,
     };
   });
 }
@@ -3130,7 +3168,7 @@ export async function resubmitPurchaseRequest(
     .where(and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, pr.id), eq(workflowCorrections.status, "open")));
 
   await db.update(purchaseRequests)
-    .set({ status: "procurement_review", submittedAt: new Date(), updatedAt: new Date() })
+    .set({ status: "procurement_review", procurementReviewedById: null, submittedAt: new Date(), updatedAt: new Date() })
     .where(eq(purchaseRequests.id, pr.id));
 
   await db.insert(purchaseRequestDecisions).values({

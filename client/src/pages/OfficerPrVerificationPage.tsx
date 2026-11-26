@@ -645,23 +645,46 @@ export function OfficerPrVerificationPage() {
                             <Undo2 className="mr-1 h-3 w-3" /> Returned for Revision
                           </Badge>
                         ) : isVerified ? (
-                          <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px]">
-                            <CheckCircle2 className="mr-1 h-3 w-3" /> Officer Verified (Compliant)
-                          </Badge>
-                        ) : isMixed ? (
-                          <div>
-                            <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-[10px]">
-                              <AlertTriangle className="mr-1 h-3 w-3" /> Section 5.1.1 Non-Compliant (Mixed)
+                          <div className="space-y-1">
+                            {item.isResubmitted && (
+                              <Badge variant="outline" className="border-blue-300 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px]">
+                                <RefreshCw className="mr-1 h-3 w-3" /> Resubmitted
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px]">
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Officer Verified (Compliant)
                             </Badge>
-                            <div className="mt-0.5 text-[10px] text-amber-700 dark:text-amber-400">
-                              {detectedCats.join(" + ")}
-                            </div>
                           </div>
                         ) : (
-                          <div>
-                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50/50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px]">
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Single Category ({detectedCats[0] || "Supplies"})
-                            </Badge>
+                          <div className="space-y-1.5">
+                            {item.isResubmitted && (
+                              <div>
+                                <Badge
+                                  variant="outline"
+                                  className="border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 text-[10px] font-semibold flex items-center gap-1 w-fit shadow-2xs"
+                                  title={item.resubmitRemarks ? `Remarks: ${item.resubmitRemarks}` : "Resubmitted after revision"}
+                                >
+                                  <RefreshCw className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                                  <span>Resubmitted for Verification</span>
+                                </Badge>
+                              </div>
+                            )}
+                            {isMixed ? (
+                              <div>
+                                <Badge variant="outline" className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-[10px]">
+                                  <AlertTriangle className="mr-1 h-3 w-3" /> Section 5.1.1 Non-Compliant (Mixed)
+                                </Badge>
+                                <div className="mt-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                                  {detectedCats.join(" + ")}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50/50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px]">
+                                  <CheckCircle2 className="mr-1 h-3 w-3" /> Single Category ({detectedCats[0] || "Supplies"})
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>
@@ -746,6 +769,26 @@ export function OfficerPrVerificationPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── RESUBMISSION NOTICE IF APPLICABLE ── */}
+              {selectedVerificationItem.isResubmitted && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200 flex items-start gap-2.5">
+                  <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <span className="font-bold text-xs text-blue-900 dark:text-blue-200">
+                      Package Resubmitted for Verification
+                    </span>
+                    <p className="mt-0.5 text-[11px] text-blue-800 dark:text-blue-300">
+                      The End-User has updated the required package attachments and resubmitted this PR after completing the return &amp; revision process.
+                    </p>
+                    {selectedVerificationItem.resubmitRemarks && (
+                      <div className="mt-1.5 rounded bg-blue-100/70 dark:bg-blue-900/40 p-2 text-[11px] text-blue-950 dark:text-blue-200">
+                        <span className="font-semibold">End-User Remarks:</span> &quot;{selectedVerificationItem.resubmitRemarks}&quot;
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* ── END-USER UPLOADED ATTACHMENTS & TRANSPARENCY ── */}
               <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 shadow-xs space-y-4">
