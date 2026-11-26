@@ -16,6 +16,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
 import { INSTITUTIONAL_OFFICES, InstitutionalOffice } from "../../../shared/institutionalOffices";
 
@@ -255,13 +260,14 @@ export function OfficeSelect({
             role="combobox"
             aria-expanded={open}
             disabled={disabled}
+            title={displayText}
             className={cn(
               "flex h-9 w-full items-center justify-between rounded-[4px] border border-border bg-background px-3 text-xs font-normal text-foreground hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring dark:border-[#46515c] dark:bg-[#1b2229] dark:text-[#f1f5f8]",
               !selectedOffice && !allowAll && "text-muted-foreground dark:text-[#8896a6]",
               triggerClassName
             )}
           >
-            <div className="flex items-center gap-2 truncate text-left">
+            <div className="flex items-center gap-2 truncate text-left" title={displayText}>
               <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
               <span className="truncate">{displayText}</span>
             </div>
@@ -285,7 +291,7 @@ export function OfficeSelect({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0 shadow-lg border border-border dark:border-[#46515c] dark:bg-[#1b2229]"
+          className="w-[max(var(--radix-popover-trigger-width),460px)] max-w-[92vw] p-0 shadow-lg border border-border dark:border-[#46515c] dark:bg-[#1b2229]"
         >
           <Command
             filter={(itemValue, search) => {
@@ -341,10 +347,12 @@ export function OfficeSelect({
                         selectedOffice.name.toLowerCase() === office.name.toLowerCase()
                       )) ||
                       (valueMode === "id" && office.id !== undefined && (String(office.id) === String(value) || Number(value) === office.id));
+                    const fullOfficeTitle = `${office.code} — ${office.name}${office.category ? ` (${office.category})` : ""}`;
                     return (
                       <CommandItem
                         key={`${office.code}-${office.name}`}
                         value={`${office.code} ${office.name}`}
+                        title={fullOfficeTitle}
                         onSelect={() => handleSelect(office)}
                         onPointerDown={(e) => {
                           e.preventDefault();
@@ -362,14 +370,30 @@ export function OfficeSelect({
                             isSelected ? "opacity-100 text-[#7b1e1e] dark:text-[#ff837a]" : "opacity-0"
                           )}
                         />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-medium text-foreground truncate">
-                            <span className="font-bold text-[#7b1e1e] dark:text-[#ff837a] mr-1.5">
-                              {office.code}
-                            </span>
-                            — {office.name}
-                          </span>
-                        </div>
+                        <Tooltip delayDuration={150}>
+                          <TooltipTrigger asChild>
+                            <div className="flex flex-col min-w-0 flex-1" title={fullOfficeTitle}>
+                              <span className="font-medium text-foreground truncate">
+                                <span className="font-bold text-[#7b1e1e] dark:text-[#ff837a] mr-1.5">
+                                  {office.code}
+                                </span>
+                                — {office.name}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="right"
+                            align="center"
+                            sideOffset={8}
+                            className="z-[9999] max-w-sm rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 shadow-xl dark:border-slate-600 dark:bg-slate-950"
+                          >
+                            <p className="font-bold text-amber-400">{office.code}</p>
+                            <p className="text-slate-200 mt-0.5 leading-snug">{office.name}</p>
+                            {office.category && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">{office.category}</p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
                       </CommandItem>
                     );
                   })}

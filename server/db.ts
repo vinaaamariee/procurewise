@@ -2319,7 +2319,7 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
     ...(purchaseRequest.ppmpEntryId ? [and(eq(procurementDocuments.entityType, "app_ppmp_entry"), eq(procurementDocuments.entityId, purchaseRequest.ppmpEntryId))] : []),
   ];
   const documents = docConditions.length > 0
-    ? await db.select().from(procurementDocuments).where(or(...docConditions))
+    ? await db.select().from(procurementDocuments).where(or(...docConditions)).orderBy(desc(procurementDocuments.id))
     : [];
 
   const uploadedPpmpDoc =
@@ -2691,7 +2691,7 @@ export async function listOfficerPrVerifications(user: User) {
     ...(ppmpIds.length > 0 ? [and(eq(procurementDocuments.entityType, "app_ppmp_entry"), inArray(procurementDocuments.entityId, ppmpIds))] : []),
   ];
   const allDocs = docConditions.length > 0
-    ? await db.select().from(procurementDocuments).where(or(...docConditions))
+    ? await db.select().from(procurementDocuments).where(or(...docConditions)).orderBy(desc(procurementDocuments.id))
     : [];
 
   const correctionConditions = [

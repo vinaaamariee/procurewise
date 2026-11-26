@@ -15,6 +15,7 @@ import { OfficeSelect } from "@/components/OfficeSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IntegratedPreCanvassModal } from "@/components/IntegratedPreCanvassModal";
+import { ResubmitPurchaseRequestModal } from "@/components/ResubmitPurchaseRequestModal";
 import { AuditHistoryDrawer, QuietCompliancePill } from "@/components/compliance";
 import { trpc } from "@/lib/trpc";
 import { formatFriendlyError } from "@/lib/formatError";
@@ -540,6 +541,7 @@ export function PurchaseRequestsPage() {
     return Boolean(draft?.isCreating);
   });
   const [activeCanvassPr, setActiveCanvassPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string } | null>(null);
+  const [activeResubmitPr, setActiveResubmitPr] = useState<{ id: number; prNumber: string; purpose: string; totalEstimate?: string | number; status: string; createdAt?: string | Date } | null>(null);
 
   useEffect(() => {
     const count = Number(sessionStorage.getItem("procurewise.catalogSelectionNotice") || 0);
@@ -811,7 +813,15 @@ export function PurchaseRequestsPage() {
               submitRequest.mutate({ purchaseRequestId });
             }}
             onReject={(purchaseRequestId, reason) => rejectRequest.mutate({ purchaseRequestId, reason })}
-            onResubmit={(purchaseRequestId) => handleResubmit(purchaseRequestId)}
+            onResubmit={(purchaseRequestId) => {
+              const pr = purchaseRequests.data?.find((p) => p.id === purchaseRequestId);
+              if (pr) setActiveResubmitPr(pr);
+              else handleResubmit(purchaseRequestId);
+            }}
+            onOpenResubmit={(pr) => {
+              setSelectedPrId(pr.id);
+              setActiveResubmitPr(pr);
+            }}
             resubmittingId={resubmitRequest.isPending ? resubmitRequest.variables?.purchaseRequestId : undefined}
             onOpenCanvass={(pr) => {
               setSelectedPrId(pr.id);
@@ -854,10 +864,10 @@ export function PurchaseRequestsPage() {
                     <Button
                       size="sm"
                       disabled={resubmitRequest.isPending}
-                      onClick={() => selectedPr && handleResubmit(selectedPr.id)}
+                      onClick={() => selectedPr && setActiveResubmitPr(selectedPr)}
                       className="h-8 rounded-[4px] bg-[#9a6d19] text-xs font-semibold text-white hover:bg-[#7e5712] dark:bg-[#b98a2b] dark:hover:bg-[#a1771f]"
                     >
-                      {resubmitRequest.isPending ? <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin text-white" /> : <FileCheck2 className="mr-1.5 h-3.5 w-3.5" />}
+                      <FileCheck2 className="mr-1.5 h-3.5 w-3.5" />
                       Update and Resubmit
                     </Button>
                   </div>
@@ -910,6 +920,21 @@ export function PurchaseRequestsPage() {
         }}
       />
     )}
+
+    {activeResubmitPr && (
+      <ResubmitPurchaseRequestModal
+        open={Boolean(activeResubmitPr)}
+        onOpenChange={(open) => {
+          if (!open) setActiveResubmitPr(null);
+        }}
+        purchaseRequest={activeResubmitPr}
+        onSuccess={() => {
+          setActiveResubmitPr(null);
+          void utils.procurement.purchaseRequests.list.invalidate();
+          void utils.procurement.dashboard.invalidate();
+        }}
+      />
+    )}
   </div>;
 }
 
@@ -921,6 +946,7 @@ function PurchaseRequestTable({
   onSubmit,
   onReject,
   onResubmit,
+  onOpenResubmit,
   onOpenCanvass,
   submittingId,
   resubmittingId,
@@ -934,6 +960,7 @@ function PurchaseRequestTable({
   onSubmit: (purchaseRequestId: number) => void;
   onReject: (purchaseRequestId: number, reason: string) => void;
   onResubmit: (purchaseRequestId: number) => void;
+  onOpenResubmit?: (pr: { id: number; prNumber: string; purpose: string; totalEstimate?: string | number; status: string; createdAt?: string | Date }) => void;
   onOpenCanvass: (pr: { id: number; prNumber: string; purpose: string; totalEstimate: string; officeId?: number; status: string }) => void;
   submittingId?: number;
   resubmittingId?: number;
@@ -1027,11 +1054,18 @@ function PurchaseRequestTable({
     {record.status === "returned" && !canReject && (
       <Button
         size="sm"
-        onClick={() => { onSelectPr?.(record.id); onResubmit(record.id); }}
+        onClick={() => {
+          onSelectPr?.(record.id);
+          if (onOpenResubmit) {
+            onOpenResubmit(record);
+          } else {
+            onResubmit(record.id);
+          }
+        }}
         disabled={resubmittingId === record.id}
         className="h-7 rounded-[4px] bg-[#9a6d19] px-2.5 text-[10px] font-semibold text-white hover:bg-[#7e5712] dark:bg-[#b98a2b] dark:hover:bg-[#a1771f]"
       >
-        {resubmittingId === record.id ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin text-white" /> : <FileCheck2 className="mr-1 h-3 w-3" />}
+        <FileCheck2 className="mr-1 h-3 w-3" />
         Update and Resubmit
       </Button>
     )}
@@ -1402,7 +1436,7 @@ function PurchaseRequestForm({
     sessionStorage.removeItem("procurewise.catalogSelection");
   }, [catalog.data?.items, catalogItemIds, catalogSelection]);
 
-  const configurationReady = Boolean(setup?.offices.length && setup.objectsOfExpenditure.length);
+  const configurationReady = Boolean(setup?.offices.length);
   const requesterSignatories = useMemo(
     () => (signatories.data ?? []).filter((signatory) => Boolean(signatory.mayRequest)),
     [signatories.data]
@@ -1592,10 +1626,10 @@ function PurchaseRequestForm({
     );
     const resolvedObject = setup?.objectsOfExpenditure.find(
       (obj) => String(obj.id) === (objectId || ppmpObjectId)
-    );
+    ) || setup?.objectsOfExpenditure?.[0];
 
-    if (!resolvedOffice || !resolvedObject) {
-      toast.error("Please ensure the Office and Budget Allocation Class are selected.");
+    if (!resolvedOffice) {
+      toast.error("Please ensure the Requesting Office is selected.");
       return;
     }
 
@@ -1604,7 +1638,7 @@ function PurchaseRequestForm({
         purpose: purpose.trim(),
         category: selectedCategory,
         officeId: resolvedOffice.id,
-        objectOfExpenditureId: resolvedObject.id,
+        objectOfExpenditureId: resolvedObject?.id ?? 1,
         ppmpEntryId: ppmpMode === "existing" && selectedPpmpId ? Number(selectedPpmpId) : undefined,
         fundSource: fundSource.trim() || undefined,
         fundCluster: fundCluster.trim() || undefined,
@@ -1799,7 +1833,7 @@ function PurchaseRequestForm({
           </div>
 
           {/* Department / Office & Budget Allocation Details */}
-          <div className="grid gap-4 pt-2 sm:grid-cols-3">
+          <div className="grid gap-4 pt-2 sm:grid-cols-2">
             <div>
               <Label className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Requesting Office / Department
@@ -1817,31 +1851,6 @@ function PurchaseRequestForm({
                   placeholder="Select your BSC Office / Department"
                 />
               </div>
-            </div>
-
-            <div>
-              <Label className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Budget Allocation Class
-              </Label>
-              <Select
-                value={ppmpObjectId}
-                onValueChange={(val) => {
-                  setPpmpObjectId(val);
-                  setObjectId(val);
-                }}
-                disabled={!configurationReady}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select expenditure class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setup?.objectsOfExpenditure.map((object) => (
-                    <SelectItem key={object.id} value={String(object.id)}>
-                      {object.code} — {object.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div>
