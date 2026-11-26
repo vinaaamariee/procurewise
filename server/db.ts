@@ -2090,7 +2090,19 @@ export async function notifyRoles(roles: ProcurementRole[], input: Omit<Paramete
   await Promise.all(recipientIds.map((recipientUserId) => createWorkflowNotification({ ...input, recipientUserId })));
 }
 
-export async function createProcurementDocument(input: { entityType: DocumentEntityType; entityId: number; documentType: string; originalFileName: string; mimeType: string; dataBase64: string }, user: User, options?: OperationalServiceOptions) {
+export async function createProcurementDocument(
+  input: {
+    entityType: DocumentEntityType;
+    entityId: number;
+    documentType: string;
+    originalFileName: string;
+    mimeType: string;
+    dataBase64: string;
+    replaceCategory?: string;
+  },
+  user: User,
+  options?: OperationalServiceOptions
+) {
   const data = Buffer.from(input.dataBase64, "base64");
   const validationError = validateProcurementDocumentUpload(input.mimeType, data.length, input.documentType, input.originalFileName);
   if (validationError) throw new Error(validationError);
@@ -2099,14 +2111,77 @@ export async function createProcurementDocument(input: { entityType: DocumentEnt
   const putDocument = options?.putDocument ?? storagePut;
   const notifyUser = options?.notifyUser ?? createWorkflowNotification;
   const requesterId = await assertDocumentAccess(input.entityType, input.entityId, user, db);
+
+  // If replacing an existing document category for this entity (e.g. PPMP, Market Scoping, Pre-Canvass)
+  if (input.replaceCategory) {
+    const isCategoryMatch = (docType: string, cat: string) => {
+      const dt = docType.toLowerCase();
+      const c = cat.toLowerCase();
+      if (c.includes("ppmp")) return dt.includes("ppmp");
+      if (c.includes("market") || c.includes("scoping")) return dt.includes("market") || dt.includes("scoping");
+      if (c.includes("canvass") || c.includes("abstract") || c.includes("preliminary")) return dt.includes("canvass") || dt.includes("abstract") || dt.includes("preliminary");
+      if (c.includes("corrected")) return dt.includes("corrected");
+      return dt === c;
+    };
+
+    const existingDocs = await db.select().from(procurementDocuments).where(
+      and(eq(procurementDocuments.entityType, input.entityType), eq(procurementDocuments.entityId, input.entityId))
+    );
+    const idsToDelete = existingDocs
+      .filter((d) => isCategoryMatch(d.documentType, input.replaceCategory!))
+      .map((d) => d.id);
+
+    if (input.entityType === "purchase_request" && input.replaceCategory.toLowerCase().includes("ppmp")) {
+      const [pr] = await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.entityId)).limit(1);
+      if (pr?.ppmpEntryId) {
+        const ppmpDocs = await db.select().from(procurementDocuments).where(
+          and(eq(procurementDocuments.entityType, "app_ppmp_entry"), eq(procurementDocuments.entityId, pr.ppmpEntryId))
+        );
+        ppmpDocs.forEach((d) => idsToDelete.push(d.id));
+      }
+    }
+
+    if (input.entityType === "purchase_request" && (input.replaceCategory.toLowerCase().includes("canvass") || input.replaceCategory.toLowerCase().includes("abstract"))) {
+      const [pc] = await db.select().from(preCanvasses).where(eq(preCanvasses.purchaseRequestId, input.entityId)).limit(1);
+      if (pc) {
+        const pcDocs = await db.select().from(procurementDocuments).where(
+          and(eq(procurementDocuments.entityType, "pre_canvass"), eq(procurementDocuments.entityId, pc.id))
+        );
+        pcDocs.forEach((d) => idsToDelete.push(d.id));
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      await db.delete(procurementDocuments).where(inArray(procurementDocuments.id, idsToDelete));
+    }
+  }
+
   const safeName = input.originalFileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180) || "procurement-document";
   const { key, url } = await putDocument(`procurewise/${input.entityType}/${input.entityId}/${Date.now()}_${safeName}`, data, input.mimeType);
   await db.insert(procurementDocuments).values({ entityType: input.entityType, entityId: input.entityId, documentType: input.documentType.trim() || "Supporting document", originalFileName: safeName, mimeType: input.mimeType, storageKey: key, storageUrl: url, fileSize: data.length, uploadedById: user.id });
   const [document] = await db.select().from(procurementDocuments).where(eq(procurementDocuments.storageKey, key)).limit(1);
   if (!document) throw new Error("The document record could not be saved.");
-  await recordAudit({ entityType: input.entityType, entityId: input.entityId, action: "document_attached", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { documentType: document.documentType, fileName: safeName } });
+  await recordAudit({ entityType: input.entityType, entityId: input.entityId, action: "document_attached", performedById: user.id, performedByRole: normalizeProcurementRole(user.role), details: { documentType: document.documentType, fileName: safeName, replacedCategory: input.replaceCategory || null } });
   if (requesterId !== user.id) await notifyUser({ recipientUserId: requesterId, kind: "document", title: "A procurement document was attached", body: `${document.documentType}: ${safeName}`, entityType: input.entityType, entityId: input.entityId });
   return document;
+}
+
+export async function deleteProcurementDocument(documentId: number, user: User, options?: OperationalServiceOptions) {
+  const db = options?.db ?? await requireDb();
+  const [doc] = await db.select().from(procurementDocuments).where(eq(procurementDocuments.id, documentId)).limit(1);
+  if (!doc) throw new Error("Document not found.");
+  await assertDocumentAccess(doc.entityType as DocumentEntityType, doc.entityId, user, db);
+  await db.delete(procurementDocuments).where(eq(procurementDocuments.id, documentId));
+  const recordAudit = options?.recordAudit ?? writeAuditEvent;
+  await recordAudit({
+    entityType: doc.entityType as DocumentEntityType,
+    entityId: doc.entityId,
+    action: "document_deleted",
+    performedById: user.id,
+    performedByRole: normalizeProcurementRole(user.role),
+    details: { documentType: doc.documentType, fileName: doc.originalFileName },
+  });
+  return { success: true };
 }
 
 export async function listProcurementDocuments(user: User) {
@@ -2344,13 +2419,30 @@ export async function getPurchaseRequestDetail(purchaseRequestId: number, user: 
     and(eq(workflowCorrections.entityType, "purchase_request"), eq(workflowCorrections.entityId, purchaseRequestId))
   );
 
+  const activeDocuments: typeof documents = [];
+  if (uploadedPpmpDoc) activeDocuments.push(uploadedPpmpDoc);
+  if (marketScopingDoc) activeDocuments.push(marketScopingDoc);
+  if (preCanvassDoc) activeDocuments.push(preCanvassDoc);
+
+  for (const doc of documents) {
+    const dt = doc.documentType.toLowerCase();
+    const isPpmp = dt.includes("ppmp");
+    const isMarket = dt.includes("market") || dt.includes("scoping");
+    const isPreCanvass = dt.includes("abstract") || dt.includes("pre-canvass") || dt.includes("preliminary") || doc.entityType === "pre_canvass";
+    if (!isPpmp && !isMarket && !isPreCanvass) {
+      if (!activeDocuments.some((ad) => ad.id === doc.id)) {
+        activeDocuments.push(doc);
+      }
+    }
+  }
+
   return {
     purchaseRequest,
     items,
     linkedPpmp: linkedPpmp || null,
     preCanvass: linkedPreCanvass || null,
     preCanvassQuotes: mappedQuotes,
-    documents,
+    documents: activeDocuments,
     uploadedPpmpDoc,
     marketScopingDoc,
     preCanvassDoc,
@@ -2753,7 +2845,24 @@ export async function listOfficerPrVerifications(user: User) {
       preCanvassDocuments[0] ||
       null;
 
-    const otherDocuments = allPackageDocuments.filter(
+    const activePackageDocuments: typeof allPackageDocuments = [];
+    if (uploadedPpmpDoc) activePackageDocuments.push(uploadedPpmpDoc);
+    if (marketScopingDoc) activePackageDocuments.push(marketScopingDoc);
+    if (preCanvassDoc) activePackageDocuments.push(preCanvassDoc);
+
+    for (const doc of allPackageDocuments) {
+      const dt = doc.documentType.toLowerCase();
+      const isPpmp = dt.includes("ppmp");
+      const isMarket = dt.includes("market") || dt.includes("scoping");
+      const isPreCanvass = dt.includes("abstract") || dt.includes("pre-canvass") || dt.includes("preliminary") || doc.entityType === "pre_canvass";
+      if (!isPpmp && !isMarket && !isPreCanvass) {
+        if (!activePackageDocuments.some((ad) => ad.id === doc.id)) {
+          activePackageDocuments.push(doc);
+        }
+      }
+    }
+
+    const otherDocuments = activePackageDocuments.filter(
       (d) => d !== uploadedPpmpDoc && d !== marketScopingDoc && d !== preCanvassDoc
     );
 
@@ -2782,7 +2891,7 @@ export async function listOfficerPrVerifications(user: User) {
       marketScopingDoc,
       preCanvassDoc,
       otherDocuments,
-      allDocuments: allPackageDocuments,
+      allDocuments: activePackageDocuments,
       linkedPreCanvass,
       linkedQuotes,
       corrections: prCorrections,
